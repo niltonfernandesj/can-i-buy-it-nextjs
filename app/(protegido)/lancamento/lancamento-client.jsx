@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
+import { formatarCentavosParaReais } from "@/lib/moeda";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +39,7 @@ function hojeISO() {
 const FORM_INICIAL = {
   tipo: "SAIDA",
   contaId: "",
-  valor: "",
+  valorCentavos: 0,
   categoria: "OUTROS",
   descricao: "",
   dataCompra: hojeISO(),
@@ -46,8 +47,52 @@ const FORM_INICIAL = {
   contaInvestimentoId: "",
   parcelado: false,
   numeroParcelas: "2",
-  valorParcela: "",
+  valorParcelaCentavos: 0,
 };
+
+function CampoValor({ id, label, valorCentavos, onChange, className = "" }) {
+  // Formata o valor exibido a cada tecla, então a posição do cursor dentro do
+  // texto formatado não é confiável para saber "onde" um novo dígito entrou —
+  // por isso os dígitos são acumulados numericamente (como uma calculadora,
+  // sempre a partir da direita) em vez de reler o texto renderizado do input.
+  function handleKeyDown(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) {
+      return;
+    }
+
+    if (e.key >= "0" && e.key <= "9") {
+      e.preventDefault();
+      onChange(Math.min(valorCentavos * 10 + Number(e.key), Number.MAX_SAFE_INTEGER));
+      return;
+    }
+
+    if (e.key === "Backspace" || e.key === "Delete") {
+      e.preventDefault();
+      onChange(Math.floor(valorCentavos / 10));
+      return;
+    }
+
+    if (!["Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Enter"].includes(e.key)) {
+      e.preventDefault();
+    }
+  }
+
+  return (
+    <div className={`flex flex-col gap-2 ${className}`}>
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        required
+        value={formatarCentavosParaReais(valorCentavos)}
+        onKeyDown={handleKeyDown}
+        onPaste={(e) => e.preventDefault()}
+        onChange={() => {}}
+      />
+    </div>
+  );
+}
 
 export function LancamentoClient({ contas }) {
   const [form, setForm] = useState(FORM_INICIAL);
@@ -98,12 +143,12 @@ export function LancamentoClient({ contas }) {
           categoria: form.categoria,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
-          valorParcela: form.valorParcela,
+          valorParcela: form.valorParcelaCentavos / 100,
           numeroParcelas: form.numeroParcelas,
         })
       : await criarTransacao({
           tipo: form.tipo,
-          valor: form.valor,
+          valor: form.valorCentavos / 100,
           descricao: form.descricao,
           categoria: form.categoria,
           contaId: form.contaId,
@@ -164,18 +209,12 @@ export function LancamentoClient({ contas }) {
           </div>
 
           {!form.parcelado && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="valor">Valor</Label>
-              <Input
-                id="valor"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                value={form.valor}
-                onChange={(e) => setForm({ ...form, valor: e.target.value })}
-              />
-            </div>
+            <CampoValor
+              id="valor"
+              label="Valor"
+              valorCentavos={form.valorCentavos}
+              onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
+            />
           )}
 
           <div className="flex flex-col gap-2">
@@ -278,18 +317,13 @@ export function LancamentoClient({ contas }) {
                       onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })}
                     />
                   </div>
-                  <div className="flex flex-1 flex-col gap-2">
-                    <Label htmlFor="valorParcela">Valor da parcela</Label>
-                    <Input
-                      id="valorParcela"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      required
-                      value={form.valorParcela}
-                      onChange={(e) => setForm({ ...form, valorParcela: e.target.value })}
-                    />
-                  </div>
+                  <CampoValor
+                    id="valorParcela"
+                    label="Valor da parcela"
+                    className="flex-1"
+                    valorCentavos={form.valorParcelaCentavos}
+                    onChange={(valorParcelaCentavos) => setForm({ ...form, valorParcelaCentavos })}
+                  />
                 </div>
               )}
             </div>
