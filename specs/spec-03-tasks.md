@@ -1,0 +1,126 @@
+# Spec — Tasks: App de Finanças Pessoais (Familiar)
+
+**Fase:** 3/3 — Tasks
+**Status:** Rascunho para revisão
+**Baseado em:** spec-01-requisitos.md, spec-02-design.md
+
+---
+
+## Como usar este documento
+
+Cada tarefa abaixo é pequena o suficiente para ser implementada e revisada isoladamente. O fluxo recomendado com o Claude Code:
+
+1. Peça uma tarefa por vez, referenciando os três documentos como contexto, ex: *"Implemente a Task 1 de spec-03-tasks.md, usando spec-02-design.md como referência de arquitetura/schema e spec-01-requisitos.md para as regras de negócio."*
+2. Revise o resultado (diff, rodando localmente) antes de pedir a próxima.
+3. Se algo sair diferente do esperado, corrija a spec (não só o código) antes de seguir — mantém o documento como fonte da verdade.
+
+As tarefas estão agrupadas em marcos (M1–M7); a ordem entre marcos importa (cada um depende do anterior), mas dentro de um marco algumas tarefas podem ser paralelizadas se você preferir.
+
+---
+
+## M1 — Setup do projeto
+
+**Task 1. Inicializar projeto**
+Next.js 14+ (App Router, JavaScript, não TypeScript), Tailwind CSS, shadcn/ui. Estrutura de pastas conforme seção 2 do Design.
+
+**Task 2. Banco de dados**
+Provisionar Vercel Postgres, configurar Prisma (`npx prisma init`), criar `schema.prisma` com o conteúdo da seção 3 do Design, rodar a primeira migration.
+
+**Task 3. Testes**
+Configurar Vitest no projeto (conforme seção 1 do Design — "Testes: por que Vitest").
+
+---
+
+## M2 — Autenticação
+
+**Task 4. NextAuth + Usuario**
+Configurar NextAuth.js com Credentials Provider, hash de senha com bcrypt, validando contra o model `Usuario`.
+
+**Task 5. Telas de cadastro e login**
+`/cadastro` (nome, email, senha) e `/login` (email, senha).
+
+**Task 6. Middleware de proteção**
+Middleware do Next.js protegendo todas as rotas exceto `/login` e `/cadastro`, redirecionando não autenticados.
+
+*(Checkpoint sugerido: critérios de aceite 1 e 8 do spec-01.)*
+
+---
+
+## M3 — Núcleo de negócio (funções puras)
+
+**Task 7. `calcularFatura` + testes**
+Implementar conforme seção 4 do Design. Testes cobrindo: vencimento antes/depois do fechamento, rollover de mês e de ano, fechamento em dia inexistente no mês (ex: dia 31 em fevereiro) — usar as tabelas de exemplo do Design como casos de teste.
+
+**Task 8. `gerarParcelas` + testes**
+Implementar conforme seção 5 do Design (inclui `ultimoDiaDoMes` e `dataAberturaProximaFatura`). Testes cobrindo: número correto de parcelas, progressão de exatamente 1 mês de referência por parcela, e o caso de borda de fechamento dia 31 caindo em fevereiro (ver tabela de exemplo do Design).
+
+*(Estas duas tarefas são as de maior risco do projeto — revisar com atenção antes de seguir.)*
+
+---
+
+## M4 — Contas
+
+**Task 9. Server actions de Conta**
+`criarConta`, `editarConta`, `apagarConta`. Validação: campos de fechamento/vencimento obrigatórios só quando `tipo = CARTAO_CREDITO`.
+
+**Task 10. Tela `/contas`**
+Listagem + formulário de criação/edição com campos condicionais por tipo (seção 7 do Design).
+
+*(Checkpoint: critério de aceite 3 do spec-01.)*
+
+---
+
+## M5 — Lançamento e gestão de transações
+
+**Task 11. Server action `criarTransacao` (não parcelada)**
+Cobre entrada, saída débito, saída crédito (sem parcelamento), e a marcação de investimento (aporte/resgate) com `contaInvestimentoId`. Deduz débito/crédito do `conta.tipo` (não pede escolha manual).
+
+**Task 12. Server action `criarTransacaoParcelada`**
+Usa `gerarParcelas` (Task 8) para criar as N transações numa única transaction do Prisma.
+
+**Task 13. Editar e apagar transação**
+`editarTransacao` e `apagarTransacao`, aplicando a qualquer transação independente de quem a criou (sem histórico de alterações). Por padrão, ambas afetam apenas a transação/parcela selecionada.
+
+**Task 14. Propagação para parcelas restantes**
+Opção adicional, tanto na edição quanto na exclusão, de propagar a ação para todas as parcelas de `dataEfetiva` futura do mesmo `parcelamentoId` (ex: apagar as restantes ao cancelar uma compra, ou editar o valor das restantes se o valor da parcela mudou).
+
+**Task 15. Tela `/lancamento`**
+Formulário completo: tipo, conta (define os campos seguintes), valor, categoria, descrição, data; checkbox "É investimento" + select de conta de investimento; se conta = cartão, checkbox "Parcelado" + nº parcelas + valor da parcela.
+
+*(Checkpoint: critérios de aceite 2, 4, 5, 6, 7, 9–16 do spec-01 — o maior bloco de regras de negócio do MVP.)*
+
+---
+
+## M6 — Telas de consulta
+
+**Task 16. Queries de consolidação**
+Implementar as 4 queries da seção 6 do Design (Entradas, Saídas débito, Saídas crédito, Investimentos), parametrizadas por mês/ano de referência.
+
+**Task 17. Tela `/acompanhamento`**
+Seletor de mês/ano + 4 blocos (agrupados por dia onde aplicável) + gráfico de gastos por categoria (Recharts).
+
+**Task 18. Tela `/transacoes`**
+Tabela com as 11 colunas da seção 3.3 do spec-01, filtro por qualquer coluna, ações de editar/apagar por linha (reaproveita Tasks 13–14), paginação.
+
+*(Checkpoint: critérios de aceite 20–23 do spec-01.)*
+
+---
+
+## M7 — Deploy
+
+**Task 19. Publicação**
+Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test manual percorrendo os critérios de aceite do spec-01 de ponta a ponta.
+
+---
+
+## Resumo de rastreabilidade
+
+| Marco | Resolve |
+|---|---|
+| M1 | Requisitos não funcionais (spec-01 §4) |
+| M2 | Escopo item 1 (Autenticação) |
+| M3 | Design §4–5 (algoritmos) |
+| M4 | Escopo item 5 (Conta polimórfica) |
+| M5 | Escopo itens 2, 3, 6, 8 (lançamento, edição, investimento, parcelamento) |
+| M6 | Escopo itens 7, 9 (acompanhamento, tabela) |
+| M7 | Publicação (spec-01 §4) |

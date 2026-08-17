@@ -1,0 +1,340 @@
+# Spec — Design Técnico: App de Finanças Pessoais (Familiar)
+
+**Fase:** 2/3 — Design
+**Status:** Rascunho para revisão
+**Baseado em:** spec-01-requisitos.md
+**Próxima fase:** Tasks (lista de tarefas de implementação)
+
+---
+
+## 1. Stack técnica
+
+| Camada | Escolha | Observação |
+|---|---|---|
+| Framework | **Next.js 14+ (App Router)**, JavaScript | Full-stack num projeto só, como pedido. |
+| ORM | **Prisma** | Combinação mais documentada com Postgres; schema declarativo facilita a fase de Tasks. |
+| Banco de dados | **PostgreSQL (Vercel Postgres, via Neon)** | Ver justificativa abaixo. |
+| Autenticação | **NextAuth.js** (Credentials provider) + bcrypt para hash de senha | Sessão via JWT ou banco; e-mail + senha, conforme requisito. |
+| UI | Tailwind CSS + shadcn/ui | Componentes prontos (tabelas, formulários, selects) reduzem código a escrever. |
+| Gráficos | Recharts | Já suportado nativamente em artifacts/ambiente Next.js, boa documentação. |
+| Testes | **Vitest** | Ver justificativa abaixo. |
+| Hospedagem | Vercel (hobby) | Conforme requisito. |
+
+### Banco de dados: por que Postgres, e não SQLite local
+
+Na fase de Requisitos, a sugestão inicial foi "SQLite via Prisma/Drizzle". Isso **não funciona em produção no Vercel**: funções serverless rodam em ambiente efêmero, sem sistema de arquivos persistente entre execuções — um arquivo `.db` local perderia todas as escritas a cada novo cold start ou instância concorrente.
+
+**Escolha:** **Vercel Postgres** (roda sobre Neon). Motivos:
+- Integração nativa com Vercel: banco criado direto pelo dashboard, variáveis de ambiente auto-configuradas.
+- Usa driver HTTP-friendly para serverless — não sofre do problema clássico de esgotamento de conexões que Postgres "tradicional" teria nesse ambiente.
+- É a combinação Next.js + Prisma + Postgres, a mais documentada do ecossistema — menos chance de tropeçar em peculiaridades pouco documentadas durante a implementação, alinhado com o pedido de manter a implementação simples/leve em tokens.
+- Tipos mais robustos para valores monetários (`Decimal` nativo) e melhor suporte a agregações (usadas nos blocos da tela de acompanhamento).
+
+### Testes: por que Vitest, e onde focar no MVP
+
+**Escolha:** Vitest em vez de Jest — configuração praticamente zero em projeto JS/ESM (Jest exige mais ajuste para rodar bem com o App Router do Next.js), roda rápido, e a API é quase idêntica à do Jest, então não há curva de aprendizado extra.
+
+**Escopo de testes no MVP:** o maior risco de bug silencioso deste app está nas **funções puras de cálculo de data** (seções 4 e 5) — `calcularFatura` e `gerarParcelas` — porque erram fácil e silenciosamente (rollover de mês/ano, dia de fechamento maior que o mês, etc.), e um erro ali distorce dado financeiro sem quebrar a aplicação visivelmente. São também as mais fáceis de testar, por serem funções puras sem I/O.
+
+Sugestão de cobertura prioritária (a virar tarefas concretas na fase de Tasks):
+- `calcularFatura`: casos das tabelas de exemplo das seções 4 e 5 (vencimento antes/depois do fechamento, rollover de ano, fechamento em dia inexistente no mês).
+- `gerarParcelas`: número correto de parcelas geradas, progressão de 1 mês por parcela, e o caso de borda de fechamento dia 31 caindo em fevereiro.
+- Testes de componente/E2E (ex: Playwright) ficam **fora do MVP** — dado o porte do projeto (uso familiar, poucos usuários), o retorno não compensa o esforço nesta fase. Pode ser revisitado depois.
+
+## 2. Arquitetura geral
+
+```
+app/
+├── (auth)/
+│   ├── login/page.jsx
+│   └── cadastro/page.jsx
+├── (protegido)/                    ← layout com verificação de sessão
+│   ├── lancamento/page.jsx         ← 2. Lançamento de transações (+ parcelamento)
+│   ├── contas/page.jsx             ← 3. CRUD de Contas
+│   ├── acompanhamento/page.jsx     ← 4. Dashboard (4 blocos)
+│   └── transacoes/page.jsx         ← 5. Tabela com filtros
+├── api/
+│   └── auth/[...nextauth]/route.js
+lib/
+├── db.js                           ← client Prisma
+├── fatura.js                       ← algoritmo de fechamento/vencimento (seção 4)
+├── parcelamento.js                 ← geração das N parcelas (seção 5)
+└── actions/                        ← Server Actions (mutações)
+    ├── transacoes.js
+    └── contas.js
+prisma/
+└── schema.prisma
+```
+
+- **Server Components** para leitura de dados (páginas de dashboard e tabela).
+- **Server Actions** para mutações (criar/editar/apagar transação e conta) — evita ter que montar rotas de API REST separadas para um app deste porte.
+- **Middleware** do Next.js protegendo o grupo `(protegido)/*`, redirecionando para `/login` se não houver sessão.
+
+## 3. Schema de dados (Prisma)
+
+Decisões de modelagem tomadas aqui, resolvendo as pendências da fase de Requisitos:
+
+- **Polimorfismo de Conta:** *single table* com coluna discriminadora `tipo` e campos específicos de cartão como nullable. Só há dois campos extras (fechamento/vencimento) e um único tipo (`CARTAO_CREDITO`) que os usa — criar tabelas separadas por tipo (class table inheritance) seria complexidade desnecessária para o MVP.
+- **mês/ano de referência:** dois campos inteiros (`mesReferencia` 1–12, `anoReferencia`), não um campo de data único. Ficam mais simples de indexar e filtrar exatamente como a tela pede ("filtrar por mês/ano"), e exibir "por extenso" é só mapear o número pro nome do mês.
+
+```prisma
+enum TipoTransacao {
+  ENTRADA
+  SAIDA
+}
+
+enum TipoConta {
+  CONTA_CORRENTE
+  CARTAO_CREDITO
+  CONTA_INVESTIMENTO
+}
+
+enum Categoria {
+  MERCADO
+  LAZER
+  SAUDE
+  TRANSPORTE
+  MORADIA
+  SALARIO
+  OUTROS
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  criadoEm     DateTime @default(now())
+
+  contas       Conta[]
+  transacoes   Transacao[]
+}
+
+model Conta {
+  id             String   @id @default(cuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+  nome           String
+  tipo           TipoConta
+
+  // Específicos de CARTAO_CREDITO (null para os demais tipos)
+  diaFechamento  Int?
+  diaVencimento  Int?
+
+  criadoEm       DateTime @default(now())
+
+  transacoes           Transacao[] @relation("ContaPrincipal")
+  transacoesInvestimento Transacao[] @relation("ContaInvestimento")
+}
+
+model Transacao {
+  id                String        @id @default(cuid())
+  usuarioId         String
+  usuario           Usuario       @relation(fields: [usuarioId], references: [id])
+
+  tipo              TipoTransacao
+  valor             Decimal       // sempre positivo; sinal é dado pelo `tipo`
+  descricao         String
+  categoria         Categoria
+
+  contaId           String
+  conta             Conta         @relation("ContaPrincipal", fields: [contaId], references: [id])
+
+  dataCompra        DateTime
+  dataEfetiva       DateTime
+  mesReferencia     Int           // 1-12
+  anoReferencia     Int
+
+  // Parcelamento (null quando não é compra parcelada)
+  numeroParcela     Int?
+  totalParcelas     Int?
+  parcelamentoId    String?
+
+  // Investimento
+  ehInvestimento    Boolean       @default(false)
+  contaInvestimentoId String?
+  contaInvestimento  Conta?       @relation("ContaInvestimento", fields: [contaInvestimentoId], references: [id])
+
+  criadoEm          DateTime      @default(now())
+
+  @@index([usuarioId])
+  @@index([contaId])
+  @@index([mesReferencia, anoReferencia])
+  @@index([parcelamentoId])
+}
+```
+
+**Nota sobre `Categoria` como enum:** como a spec define lista fixa definida no código, um `enum` do Prisma é mais simples que uma tabela — não precisa de seed nem de FK. Se no futuro categorias passarem a ser editáveis pelo usuário (fora do MVP), migra-se para uma tabela própria.
+
+## 4. Algoritmo de fechamento/vencimento da fatura
+
+Resolve a pendência "algoritmo exato" da fase de Requisitos (seção 3.1).
+
+**Entradas:** `dataCompra` (dia/mês/ano), `diaFechamento`, `diaVencimento` (da Conta tipo Cartão de crédito).
+**Saídas:** `mesFechamento`/`anoFechamento` (mês em que a fatura fecha) e `mesReferencia`/`anoReferencia` (mês de vencimento — usado para filtrar/agrupar). Os dois primeiros são expostos porque a seção 5 (parcelamento) precisa deles para calcular a abertura da fatura seguinte com precisão.
+
+```javascript
+/**
+ * @param {Date} dataCompra
+ * @param {number} diaFechamento
+ * @param {number} diaVencimento
+ */
+function calcularFatura(dataCompra, diaFechamento, diaVencimento) {
+  const diaCompra = dataCompra.getDate();
+  let mesFechamento = dataCompra.getMonth() + 1; // 1-12
+  let anoFechamento = dataCompra.getFullYear();
+
+  // 1. Em qual fatura (mês de fechamento) a compra entra?
+  if (diaCompra > diaFechamento) {
+    mesFechamento += 1;
+    if (mesFechamento > 12) { mesFechamento = 1; anoFechamento += 1; }
+  }
+  // se diaCompra <= diaFechamento, a compra já entra na fatura que fecha no mês corrente
+
+  // 2. O vencimento dessa fatura cai no mesmo mês do fechamento ou no seguinte?
+  let mesReferencia = mesFechamento;
+  let anoReferencia = anoFechamento;
+  if (diaVencimento < diaFechamento) {
+    // dia de vencimento "menor" só faz sentido cronologicamente no mês seguinte
+    mesReferencia += 1;
+    if (mesReferencia > 12) { mesReferencia = 1; anoReferencia += 1; }
+  }
+
+  return { mesFechamento, anoFechamento, mesReferencia, anoReferencia };
+}
+```
+
+**Exemplos (cartão com fechamento dia 25, vencimento dia 5):**
+| Data da compra | Fatura fecha em | Vencimento (mês/ano ref.) |
+|---|---|---|
+| 10/ago | ago (10 ≤ 25) | dia 5 < 25 → **set/2026** |
+| 26/ago | set (26 > 25) | **out/2026** |
+| 25/dez | dez (25 ≤ 25) | **jan/2027** (rollover de ano) |
+
+**Exemplo (cartão com fechamento dia 10, vencimento dia 17 — vencimento no mesmo mês do fechamento):**
+| Data da compra | Fatura fecha em | Vencimento (mês/ano ref.) |
+|---|---|---|
+| 5/ago | ago | dia 17 ≥ 10 → **ago/2026** |
+| 15/ago | set | **set/2026** |
+
+**Caso de borda — dia de fechamento maior que o número de dias do mês** (ex: fechamento dia 31, compra em fevereiro): como a comparação é numérica (`diaCompra > diaFechamento`) e fevereiro nunca tem dia 31, toda compra em fevereiro será automaticamente tratada como "antes do fechamento" — o que corresponde exatamente ao comportamento esperado (fechamento "no fim do mês"). Não é necessário tratamento especial.
+
+## 5. Algoritmo de parcelamento
+
+Resolve a seção 3.2 dos Requisitos.
+
+A `data_efetiva` de cada parcela 2+ é a **data de abertura da fatura seguinte** = data de fechamento da fatura anterior + 1 dia. Isso exige duas funções auxiliares: uma para achar o último dia de um mês (para não estourar, ex: fechamento configurado no dia 31 num mês de 30 dias) e outra para montar a data de abertura a partir daí.
+
+```javascript
+function ultimoDiaDoMes(ano, mes) {
+  // dia 0 do mês seguinte = último dia do mês atual
+  return new Date(ano, mes, 0).getDate();
+}
+
+function dataAberturaProximaFatura(mesFechamento, anoFechamento, diaFechamento) {
+  // Clampa o dia de fechamento ao último dia do mês (ex: "dia 31" em mês de 30 dias vira dia 30)
+  const dia = Math.min(diaFechamento, ultimoDiaDoMes(anoFechamento, mesFechamento));
+  const fechamento = new Date(anoFechamento, mesFechamento - 1, dia);
+
+  const abertura = new Date(fechamento);
+  abertura.setDate(abertura.getDate() + 1); // JS rola corretamente pro mês/ano seguinte quando necessário
+  return abertura;
+}
+
+/**
+ * @param {Date} dataCompra
+ * @param {number} valorParcela
+ * @param {number} n - quantidade de parcelas
+ * @param {{ diaFechamento: number, diaVencimento: number }} cartao
+ */
+function gerarParcelas(dataCompra, valorParcela, n, cartao) {
+  const parcelamentoId = cuid();
+  const parcelas = [];
+
+  // Parcela 1: data efetiva = data da compra
+  let { mesFechamento, anoFechamento, mesReferencia, anoReferencia } =
+    calcularFatura(dataCompra, cartao.diaFechamento, cartao.diaVencimento);
+
+  parcelas.push({
+    numeroParcela: 1, totalParcelas: n, parcelamentoId,
+    dataCompra, dataEfetiva: dataCompra,
+    mesReferencia, anoReferencia, valor: valorParcela,
+  });
+
+  // Parcelas 2..N: data efetiva = abertura da fatura seguinte à fatura da parcela anterior
+  for (let i = 2; i <= n; i++) {
+    const dataEfetiva = dataAberturaProximaFatura(mesFechamento, anoFechamento, cartao.diaFechamento);
+
+    // Reaplica o mesmo cálculo de fatura sobre a nova data efetiva — sem regra própria,
+    // a data efetiva é que "direciona" a parcela para a fatura correta.
+    ({ mesFechamento, anoFechamento, mesReferencia, anoReferencia } =
+      calcularFatura(dataEfetiva, cartao.diaFechamento, cartao.diaVencimento));
+
+    parcelas.push({
+      numeroParcela: i, totalParcelas: n, parcelamentoId,
+      dataCompra, dataEfetiva,
+      mesReferencia, anoReferencia, valor: valorParcela,
+    });
+  }
+
+  return parcelas; // inserir todas em uma transaction do Prisma
+}
+```
+
+**Exemplo (cartão fechamento dia 25, vencimento dia 5 — compra em 10/ago/2026, 3x):**
+| Parcela | Data efetiva | Mês/ano de referência |
+|---|---|---|
+| 1 | 10/ago/2026 (= data da compra) | set/2026 |
+| 2 | 26/ago/2026 (fechamento 25/ago + 1) | out/2026 |
+| 3 | 26/set/2026 (fechamento 25/set + 1) | nov/2026 |
+
+**Exemplo de caso de borda (cartão fechamento dia 31, vencimento dia 10 — compra em 15/jan/2026, 3x):**
+| Parcela | Data efetiva | Mês/ano de referência |
+|---|---|---|
+| 1 | 15/jan/2026 | fev/2026 |
+| 2 | 1/fev/2026 (fechamento clampado p/ 31/jan + 1) | mar/2026 |
+| 3 | 1/mar/2026 (fechamento clampado p/ 28/fev, já que 2026 não é bissexto, + 1) | abr/2026 |
+
+O clamping garante que "dia 31" em fevereiro vire corretamente "dia 28" (ou 29, se bissexto) sem gerar datas inválidas — e mesmo assim a progressão de mês de referência continua avançando exatamente 1 mês por parcela.
+
+## 6. Regras de consolidação (tela de acompanhamento)
+
+Tradução direta da seção 3.1 dos Requisitos em queries:
+
+- **Entradas:** `WHERE tipo = ENTRADA AND mesReferencia = X AND anoReferencia = Y` → cada linha checa `ehInvestimento` para exibir a tag "Resgate de investimento".
+- **Saídas no débito:** `WHERE tipo = SAIDA AND conta.tipo = CONTA_CORRENTE AND ehInvestimento = false AND mesReferencia = X AND anoReferencia = Y`.
+- **Saídas no crédito:** `WHERE tipo = SAIDA AND conta.tipo = CARTAO_CREDITO AND mesReferencia = X AND anoReferencia = Y`, agrupado por `dataCompra`.
+- **Investimentos:** `WHERE tipo = SAIDA AND ehInvestimento = true AND mesReferencia = X AND anoReferencia = Y`, agrupado (`GROUP BY`) por `contaInvestimentoId`, somando `valor`.
+
+## 7. Telas e componentes principais
+
+| Rota | Descrição | Componentes-chave |
+|---|---|---|
+| `/login`, `/cadastro` | Autenticação | Form + NextAuth |
+| `/contas` | CRUD de Contas | Lista + formulário condicional (campos de fechamento/vencimento só aparecem se tipo = Cartão de crédito) |
+| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela) |
+| `/acompanhamento` | Dashboard | Seletor de mês/ano + 4 cards/blocos + gráfico (Recharts) |
+| `/transacoes` | Tabela | Tabela com coluna de filtro por header (shadcn `DataTable`), ações de editar/apagar por linha |
+
+## 8. Autenticação
+
+- NextAuth Credentials Provider: valida email/senha (bcrypt) contra a tabela `Usuario`.
+- Sessão JWT (mais simples que sessão em banco para este porte de app).
+- Middleware protege todas as rotas exceto `/login` e `/cadastro`.
+- **Sem filtro de dados por usuário** nas queries (exceto para saber "quem lançou") — todos os usuários autenticados veem o mesmo conjunto de dados, conforme decidido nos Requisitos.
+
+## 9. Pendências resolvidas nesta fase
+
+| Pendência (dos Requisitos) | Resolução |
+|---|---|
+| Algoritmo de mapeamento compra → fatura | Seção 4 acima |
+| Representação de mês/ano de referência | Dois campos `Int` |
+| Padrão de polimorfismo de Conta | Single table com campos nullable |
+| Data efetiva das parcelas 2+ (abertura da fatura seguinte) | Fechamento real (com clamping de dia) + 1, não uma aproximação — seção 5 |
+| Editar parcela propaga para as restantes? | Sim, por padrão só a parcela; opção de propagar para as restantes (simétrico à exclusão) |
+
+## 10. Pendências que continuam em aberto
+
+- Se `Conta de investimento` ganhará atributos próprios em fases futuras.
+- Formato do CSV de fatura (fase futura).
+- Categorização automática (fase futura).
