@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoTransacao {
+  ENTRADA
+  SAIDA
+}
+
+enum TipoConta {
+  CONTA_CORRENTE
+  CARTAO_CREDITO
+  CONTA_INVESTIMENTO
+}
+
+enum Categoria {
+  MERCADO
+  LAZER
+  SAUDE
+  TRANSPORTE
+  MORADIA
+  SALARIO
+  OUTROS
+}
+
+model Usuario {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String   @unique
+  senhaHash    String
+  criadoEm     DateTime @default(now())
+
+  contas       Conta[]
+  transacoes   Transacao[]
+}
+
+model Conta {
+  id             String   @id @default(cuid())
+  usuarioId      String
+  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
+  nome           String
+  tipo           TipoConta
+
+  // Específicos de CARTAO_CREDITO (null para os demais tipos)
+  diaFechamento  Int?
+  diaVencimento  Int?
+
+  criadoEm       DateTime @default(now())
+
+  transacoes             Transacao[] @relation("ContaPrincipal")
+  transacoesInvestimento Transacao[] @relation("ContaInvestimento")
+}
+
+model Transacao {
+  id                String        @id @default(cuid())
+  usuarioId         String
+  usuario           Usuario       @relation(fields: [usuarioId], references: [id])
+
+  tipo              TipoTransacao
+  valor             Decimal       // sempre positivo; sinal é dado pelo `tipo`
+  descricao         String
+  categoria         Categoria
+
+  contaId           String
+  conta             Conta         @relation("ContaPrincipal", fields: [contaId], references: [id])
+
+  dataCompra        DateTime
+  dataEfetiva       DateTime
+  mesReferencia     Int           // 1-12
+  anoReferencia     Int
+
+  // Parcelamento (null quando não é compra parcelada)
+  numeroParcela     Int?
+  totalParcelas     Int?
+  parcelamentoId    String?
+
+  // Investimento
+  ehInvestimento      Boolean @default(false)
+  contaInvestimentoId String?
+  contaInvestimento   Conta?  @relation("ContaInvestimento", fields: [contaInvestimentoId], references: [id])
+
+  criadoEm          DateTime      @default(now())
+
+  @@index([usuarioId])
+  @@index([contaId])
+  @@index([mesReferencia, anoReferencia])
+  @@index([parcelamentoId])
+}
