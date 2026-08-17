@@ -208,6 +208,42 @@ export function LancamentoClient({ contas }) {
             </Select>
           </div>
 
+          {ehCartao && (
+            <div className="flex flex-col gap-4 rounded-md border p-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="parcelado"
+                  checked={form.parcelado}
+                  onCheckedChange={marcarParcelado}
+                />
+                <Label htmlFor="parcelado">Parcelado</Label>
+              </div>
+
+              {form.parcelado && (
+                <div className="flex gap-4">
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Label htmlFor="numeroParcelas">Nº de parcelas</Label>
+                    <Input
+                      id="numeroParcelas"
+                      type="number"
+                      min={1}
+                      required
+                      value={form.numeroParcelas}
+                      onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })}
+                    />
+                  </div>
+                  <CampoValor
+                    id="valorParcela"
+                    label="Valor da parcela"
+                    className="flex-1"
+                    valorCentavos={form.valorParcelaCentavos}
+                    onChange={(valorParcelaCentavos) => setForm({ ...form, valorParcelaCentavos })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {!form.parcelado && (
             <CampoValor
               id="valor"
@@ -288,42 +324,6 @@ export function LancamentoClient({ contas }) {
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-            </div>
-          )}
-
-          {ehCartao && (
-            <div className="flex flex-col gap-4 rounded-md border p-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="parcelado"
-                  checked={form.parcelado}
-                  onCheckedChange={marcarParcelado}
-                />
-                <Label htmlFor="parcelado">Parcelado</Label>
-              </div>
-
-              {form.parcelado && (
-                <div className="flex gap-4">
-                  <div className="flex flex-1 flex-col gap-2">
-                    <Label htmlFor="numeroParcelas">Nº de parcelas</Label>
-                    <Input
-                      id="numeroParcelas"
-                      type="number"
-                      min={1}
-                      required
-                      value={form.numeroParcelas}
-                      onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })}
-                    />
-                  </div>
-                  <CampoValor
-                    id="valorParcela"
-                    label="Valor da parcela"
-                    className="flex-1"
-                    valorCentavos={form.valorParcelaCentavos}
-                    onChange={(valorParcelaCentavos) => setForm({ ...form, valorParcelaCentavos })}
-                  />
                 </div>
               )}
             </div>
