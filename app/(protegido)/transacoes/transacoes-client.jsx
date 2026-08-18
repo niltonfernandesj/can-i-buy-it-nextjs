@@ -84,6 +84,12 @@ const COLUNAS_BASE = [
     accessorFn: (row) => (row.numeroParcela ? `${row.numeroParcela} de ${row.totalParcelas}` : "—"),
   },
   {
+    id: "recorrencia",
+    header: "Recorrência",
+    accessorFn: (row) =>
+      row.numeroOcorrencia ? `${row.numeroOcorrencia} de ${row.totalOcorrencias}` : "—",
+  },
+  {
     id: "ehInvestimento",
     header: "É investimento",
     accessorFn: (row) => (row.ehInvestimento ? "Sim" : "Não"),
@@ -185,6 +191,13 @@ function CamposCompletos({ form, setForm, contas }) {
 
 function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
   const ehParcela = transacao.parcelamentoId !== null;
+  const ehRecorrencia = transacao.recorrenciaId !== null;
+  const ehLinhaBloqueada = ehParcela || ehRecorrencia;
+  const podePropagar = ehParcela
+    ? transacao.numeroParcela < transacao.totalParcelas
+    : ehRecorrencia
+    ? transacao.numeroOcorrencia < transacao.totalOcorrencias
+    : false;
 
   const [form, setForm] = useState({
     tipo: transacao.tipo,
@@ -205,7 +218,7 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
     setErro("");
     setCarregando(true);
 
-    const dados = ehParcela
+    const dados = ehLinhaBloqueada
       ? { valor: form.valorCentavos / 100, descricao: form.descricao, categoria: form.categoria }
       : {
           tipo: form.tipo,
@@ -219,7 +232,7 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
         };
 
     const resultado = await editarTransacao(transacao.id, dados, {
-      propagarParaRestantes: ehParcela ? form.propagarParaRestantes : false,
+      propagarParaRestantes: ehLinhaBloqueada ? form.propagarParaRestantes : false,
     });
 
     setCarregando(false);
@@ -241,7 +254,14 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
         </p>
       )}
 
-      {!ehParcela && <CamposCompletos form={form} setForm={setForm} contas={contas} />}
+      {ehRecorrencia && (
+        <p className="text-sm text-muted-foreground">
+          Ocorrência {transacao.numeroOcorrencia} de {transacao.totalOcorrencias} de uma saída
+          recorrente — conta, data e tipo não são editáveis numa ocorrência.
+        </p>
+      )}
+
+      {!ehLinhaBloqueada && <CamposCompletos form={form} setForm={setForm} contas={contas} />}
 
       <CampoValor
         id="edit-valor"
@@ -279,14 +299,18 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
         />
       </div>
 
-      {ehParcela && transacao.numeroParcela < transacao.totalParcelas && (
+      {podePropagar && (
         <div className="flex items-center gap-2">
           <Checkbox
             id="edit-propagar"
             checked={form.propagarParaRestantes}
             onCheckedChange={(v) => setForm({ ...form, propagarParaRestantes: v })}
           />
-          <Label htmlFor="edit-propagar">Aplicar às parcelas restantes desta compra</Label>
+          <Label htmlFor="edit-propagar">
+            {ehParcela
+              ? "Aplicar às parcelas restantes desta compra"
+              : "Aplicar às ocorrências restantes desta recorrência"}
+          </Label>
         </div>
       )}
 
@@ -327,6 +351,8 @@ function EditarTransacaoDialog({ transacao, contas, open, onOpenChange, onSalvo 
 
 function ApagarTransacaoDialog({ transacao, open, onOpenChange, onApagado }) {
   const ehParcela = transacao?.parcelamentoId != null;
+  const ehRecorrencia = transacao?.recorrenciaId != null;
+  const ehLinhaBloqueada = ehParcela || ehRecorrencia;
 
   async function apagar(propagarParaRestantes) {
     const resultado = await apagarTransacao(transacao.id, { propagarParaRestantes });
@@ -343,20 +369,22 @@ function ApagarTransacaoDialog({ transacao, open, onOpenChange, onApagado }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Apagar transação</AlertDialogTitle>
           <AlertDialogDescription>
-            {ehParcela
-              ? `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`
-              : "Esta ação não pode ser desfeita."}
+            {ehParcela &&
+              `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`}
+            {ehRecorrencia &&
+              `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma saída recorrente. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
+            {!ehLinhaBloqueada && "Esta ação não pode ser desfeita."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          {ehParcela && (
+          {ehLinhaBloqueada && (
             <AlertDialogAction onClick={() => apagar(true)}>
               Apagar esta e as restantes
             </AlertDialogAction>
           )}
           <AlertDialogAction onClick={() => apagar(false)}>
-            {ehParcela ? "Apagar só esta" : "Apagar"}
+            {ehLinhaBloqueada ? "Apagar só esta" : "Apagar"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
