@@ -139,9 +139,30 @@ Substituir o formulário único condicional pelo fluxo de 2 etapas (escolher tip
 
 ---
 
-## M8 — Deploy
+## M8 — Saída recorrente
 
-**Task 28. Publicação**
+**Task 29. `gerarOcorrenciasRecorrencia` + testes**
+Implementar conforme seção 5.2 do Design (`proximaDataMensal` + `gerarOcorrenciasRecorrencia`, reaproveitando `ultimoDiaDoMes` da seção 5.1). Testes cobrindo: número correto de ocorrências, progressão de 1 mês por ocorrência, clamping de dia (ex: dia 31 caindo em fevereiro), e cálculo de mês de referência tanto para débito (mês da própria data) quanto para crédito (via `calcularFatura`, recalculado de forma independente por ocorrência).
+
+**Task 30. Server action `criarTransacaoRecorrente`**
+Cobre saída no débito ou no crédito, N ≥ 2 meses, usando `gerarOcorrenciasRecorrencia` (Task 29) numa única transaction do Prisma. Aceita também a marcação de investimento (aporte) quando a conta for corrente, seguindo as mesmas regras de `criarTransacao` (Task 11).
+
+**Task 31. Editar e apagar ocorrência recorrente**
+Estende `editarTransacao` e `apagarTransacao` (Tasks 13–14) para tratar linhas com `recorrenciaId !== null`: por padrão afeta só a ocorrência selecionada, com a mesma opção de propagar para as ocorrências futuras (`dataEfetiva` ≥ selecionada) e a mesma restrição de campos editáveis (valor/descrição/categoria) já usada para parcelas.
+
+**Task 32. Checkbox "Recorrente" em `/lancamento`**
+Adiciona o checkbox "Recorrente" + campo "Quantidade de meses", disponível para saída em Conta corrente ou Cartão de crédito, mutuamente exclusivo com "Parcelado" (Design §7).
+
+**Task 33. Coluna "Recorrência" em `/transacoes`**
+Nova coluna (formato "X de X", vazio quando não aplicável) na tabela e no filtro, reaproveitando o padrão já usado para a coluna "Parcela" (Task 18).
+
+*(Checkpoint sugerido: critérios de aceite novos de saída recorrente — spec-01 §6.)*
+
+---
+
+## M9 — Deploy
+
+**Task 34. Publicação**
 Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test manual percorrendo os critérios de aceite do spec-01 de ponta a ponta.
 
 ---
@@ -157,4 +178,5 @@ Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test ma
 | M5 | Escopo itens 2, 3, 6, 8 (lançamento, edição, investimento, parcelamento) |
 | M6 | Escopo itens 7, 9 (Visão geral, tabela) |
 | M7 | Escopo item 10 (navegação principal, ação global, wizard de Contas) e alterações de escopo da Visão geral |
-| M8 | Publicação (spec-01 §4) |
+| M8 | Escopo item 11 (saída recorrente) |
+| M9 | Publicação (spec-01 §4) |
