@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatarReais } from "@/lib/moeda";
 import { CATEGORIA_LABELS } from "@/lib/categorias";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
@@ -11,10 +12,24 @@ function formatarDia(data) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
+function ehHoje(data) {
+  const d = new Date(data);
+  const hoje = new Date();
+  return (
+    d.getFullYear() === hoje.getFullYear() &&
+    d.getMonth() === hoje.getMonth() &&
+    d.getDate() === hoje.getDate()
+  );
+}
+
 function LinhaResumoDia({ dia, total }) {
+  const destaque = ehHoje(dia);
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-muted-foreground">{formatarDia(dia)}</span>
+      <span className={cn("flex items-center gap-1.5", destaque ? "font-semibold text-foreground" : "text-muted-foreground")}>
+        {destaque && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
+        {formatarDia(dia)}
+      </span>
       <span className="font-medium">{formatarReais(total)}</span>
     </div>
   );
