@@ -6,7 +6,7 @@ import { LayoutDashboard, ArrowLeftRight, Wallet, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DESTINOS = [
-  { href: "/acompanhamento", label: "Visão geral", Icone: LayoutDashboard },
+  { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
   { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
   { href: "/contas", label: "Contas", Icone: Wallet },
 ];

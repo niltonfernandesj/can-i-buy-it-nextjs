@@ -34,7 +34,7 @@ function SeletorMesAno({ mes, ano }) {
   const router = useRouter();
 
   function irPara(novoMes, novoAno) {
-    router.push(`/acompanhamento?mes=${novoMes}&ano=${novoAno}`);
+    router.push(`/visao-geral?mes=${novoMes}&ano=${novoAno}`);
   }
 
   const anoAtual = new Date().getFullYear();
@@ -197,7 +197,7 @@ function GraficoGastosPorCategoria({ dados }) {
   );
 }
 
-export function AcompanhamentoClient({
+export function VisaoGeralClient({
   mes,
   ano,
   entradas,

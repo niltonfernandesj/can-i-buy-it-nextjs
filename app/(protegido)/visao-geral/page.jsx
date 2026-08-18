@@ -5,7 +5,7 @@ import {
   buscarInvestimentos,
 } from "@/lib/consolidacao";
 import { CATEGORIA_LABELS } from "@/lib/categorias";
-import { AcompanhamentoClient } from "./acompanhamento-client";
+import { VisaoGeralClient } from "./visao-geral-client";
 
 function mesAnoAtual() {
   const agora = new Date();
@@ -38,7 +38,7 @@ function calcularGastosPorCategoria(...blocos) {
     .sort((a, b) => b.total - a.total);
 }
 
-export default async function AcompanhamentoPage({ searchParams }) {
+export default async function VisaoGeralPage({ searchParams }) {
   const atual = mesAnoAtual();
   const mesParam = Number(searchParams?.mes);
   const anoParam = Number(searchParams?.ano);
@@ -60,8 +60,8 @@ export default async function AcompanhamentoPage({ searchParams }) {
 
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Acompanhamento</h1>
-      <AcompanhamentoClient
+      <h1 className="mb-6 text-2xl font-semibold">Visão geral</h1>
+      <VisaoGeralClient
         mes={mes}
         ano={ano}
         entradas={entradas}
