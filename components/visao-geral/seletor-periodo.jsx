@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { MESES } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -69,11 +69,16 @@ export function SeletorPeriodo({ mes, ano }) {
 
   const rotulo = `${MESES[mes - 1]} ${ano}`;
 
+  const classeSeta =
+    "flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm hover:bg-muted";
+  const classePill =
+    "inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100";
+
   return (
-    <div className="flex items-center gap-1">
-      <Button variant="ghost" size="icon" onClick={mesAnterior} aria-label="Mês anterior">
+    <div className="flex items-center gap-3">
+      <button type="button" className={classeSeta} onClick={mesAnterior} aria-label="Mês anterior">
         <ChevronLeft className="h-4 w-4" />
-      </Button>
+      </button>
 
       <Popover
         open={abertoDesktop}
@@ -83,11 +88,10 @@ export function SeletorPeriodo({ mes, ano }) {
         }}
       >
         <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="hidden min-w-36 rounded-md px-2 py-1 text-center text-sm font-medium hover:bg-muted md:block"
-          >
+          <button type="button" className={cn("hidden md:inline-flex", classePill)}>
+            <Calendar className="h-4 w-4" />
             {rotulo}
+            <ChevronDown className="h-4 w-4" />
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-64">
@@ -112,11 +116,10 @@ export function SeletorPeriodo({ mes, ano }) {
         }}
       >
         <SheetTrigger asChild>
-          <button
-            type="button"
-            className="min-w-36 rounded-md px-2 py-1 text-center text-sm font-medium hover:bg-muted md:hidden"
-          >
+          <button type="button" className={cn("md:hidden", classePill)}>
+            <Calendar className="h-4 w-4" />
             {rotulo}
+            <ChevronDown className="h-4 w-4" />
           </button>
         </SheetTrigger>
         <SheetContent side="bottom">
@@ -138,9 +141,9 @@ export function SeletorPeriodo({ mes, ano }) {
         </SheetContent>
       </Sheet>
 
-      <Button variant="ghost" size="icon" onClick={mesSeguinte} aria-label="Próximo mês">
+      <button type="button" className={classeSeta} onClick={mesSeguinte} aria-label="Próximo mês">
         <ChevronRight className="h-4 w-4" />
-      </Button>
+      </button>
     </div>
   );
 }
