@@ -120,16 +120,19 @@ Remove `GraficoGastosPorCategoria`, a dependência `recharts` do `package.json`,
 **Task 22. Reordenar blocos, renomear indicador e identidade visual contínua**
 Ordem dos 4 blocos passa a Entradas → Investimentos → Saídas no débito → Saídas no crédito (Design §8.3.3); indicador "Saldo" do resumo passa a se chamar "Disponível" (Design §8.3.2); cada bloco ganha ícone próprio e cor de destaque discreta (Design §8.3.6); blocos passam de Cards independentes para seções abertas separadas por espaçamento vertical e divisores sutis, com cabeçalho ícone+nome+total consolidado na mesma linha (Design §8.3.7).
 
-**Task 23. Detalhamento diário via Popover/Sheet**
+**Task 23. Seletor de período (setas + Popover/Sheet de mês/ano)**
+Substitui os dois `Select` atuais (mês, ano) pelo controle `‹ Agosto 2026 ›`: setas navegam sequencialmente um mês por vez; clicar no período abre um seletor dedicado — `Popover` no desktop, `Sheet` bottom no mobile — com grade de 12 meses, mês selecionado destacado e navegação entre anos (Design §8.3.1). Sem gesto de swipe.
+
+**Task 24. Detalhamento diário via Popover/Sheet**
 Substitui a exibição atual por: hover → `Popover` (shadcn/ui) no desktop, toque → `Sheet` bottom no mobile (Design §8.3.4), incluindo truncamento de descrições longas (Design §8.3.15).
 
-**Task 24. Estados de erro, loading e vazio da Visão geral**
+**Task 25. Estados de erro, loading e vazio da Visão geral**
 Skeleton loading (acesso inicial, troca de período, retorno à tela), estado de erro com ação "Tentar novamente", e estado vazio por bloco com mensagem contextual (Design §8.3.8, §8.3.9, §8.3.12).
 
-**Task 25. Formatação de data e destaque do dia atual**
+**Task 26. Formatação de data e destaque do dia atual**
 Nova função `formatarDataAgrupamento` (`DD MMM`, Design §8.3.10) aplicada apenas na Visão geral, sem alterar `formatarDataCurta` usada em `/transacoes`; destaque visual sutil do dia atual quando o período visualizado for o mês corrente (Design §8.3.13).
 
-**Task 26. Refazer tela `/contas` — wizard de 2 etapas**
+**Task 27. Refazer tela `/contas` — wizard de 2 etapas**
 Substituir o formulário único condicional pelo fluxo de 2 etapas (escolher tipo → formulário específico do tipo) + listagem agrupada visualmente por tipo: Contas correntes, Cartões de crédito, Contas de investimento (Design §8.2.3).
 
 *(Checkpoint sugerido: critérios de aceite de navegação principal, criação de conta em 2 etapas, e os critérios já existentes de Visão geral com a nova ordem/nomenclatura — spec-01 §6.)*
@@ -138,7 +141,7 @@ Substituir o formulário único condicional pelo fluxo de 2 etapas (escolher tip
 
 ## M8 — Deploy
 
-**Task 27. Publicação**
+**Task 28. Publicação**
 Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test manual percorrendo os critérios de aceite do spec-01 de ponta a ponta.
 
 ---
