@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
 import { formatarCentavosParaReais } from "@/lib/moeda";
+import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,16 +18,6 @@ import {
 } from "@/components/ui/select";
 
 const TIPO_LABELS = { SAIDA: "Saída", ENTRADA: "Entrada" };
-
-const CATEGORIA_LABELS = {
-  MERCADO: "Mercado",
-  LAZER: "Lazer",
-  SAUDE: "Saúde",
-  TRANSPORTE: "Transporte",
-  MORADIA: "Moradia",
-  SALARIO: "Salário",
-  OUTROS: "Outros",
-};
 
 function hojeISO() {
   const hoje = new Date();
