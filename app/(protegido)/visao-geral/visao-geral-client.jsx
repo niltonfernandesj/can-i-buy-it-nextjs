@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard } from "lucide-react";
+import { useState } from "react";
+import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard, ChevronDown } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,35 +37,58 @@ function Resumo({ totalEntradas, totalSaidas, disponivel }) {
   );
 }
 
-function CabecalhoBloco({ Icone, cor, titulo, total }) {
+function CabecalhoBloco({ Icone, cor, titulo, total, expandido, onToggle }) {
   return (
-    <div className="flex items-center justify-between">
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expandido}
+      className="flex w-full items-center justify-between text-left"
+    >
       <div className="flex items-center gap-2">
         <Icone className={cn("h-4 w-4", cor)} />
         <h2 className="text-sm font-semibold uppercase tracking-wide">{titulo}</h2>
       </div>
-      <span className="text-sm font-semibold">{formatarReais(total)}</span>
-    </div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold">{formatarReais(total)}</span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            expandido && "rotate-180"
+          )}
+        />
+      </div>
+    </button>
   );
 }
 
 function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag, mensagemVazia }) {
+  const [expandido, setExpandido] = useState(false);
+
   return (
     <section className="flex flex-col gap-4 py-6 first:pt-0 last:pb-0">
-      <CabecalhoBloco Icone={Icone} cor={cor} titulo={titulo} total={total} />
-      {grupos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
-      ) : (
-        grupos.map((grupo) => (
-          <DetalheDiario
-            key={grupo.dia}
-            dia={grupo.dia}
-            transacoes={grupo.transacoes}
-            total={somarGrupo(grupo)}
-            renderTag={renderTag}
-          />
-        ))
-      )}
+      <CabecalhoBloco
+        Icone={Icone}
+        cor={cor}
+        titulo={titulo}
+        total={total}
+        expandido={expandido}
+        onToggle={() => setExpandido((valor) => !valor)}
+      />
+      {expandido &&
+        (grupos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
+        ) : (
+          grupos.map((grupo) => (
+            <DetalheDiario
+              key={grupo.dia}
+              dia={grupo.dia}
+              transacoes={grupo.transacoes}
+              total={somarGrupo(grupo)}
+              renderTag={renderTag}
+            />
+          ))
+        ))}
     </section>
   );
 }
@@ -78,19 +102,29 @@ function TagResgate() {
 }
 
 function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
+  const [expandido, setExpandido] = useState(false);
+
   return (
     <section className="flex flex-col gap-2 py-6 first:pt-0 last:pb-0">
-      <CabecalhoBloco Icone={Icone} cor={cor} titulo="Investimentos" total={total} />
-      {investimentos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum investimento neste mês.</p>
-      ) : (
-        investimentos.map((i) => (
-          <div key={i.contaInvestimentoId} className="flex items-center justify-between text-sm">
-            <span>{i.contaInvestimentoNome}</span>
-            <span>{formatarReais(i.total)}</span>
-          </div>
-        ))
-      )}
+      <CabecalhoBloco
+        Icone={Icone}
+        cor={cor}
+        titulo="Investimentos"
+        total={total}
+        expandido={expandido}
+        onToggle={() => setExpandido((valor) => !valor)}
+      />
+      {expandido &&
+        (investimentos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum investimento neste mês.</p>
+        ) : (
+          investimentos.map((i) => (
+            <div key={i.contaInvestimentoId} className="flex items-center justify-between text-sm">
+              <span>{i.contaInvestimentoNome}</span>
+              <span>{formatarReais(i.total)}</span>
+            </div>
+          ))
+        ))}
     </section>
   );
 }
