@@ -5,10 +5,10 @@ import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SeletorPeriodo } from "@/components/visao-geral/seletor-periodo";
+import { DetalheDiario } from "@/components/visao-geral/detalhe-diario";
 
-function formatarDia(data) {
-  const d = new Date(data);
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+function somarGrupo(grupo) {
+  return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
 }
 
 function Resumo({ totalEntradas, totalSaidas, disponivel }) {
@@ -56,18 +56,13 @@ function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag }) {
         <p className="text-sm text-muted-foreground">Nenhum lançamento no período.</p>
       ) : (
         grupos.map((grupo) => (
-          <div key={grupo.dia} className="flex flex-col gap-1">
-            <p className="text-xs font-medium text-muted-foreground">{formatarDia(grupo.dia)}</p>
-            {grupo.transacoes.map((t) => (
-              <div key={t.id} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  {t.descricao}
-                  {renderTag?.(t)}
-                </span>
-                <span>{formatarReais(t.valor)}</span>
-              </div>
-            ))}
-          </div>
+          <DetalheDiario
+            key={grupo.dia}
+            dia={grupo.dia}
+            transacoes={grupo.transacoes}
+            total={somarGrupo(grupo)}
+            renderTag={renderTag}
+          />
         ))
       )}
     </section>
