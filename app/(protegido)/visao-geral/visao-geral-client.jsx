@@ -1,63 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
-import { MESES } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SeletorPeriodo } from "@/components/visao-geral/seletor-periodo";
 
 function formatarDia(data) {
   const d = new Date(data);
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-function SeletorMesAno({ mes, ano }) {
-  const router = useRouter();
-
-  function irPara(novoMes, novoAno) {
-    router.push(`/visao-geral?mes=${novoMes}&ano=${novoAno}`);
-  }
-
-  const anoAtual = new Date().getFullYear();
-  const anos = Array.from({ length: 5 }, (_, i) => anoAtual - 3 + i);
-
-  return (
-    <div className="flex gap-4">
-      <Select value={String(mes)} onValueChange={(v) => irPara(Number(v), ano)}>
-        <SelectTrigger id="mes" className="w-40">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {MESES.map((nome, i) => (
-            <SelectItem key={nome} value={String(i + 1)}>
-              {nome}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      <Select value={String(ano)} onValueChange={(v) => irPara(mes, Number(v))}>
-        <SelectTrigger id="ano" className="w-28">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {anos.map((a) => (
-            <SelectItem key={a} value={String(a)}>
-              {a}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
 }
 
 function Resumo({ totalEntradas, totalSaidas, disponivel }) {
@@ -165,7 +116,7 @@ export function VisaoGeralClient({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <SeletorMesAno mes={mes} ano={ano} />
+      <SeletorPeriodo mes={mes} ano={ano} />
 
       <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} disponivel={disponivel} />
 
