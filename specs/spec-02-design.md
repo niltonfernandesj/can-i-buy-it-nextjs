@@ -176,6 +176,11 @@ model Transacao {
   totalParcelas     Int?
   parcelamentoId    String?
 
+  // Recorrência (null quando não é saída recorrente)
+  numeroOcorrencia  Int?
+  totalOcorrencias  Int?
+  recorrenciaId     String?
+
   // Investimento
   ehInvestimento    Boolean       @default(false)
   contaInvestimentoId String?
@@ -187,6 +192,7 @@ model Transacao {
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
   @@index([parcelamentoId])
+  @@index([recorrenciaId])
 }
 ```
 
@@ -245,7 +251,9 @@ function calcularFatura(dataCompra, diaFechamento, diaVencimento) {
 
 **Caso de borda — dia de fechamento maior que o número de dias do mês** (ex: fechamento dia 31, compra em fevereiro): como a comparação é numérica (`diaCompra > diaFechamento`) e fevereiro nunca tem dia 31, toda compra em fevereiro será automaticamente tratada como "antes do fechamento" — o que corresponde exatamente ao comportamento esperado (fechamento "no fim do mês"). Não é necessário tratamento especial.
 
-## 5. Algoritmo de parcelamento
+## 5. Algoritmos de parcelamento e recorrência
+
+### 5.1 Parcelamento
 
 Resolve a seção 3.2 dos Requisitos.
 
@@ -323,6 +331,61 @@ function gerarParcelas(dataCompra, valorParcela, n, cartao) {
 
 O clamping garante que "dia 31" em fevereiro vire corretamente "dia 28" (ou 29, se bissexto) sem gerar datas inválidas — e mesmo assim a progressão de mês de referência continua avançando exatamente 1 mês por parcela.
 
+### 5.2 Recorrência
+
+Resolve a seção 3.4 dos Requisitos. Mais simples que parcelamento: cada ocorrência é uma transação "real" no seu próprio dia do mês (não uma parcela derivada da fatura anterior), então `dataCompra` **varia** por ocorrência — sem distinção entre data da compra e data efetiva.
+
+```javascript
+function proximaDataMensal(dataBase, mesesAFrente) {
+  const ano = dataBase.getFullYear();
+  const mes = dataBase.getMonth() + 1;
+  const dia = dataBase.getDate();
+
+  let novoMes = mes + mesesAFrente;
+  const novoAno = ano + Math.floor((novoMes - 1) / 12);
+  novoMes = ((novoMes - 1) % 12) + 1;
+
+  const diaClampado = Math.min(dia, ultimoDiaDoMes(novoAno, novoMes));
+  return new Date(novoAno, novoMes - 1, diaClampado);
+}
+
+/**
+ * @param {Date} dataCompra
+ * @param {number} valor
+ * @param {number} n - quantidade de meses/ocorrências
+ * @param {{ tipo: string, diaFechamento?: number, diaVencimento?: number }} conta
+ */
+function gerarOcorrenciasRecorrencia(dataCompra, valor, n, conta) {
+  const recorrenciaId = cuid();
+  const ocorrencias = [];
+
+  for (let i = 1; i <= n; i++) {
+    const data = proximaDataMensal(dataCompra, i - 1);
+
+    const { mesReferencia, anoReferencia } =
+      conta.tipo === "CARTAO_CREDITO"
+        ? calcularFatura(data, conta.diaFechamento, conta.diaVencimento)
+        : { mesReferencia: data.getMonth() + 1, anoReferencia: data.getFullYear() };
+
+    ocorrencias.push({
+      numeroOcorrencia: i, totalOcorrencias: n, recorrenciaId,
+      dataCompra: data, dataEfetiva: data,
+      mesReferencia, anoReferencia, valor,
+    });
+  }
+
+  return ocorrencias; // inserir todas em uma transaction do Prisma
+}
+```
+
+`ultimoDiaDoMes` é reaproveitada da seção 5.1, sem duplicação.
+
+**Exemplo (débito, lançada 31/jan/2026, N=3):** 31/jan (mês de referência jan/2026) → 28/fev (fev/2026, clamp por 2026 não ser bissexto) → 31/mar (mar/2026).
+
+**Exemplo (crédito, fechamento dia 17 / vencimento dia 24, lançada 5/ago/2026, N=3):** cada ocorrência recalcula `calcularFatura` de forma independente (não em cadeia como no parcelamento, já que a data de cada ocorrência já é conhecida de antemão) — 5/ago → ago/2026, 5/set → set/2026, 5/out → out/2026.
+
+**Edição e exclusão:** `editarTransacao`/`apagarTransacao` (`lib/actions/transacoes.js`) precisam tratar linhas com `recorrenciaId !== null` com a mesma restrição de campos editáveis (valor/descrição/categoria) e a mesma opção `propagarParaRestantes` (`WHERE recorrenciaId = X AND dataEfetiva >= selecionada`) já usadas para `parcelamentoId !== null` (seção 5.1). Uma transação nunca tem `parcelamentoId` e `recorrenciaId` preenchidos ao mesmo tempo.
+
 ## 6. Regras de consolidação (Visão geral)
 
 Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já reflete a ordem de exibição definida na seção 8.3.3 (Entradas → Investimentos → Saídas no débito → Saídas no crédito):
@@ -334,6 +397,8 @@ Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já r
 
 Essas quatro queries alimentam os quatro blocos da Visão geral (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
 
+Ocorrências de saída recorrente são transações comuns (mesma `mesReferencia`/`anoReferencia` de qualquer outra) — nenhuma query de consolidação precisa mudar.
+
 ## 7. Telas e componentes principais
 
 Todas as rotas abaixo (exceto autenticação) compartilham a navegação persistente definida na seção 8.1, renderizada pelo `layout.jsx` do grupo `(protegido)`.
@@ -342,7 +407,7 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 |---|---|---|
 | `/login`, `/cadastro` | Autenticação | Form + NextAuth |
 | `/contas` | CRUD de Contas | Criação em **duas etapas** (seção 8.2.3): 1) seleção do tipo; 2) formulário específico do tipo. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
-| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
+| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). **Novo:** checkbox "Recorrente" (+ nº de meses), disponível para saída em Conta corrente ou Cartão de crédito, mutuamente exclusivo com "Parcelado" (seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
 | `/visao-geral` | Visão geral (renomeada de `/acompanhamento`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
 | `/transacoes` | Tabela | Tabela com coluna de filtro por header (shadcn `DataTable`), ações de editar/apagar por linha |
 
@@ -486,6 +551,7 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 | Editar parcela propaga para as restantes? | Sim, por padrão só a parcela; opção de propagar para as restantes (simétrico à exclusão) |
 | Arquitetura de navegação principal (áreas, menu lateral, barra inferior, ação global) | Seção 8.1 — shell em `layout.jsx`; ação "+ Nova transação" linka direto para `/lancamento`, sem etapas de pré-seleção |
 | Fluxo de criação de Conta e organização da tela `/contas` | Seção 8.2.3 — wizard de 2 etapas (tipo → formulário específico) + listagem agrupada por tipo |
+| Algoritmo de geração de ocorrências recorrentes | Seção 5.2 — `gerarOcorrenciasRecorrencia`, mais simples que parcelamento (data varia por ocorrência, sem cadeia de fatura) |
 
 ## 11. Pendências que continuam em aberto
 
