@@ -4,7 +4,6 @@ import {
   buscarSaidasCredito,
   buscarInvestimentos,
 } from "@/lib/consolidacao";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { VisaoGeralClient } from "./visao-geral-client";
 
 function mesAnoAtual() {
@@ -17,25 +16,6 @@ function somarBloco(grupos) {
     (soma, grupo) => soma + grupo.transacoes.reduce((s, t) => s + Number(t.valor), 0),
     0
   );
-}
-
-function calcularGastosPorCategoria(...blocos) {
-  const totais = new Map();
-
-  for (const grupo of blocos.flat()) {
-    for (const transacao of grupo.transacoes) {
-      const atual = totais.get(transacao.categoria) ?? 0;
-      totais.set(transacao.categoria, atual + Number(transacao.valor));
-    }
-  }
-
-  return Array.from(totais.entries())
-    .map(([categoria, total]) => ({
-      categoria,
-      categoriaLabel: CATEGORIA_LABELS[categoria] ?? categoria,
-      total,
-    }))
-    .sort((a, b) => b.total - a.total);
 }
 
 export default async function VisaoGeralPage({ searchParams }) {
@@ -56,7 +36,6 @@ export default async function VisaoGeralPage({ searchParams }) {
   const totalEntradas = somarBloco(entradas);
   const totalSaidas = somarBloco(saidasDebito) + somarBloco(saidasCredito);
   const saldo = totalEntradas - totalSaidas;
-  const gastosPorCategoria = calcularGastosPorCategoria(saidasDebito, saidasCredito);
 
   return (
     <main className="mx-auto max-w-4xl p-8">
@@ -71,7 +50,6 @@ export default async function VisaoGeralPage({ searchParams }) {
         totalEntradas={totalEntradas}
         totalSaidas={totalSaidas}
         saldo={saldo}
-        gastosPorCategoria={gastosPorCategoria}
       />
     </main>
   );

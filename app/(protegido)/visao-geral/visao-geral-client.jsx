@@ -1,16 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LabelList,
-} from "recharts";
 import { formatarReais } from "@/lib/moeda";
 import { MESES } from "@/lib/datas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,9 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-// Cor sequencial (hue único, "magnitude por categoria") — ver skill de dataviz.
-const COR_BARRA = "#2a78d6";
 
 function formatarDia(data) {
   const d = new Date(data);
@@ -156,47 +143,6 @@ function BlocoInvestimentos({ investimentos }) {
   );
 }
 
-function GraficoGastosPorCategoria({ dados }) {
-  if (dados.length === 0) {
-    return <p className="text-sm text-muted-foreground">Nenhum gasto no período.</p>;
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height={280}>
-      <BarChart data={dados} margin={{ top: 24, right: 8, left: 8, bottom: 8 }}>
-        <CartesianGrid vertical={false} stroke="#e1e0d9" />
-        <XAxis
-          dataKey="categoriaLabel"
-          tick={{ fill: "#898781", fontSize: 12 }}
-          axisLine={{ stroke: "#c3c2b7" }}
-          tickLine={false}
-        />
-        <YAxis
-          tick={{ fill: "#898781", fontSize: 12 }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v) => formatarReais(v)}
-          width={90}
-        />
-        <Tooltip
-          cursor={{ fill: "rgba(42,120,214,0.08)" }}
-          formatter={(value) => formatarReais(value)}
-          labelStyle={{ color: "#0b0b0b" }}
-          contentStyle={{ borderRadius: 8, borderColor: "#e1e0d9" }}
-        />
-        <Bar dataKey="total" fill={COR_BARRA} radius={[4, 4, 0, 0]} maxBarSize={24}>
-          <LabelList
-            dataKey="total"
-            position="top"
-            formatter={(v) => formatarReais(v)}
-            style={{ fill: "#52514e", fontSize: 11 }}
-          />
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
 export function VisaoGeralClient({
   mes,
   ano,
@@ -207,22 +153,12 @@ export function VisaoGeralClient({
   totalEntradas,
   totalSaidas,
   saldo,
-  gastosPorCategoria,
 }) {
   return (
     <div className="flex flex-col gap-6">
       <SeletorMesAno mes={mes} ano={ano} />
 
       <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} saldo={saldo} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Gastos por categoria</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <GraficoGastosPorCategoria dados={gastosPorCategoria} />
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <BlocoPorDia
