@@ -12,6 +12,7 @@ import {
   LabelList,
 } from "recharts";
 import { formatarReais } from "@/lib/moeda";
+import { MESES } from "@/lib/datas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -20,21 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const MESES = [
-  "Janeiro",
-  "Fevereiro",
-  "Março",
-  "Abril",
-  "Maio",
-  "Junho",
-  "Julho",
-  "Agosto",
-  "Setembro",
-  "Outubro",
-  "Novembro",
-  "Dezembro",
-];
 
 // Cor sequencial (hue único, "magnitude por categoria") — ver skill de dataviz.
 const COR_BARRA = "#2a78d6";

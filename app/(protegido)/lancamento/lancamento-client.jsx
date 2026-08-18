@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
-import { formatarCentavosParaReais } from "@/lib/moeda";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
+import { CATEGORIA_LABELS, TIPO_LABELS } from "@/lib/categorias";
+import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const TIPO_LABELS = { SAIDA: "Saída", ENTRADA: "Entrada" };
 
 function hojeISO() {
   const hoje = new Date();
@@ -40,50 +38,6 @@ const FORM_INICIAL = {
   numeroParcelas: "2",
   valorParcelaCentavos: 0,
 };
-
-function CampoValor({ id, label, valorCentavos, onChange, className = "" }) {
-  // Formata o valor exibido a cada tecla, então a posição do cursor dentro do
-  // texto formatado não é confiável para saber "onde" um novo dígito entrou —
-  // por isso os dígitos são acumulados numericamente (como uma calculadora,
-  // sempre a partir da direita) em vez de reler o texto renderizado do input.
-  function handleKeyDown(e) {
-    if (e.ctrlKey || e.metaKey || e.altKey) {
-      return;
-    }
-
-    if (e.key >= "0" && e.key <= "9") {
-      e.preventDefault();
-      onChange(Math.min(valorCentavos * 10 + Number(e.key), Number.MAX_SAFE_INTEGER));
-      return;
-    }
-
-    if (e.key === "Backspace" || e.key === "Delete") {
-      e.preventDefault();
-      onChange(Math.floor(valorCentavos / 10));
-      return;
-    }
-
-    if (!["Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Enter"].includes(e.key)) {
-      e.preventDefault();
-    }
-  }
-
-  return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        required
-        value={formatarCentavosParaReais(valorCentavos)}
-        onKeyDown={handleKeyDown}
-        onPaste={(e) => e.preventDefault()}
-        onChange={() => {}}
-      />
-    </div>
-  );
-}
 
 export function LancamentoClient({ contas }) {
   const [form, setForm] = useState(FORM_INICIAL);
