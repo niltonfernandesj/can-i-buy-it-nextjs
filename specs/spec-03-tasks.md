@@ -129,8 +129,8 @@ Substitui a exibição atual por: hover → `Popover` (shadcn/ui) no desktop, to
 **Task 25. Estados de erro, loading e vazio da Visão geral**
 Skeleton loading (acesso inicial, troca de período, retorno à tela), estado de erro com ação "Tentar novamente", e estado vazio por bloco com mensagem contextual (Design §8.3.8, §8.3.9, §8.3.12).
 
-**Task 26. Formatação de data e destaque do dia atual**
-Nova função `formatarDataAgrupamento` (`DD MMM`, Design §8.3.10) aplicada apenas na Visão geral, sem alterar `formatarDataCurta` usada em `/transacoes`; destaque visual sutil do dia atual quando o período visualizado for o mês corrente (Design §8.3.13).
+**Task 26. Destaque do dia atual**
+Destaque visual sutil do dia atual quando o período visualizado for o mês corrente (Design §8.3.13). A formatação de data `DD MMM` da seção 8.3.10 fica fora do escopo desta task — ver nota em spec-02 §11.
 
 **Task 27. Refazer tela `/contas` — wizard de 2 etapas**
 Substituir o formulário único condicional pelo fluxo de 2 etapas (escolher tipo → formulário específico do tipo) + listagem agrupada visualmente por tipo: Contas correntes, Cartões de crédito, Contas de investimento (Design §8.2.3).

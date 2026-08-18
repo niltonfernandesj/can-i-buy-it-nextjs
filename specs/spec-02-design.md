@@ -492,3 +492,4 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 - Se `Conta de investimento` ganhará atributos próprios em fases futuras.
 - Formato do CSV de fatura (fase futura).
 - Categorização automática (fase futura).
+- Formatação de data `DD MMM` da Visão geral (§8.3.10, ex.: "05 AGO"): removida do escopo da Task 26 a pedido do usuário; a Visão geral continua usando `formatarDataCurta` (`DD/MM/AAAA`). Revisitar se/quando decidido.
