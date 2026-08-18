@@ -106,9 +106,39 @@ Tabela com as 11 colunas da seção 3.3 do spec-01, filtro por qualquer coluna, 
 
 ---
 
-## M7 — Deploy
+## M7 — Navegação principal e redesign da Visão geral e Contas
 
-**Task 19. Publicação**
+**Task 19. Layout protegido + navegação principal**
+Criar `app/(protegido)/layout.jsx` com `NavegacaoPrincipal` (menu lateral no desktop / barra inferior no mobile, Design §8.1), incluindo a ação global "+ Nova transação" que navega direto para `/lancamento`, sem etapa intermediária.
+
+**Task 20. Renomear `/acompanhamento` → `/visao-geral`**
+Rename de pasta/arquivo (`page.jsx`, `acompanhamento-client.jsx`) e ajuste de links internos (Design §8.5). Sem mudança de comportamento nesta task.
+
+**Task 21. Remover gráfico órfão**
+Remove `GraficoGastosPorCategoria`, a dependência `recharts` do `package.json`, e qualquer referência restante — o requisito de gráfico foi removido do spec-01 (item 7).
+
+**Task 22. Reordenar blocos e renomear indicador**
+Ordem dos 4 blocos passa a Entradas → Investimentos → Saídas no débito → Saídas no crédito (Design §8.3.3); indicador "Saldo" do resumo passa a se chamar "Disponível" (Design §8.3.2).
+
+**Task 23. Detalhamento diário via Popover/Sheet**
+Substitui a exibição atual por: hover → `Popover` (shadcn/ui) no desktop, toque → `Sheet` bottom no mobile (Design §8.3.4), incluindo truncamento de descrições longas (Design §8.3.15).
+
+**Task 24. Estados de erro, loading e vazio da Visão geral**
+Skeleton loading (acesso inicial, troca de período, retorno à tela), estado de erro com ação "Tentar novamente", e estado vazio por bloco com mensagem contextual (Design §8.3.8, §8.3.9, §8.3.12).
+
+**Task 25. Formatação de data e destaque do dia atual**
+Nova função `formatarDataAgrupamento` (`DD MMM`, Design §8.3.10) aplicada apenas na Visão geral, sem alterar `formatarDataCurta` usada em `/transacoes`; destaque visual sutil do dia atual quando o período visualizado for o mês corrente (Design §8.3.13).
+
+**Task 26. Refazer tela `/contas` — wizard de 2 etapas**
+Substituir o formulário único condicional pelo fluxo de 2 etapas (escolher tipo → formulário específico do tipo) + listagem agrupada visualmente por tipo: Contas correntes, Cartões de crédito, Contas de investimento (Design §8.2.3).
+
+*(Checkpoint sugerido: critérios de aceite de navegação principal, criação de conta em 2 etapas, e os critérios já existentes de Visão geral com a nova ordem/nomenclatura — spec-01 §6.)*
+
+---
+
+## M8 — Deploy
+
+**Task 27. Publicação**
 Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test manual percorrendo os critérios de aceite do spec-01 de ponta a ponta.
 
 ---
@@ -122,5 +152,6 @@ Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test ma
 | M3 | Design §4–5 (algoritmos) |
 | M4 | Escopo item 5 (Conta polimórfica) |
 | M5 | Escopo itens 2, 3, 6, 8 (lançamento, edição, investimento, parcelamento) |
-| M6 | Escopo itens 7, 9 (acompanhamento, tabela) |
-| M7 | Publicação (spec-01 §4) |
+| M6 | Escopo itens 7, 9 (Visão geral, tabela) |
+| M7 | Escopo item 10 (navegação principal, ação global, wizard de Contas) e alterações de escopo da Visão geral |
+| M8 | Publicação (spec-01 §4) |

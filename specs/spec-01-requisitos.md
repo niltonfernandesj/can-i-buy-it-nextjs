@@ -37,14 +37,15 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Cada tipo tem atributos próprios: Cartão de crédito tem dia de fechamento e dia de vencimento; Conta corrente e Conta de investimento não têm atributos extras no MVP (apenas nome/apelido).
    - A distinção **débito/crédito** (antes um campo separado) agora é **deduzida do tipo da conta**: saída vinculada a Conta corrente = débito; saída vinculada a Cartão de crédito = crédito.
    - CRUD simples para as contas: nome/apelido, tipo, e atributos específicos do tipo.
+   - A criação de uma conta ocorre em duas etapas: o usuário primeiro escolhe o tipo (Conta corrente, Cartão de crédito ou Conta de investimento) e, em seguida, preenche o formulário específico daquele tipo.
    - Contas são compartilhadas entre os membros da família, assim como as transações.
 6. **Marcação de investimento (aporte/resgate)**
    - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte ou resgate, e não um gasto/renda comum.
    - Aporte: saída vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de destino.
    - Resgate: entrada vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de origem.
-7. **Dashboard / Tela de acompanhamento de gastos**
-   - Resumo mensal (total de entradas, total de saídas, saldo).
-   - Gráfico(s) de gastos por categoria e/ou evolução mensal.
+7. **Visão geral (tela de acompanhamento financeiro mensal)**
+   - Resumo mensal (total de entradas, total de saídas, disponível).
+   - Sem gráficos ou análises visuais no MVP — foco em acompanhamento operacional e consulta das movimentações consolidadas do período.
    - Ver especificação detalhada na seção 3.1 abaixo.
 8. **Parcelamento de compras no crédito**
    - Ao lançar uma saída no crédito, o usuário pode definir quantidade de parcelas e valor da parcela.
@@ -52,15 +53,18 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 9. **Tela de listagem de transações (tabela)**
    - Visualização tabular de todas as transações lançadas, uma linha por registro.
    - Ver especificação detalhada na seção 3.3 abaixo.
+10. **Navegação principal**
+    - A aplicação possui três áreas principais: Visão geral, Transações e Contas. Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
+    - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
 
-### 3.1 Especificação — Tela de acompanhamento de gastos
+### 3.1 Especificação — Visão geral
 
 - A tela deve permitir **filtrar por mês/ano de referência**.
-- Os dados devem ser exibidos em **quatro blocos consolidados e separados**:
+- Os dados devem ser exibidos em **quatro blocos consolidados e separados**, nesta ordem de exibição:
   1. **Entradas (receitas)** — inclui entradas regulares e resgates de investimento, rotulados de forma distinta (ex: tag "Resgate de investimento") para não se confundirem com renda regular.
-  2. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
-  3. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
-  4. **Investimentos** — total bruto aportado no mês, **separado por Conta de investimento** (não inclui resgates, que aparecem no bloco Entradas).
+  2. **Investimentos** — total bruto aportado no mês, **separado por Conta de investimento** (não inclui resgates, que aparecem no bloco Entradas).
+  3. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
+  4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
 - Nos blocos 1, 2 e 3, as transações são **agrupadas e exibidas por dia** dentro do mês filtrado.
 - **Regra de mês de referência:**
   - Para **Entradas**, **Saídas no débito** e **Investimentos**: o mês de referência é o mês da própria data da transação.
@@ -78,7 +82,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - **Parcelas 2 a N:** data efetiva = primeiro dia do range da fatura seguinte à fatura da parcela anterior (ou seja, o dia de abertura da próxima fatura do cartão — dia de fechamento + 1). Na prática, cada parcela subsequente "cai" no mês de referência imediatamente seguinte ao da parcela anterior.
   - O **mês de referência** de cada parcela é calculado normalmente a partir da sua data efetiva, usando a mesma regra de fechamento/vencimento da conta (cartão) descrita na seção 3.1 — ou seja, não há uma regra de cálculo separada, a data efetiva é que "direciona" a parcela para a fatura correta.
 - Cada parcela deve registrar sua posição no parcelamento (ex: "2/6") e todas as parcelas de uma mesma compra compartilham um identificador de grupo, para permitir localizá-las e operar sobre o conjunto.
-- Na tela de acompanhamento (3.1), cada parcela aparece no bloco "Saídas no crédito" do seu respectivo mês de referência, agrupada pelo **dia da compra original** (não pelo dia de abertura da fatura usado no cálculo).
+- Na Visão geral (3.1), cada parcela aparece no bloco "Saídas no crédito" do seu respectivo mês de referência, agrupada pelo **dia da compra original** (não pelo dia de abertura da fatura usado no cálculo).
 - **Edição e exclusão de parcelas:**
   - Por padrão, editar ou apagar uma parcela afeta **apenas aquela parcela** isoladamente.
   - Tanto na edição quanto na exclusão, o usuário deve ter a opção adicional de propagar a ação para **todas as parcelas restantes** (as de data efetiva futura em relação à parcela selecionada) — ex: apagar as restantes ao cancelar uma compra, ou editar o valor das restantes se o valor da parcela mudou.
@@ -157,8 +161,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] Um usuário consegue marcar uma entrada como resgate (investimento), referenciando a conta de investimento de origem.
 - [ ] Um usuário consegue editar e apagar qualquer transação, independente de quem a criou.
 - [ ] Todos os usuários da família veem as mesmas transações e contas ao logar.
-- [ ] A tela de acompanhamento permite filtrar por mês/ano de referência.
-- [ ] A tela de acompanhamento exibe quatro blocos separados: Entradas, Saídas no débito, Saídas no crédito e Investimentos.
+- [ ] A Visão geral permite filtrar por mês/ano de referência.
+- [ ] A Visão geral exibe quatro blocos separados, nesta ordem: Entradas, Investimentos, Saídas no débito e Saídas no crédito.
 - [ ] Um aporte não aparece no bloco "Saídas no débito", aparecendo apenas no bloco "Investimentos", separado por conta de investimento.
 - [ ] Um resgate aparece no bloco "Entradas", rotulado distintamente de uma entrada regular.
 - [ ] Uma saída no crédito lançada em um mês, mas cuja fatura vence no mês seguinte (por causa do dia de fechamento do cartão), aparece corretamente no bloco de crédito do mês de referência correto.
@@ -168,9 +172,10 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] É possível apagar uma parcela e, na mesma ação, optar por apagar também todas as parcelas restantes daquela compra.
 - [ ] É possível editar uma parcela isolada sem afetar as demais.
 - [ ] É possível editar uma parcela e, na mesma ação, optar por propagar a alteração para todas as parcelas restantes daquela compra.
-- [ ] O dashboard mostra corretamente entradas, saídas e saldo do mês corrente.
-- [ ] O dashboard mostra um gráfico de gastos por categoria.
+- [ ] A Visão geral mostra corretamente entradas, saídas e disponível do mês corrente.
 - [ ] A tela de listagem em tabela exibe todas as colunas especificadas (Conta, Tipo, Descrição, Valor, Categoria, Data da compra, Data efetiva, Mês de referência por extenso, Parcela, É investimento, Conta de investimento vinculada), permite filtrar por qualquer uma delas, e permite editar/apagar cada registro.
+- [ ] A navegação principal apresenta três áreas (Visão geral, Transações, Contas) e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
+- [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
 - [ ] A aplicação está publicada e acessível via Vercel.
 
 ## 7. Perguntas em aberto / decisões futuras
