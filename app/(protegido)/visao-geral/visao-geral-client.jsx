@@ -116,7 +116,9 @@ export function VisaoGeralClient({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <SeletorPeriodo mes={mes} ano={ano} />
+      <div className="flex justify-center">
+        <SeletorPeriodo mes={mes} ano={ano} />
+      </div>
 
       <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} disponivel={disponivel} />
 
