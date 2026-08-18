@@ -82,6 +82,11 @@ model Transacao {
   totalParcelas     Int?
   parcelamentoId    String?
 
+  // Recorrência (null quando não é saída recorrente)
+  numeroOcorrencia  Int?
+  totalOcorrencias  Int?
+  recorrenciaId     String?
+
   // Investimento
   ehInvestimento      Boolean @default(false)
   contaInvestimentoId String?
@@ -93,4 +98,5 @@ model Transacao {
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
   @@index([parcelamentoId])
+  @@index([recorrenciaId])
 }
