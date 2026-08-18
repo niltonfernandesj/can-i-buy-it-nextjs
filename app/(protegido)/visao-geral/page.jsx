@@ -18,6 +18,10 @@ function somarBloco(grupos) {
   );
 }
 
+function somarInvestimentos(investimentos) {
+  return investimentos.reduce((soma, i) => soma + Number(i.total), 0);
+}
+
 export default async function VisaoGeralPage({ searchParams }) {
   const atual = mesAnoAtual();
   const mesParam = Number(searchParams?.mes);
@@ -34,8 +38,11 @@ export default async function VisaoGeralPage({ searchParams }) {
   ]);
 
   const totalEntradas = somarBloco(entradas);
-  const totalSaidas = somarBloco(saidasDebito) + somarBloco(saidasCredito);
-  const saldo = totalEntradas - totalSaidas;
+  const totalSaidasDebito = somarBloco(saidasDebito);
+  const totalSaidasCredito = somarBloco(saidasCredito);
+  const totalSaidas = totalSaidasDebito + totalSaidasCredito;
+  const totalInvestimentos = somarInvestimentos(investimentos);
+  const disponivel = totalEntradas - totalSaidas;
 
   return (
     <main className="mx-auto max-w-4xl p-8">
@@ -49,7 +56,10 @@ export default async function VisaoGeralPage({ searchParams }) {
         investimentos={investimentos}
         totalEntradas={totalEntradas}
         totalSaidas={totalSaidas}
-        saldo={saldo}
+        totalSaidasDebito={totalSaidasDebito}
+        totalSaidasCredito={totalSaidasCredito}
+        totalInvestimentos={totalInvestimentos}
+        disponivel={disponivel}
       />
     </main>
   );
