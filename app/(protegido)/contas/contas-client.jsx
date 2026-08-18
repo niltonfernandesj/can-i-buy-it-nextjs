@@ -2,64 +2,97 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Wallet, CreditCard, PiggyBank, Plus, ChevronLeft } from "lucide-react";
 import { criarConta, editarConta, apagarConta } from "@/lib/actions/contas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-const TIPO_LABELS = {
-  CONTA_CORRENTE: "Conta corrente",
-  CARTAO_CREDITO: "Cartão de crédito",
-  CONTA_INVESTIMENTO: "Conta de investimento",
-};
+const TIPO_OPCOES = [
+  { valor: "CONTA_CORRENTE", label: "Conta corrente", Icone: Wallet },
+  { valor: "CARTAO_CREDITO", label: "Cartão de crédito", Icone: CreditCard },
+  { valor: "CONTA_INVESTIMENTO", label: "Conta de investimento", Icone: PiggyBank },
+];
 
-const FORM_INICIAL = {
-  nome: "",
-  tipo: "CONTA_CORRENTE",
-  diaFechamento: "",
-  diaVencimento: "",
-};
+const TIPO_LABELS = Object.fromEntries(TIPO_OPCOES.map(({ valor, label }) => [valor, label]));
 
-export function ContasClient({ contas }) {
-  const router = useRouter();
+const FORM_INICIAL = { nome: "", diaFechamento: "", diaVencimento: "" };
+
+function CamposConta({ form, setForm, ehCartao }) {
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="nome">Nome</Label>
+        <Input
+          id="nome"
+          required
+          value={form.nome}
+          onChange={(e) => setForm({ ...form, nome: e.target.value })}
+        />
+      </div>
+
+      {ehCartao && (
+        <div className="flex gap-4">
+          <div className="flex flex-1 flex-col gap-2">
+            <Label htmlFor="diaFechamento">Dia de fechamento</Label>
+            <Input
+              id="diaFechamento"
+              type="number"
+              min={1}
+              max={31}
+              required
+              value={form.diaFechamento}
+              onChange={(e) => setForm({ ...form, diaFechamento: e.target.value })}
+            />
+          </div>
+          <div className="flex flex-1 flex-col gap-2">
+            <Label htmlFor="diaVencimento">Dia de vencimento</Label>
+            <Input
+              id="diaVencimento"
+              type="number"
+              min={1}
+              max={31}
+              required
+              value={form.diaVencimento}
+              onChange={(e) => setForm({ ...form, diaVencimento: e.target.value })}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function NovaContaDialog({ aberto, onOpenChange, onCriada }) {
+  const [etapa, setEtapa] = useState("tipo");
+  const [tipo, setTipo] = useState(null);
   const [form, setForm] = useState(FORM_INICIAL);
-  const [editandoId, setEditandoId] = useState(null);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  const ehCartao = form.tipo === "CARTAO_CREDITO";
-
-  function iniciarEdicao(conta) {
-    setEditandoId(conta.id);
-    setForm({
-      nome: conta.nome,
-      tipo: conta.tipo,
-      diaFechamento: conta.diaFechamento ?? "",
-      diaVencimento: conta.diaVencimento ?? "",
-    });
-    setErro("");
+  function resetar(open) {
+    onOpenChange(open);
+    if (!open) {
+      setEtapa("tipo");
+      setTipo(null);
+      setForm(FORM_INICIAL);
+      setErro("");
+    }
   }
 
-  function cancelarEdicao() {
-    setEditandoId(null);
+  function escolherTipo(valor) {
+    setTipo(valor);
     setForm(FORM_INICIAL);
     setErro("");
+    setEtapa("formulario");
   }
 
   async function handleSubmit(e) {
@@ -67,9 +100,7 @@ export function ContasClient({ contas }) {
     setErro("");
     setCarregando(true);
 
-    const resultado = editandoId
-      ? await editarConta(editandoId, form)
-      : await criarConta(form);
+    const resultado = await criarConta({ ...form, tipo });
 
     setCarregando(false);
 
@@ -78,10 +109,174 @@ export function ContasClient({ contas }) {
       return;
     }
 
-    setEditandoId(null);
-    setForm(FORM_INICIAL);
-    router.refresh();
+    resetar(false);
+    onCriada();
   }
+
+  const opcaoEscolhida = TIPO_OPCOES.find((o) => o.valor === tipo);
+
+  return (
+    <Dialog open={aberto} onOpenChange={resetar}>
+      <DialogContent>
+        {etapa === "tipo" ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Nova conta</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">Escolha o tipo de conta que deseja criar.</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {TIPO_OPCOES.map(({ valor, label, Icone }) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => escolherTipo(valor)}
+                  className="flex flex-col items-center gap-2 rounded-md border p-4 text-center hover:bg-muted"
+                >
+                  <Icone className="h-6 w-6 text-muted-foreground" />
+                  <span className="text-sm font-medium">{label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <button
+                type="button"
+                onClick={() => setEtapa("tipo")}
+                className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Voltar
+              </button>
+              <DialogTitle>Nova conta — {opcaoEscolhida.label}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <CamposConta form={form} setForm={setForm} ehCartao={tipo === "CARTAO_CREDITO"} />
+              {erro && <p className="text-sm text-destructive">{erro}</p>}
+              <DialogFooter>
+                <Button type="submit" disabled={carregando}>
+                  {carregando ? "Criando..." : "Criar conta"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditarContaConteudo({ conta, onCancelar, onEditada }) {
+  const [form, setForm] = useState({
+    nome: conta.nome,
+    diaFechamento: conta.diaFechamento ?? "",
+    diaVencimento: conta.diaVencimento ?? "",
+  });
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setErro("");
+    setCarregando(true);
+
+    const resultado = await editarConta(conta.id, { ...form, tipo: conta.tipo });
+
+    setCarregando(false);
+
+    if (resultado?.error) {
+      setErro(resultado.error);
+      return;
+    }
+
+    onEditada();
+  }
+
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">Tipo: {TIPO_LABELS[conta.tipo]}</p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <CamposConta form={form} setForm={setForm} ehCartao={conta.tipo === "CARTAO_CREDITO"} />
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancelar}>
+            Cancelar
+          </Button>
+          <Button type="submit" disabled={carregando}>
+            {carregando ? "Salvando..." : "Salvar"}
+          </Button>
+        </DialogFooter>
+      </form>
+    </>
+  );
+}
+
+function EditarContaDialog({ conta, onOpenChange, onEditada }) {
+  return (
+    <Dialog open={conta !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Editar conta</DialogTitle>
+        </DialogHeader>
+        {conta && (
+          <EditarContaConteudo
+            key={conta.id}
+            conta={conta}
+            onCancelar={() => onOpenChange(false)}
+            onEditada={onEditada}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SecaoContas({ titulo, Icone, contas, ehCartao, onEditar, onApagar }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Icone className="h-4 w-4 text-muted-foreground" />
+          {titulo}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {contas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada neste tipo.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-border">
+            {contas.map((conta) => (
+              <div key={conta.id} className="flex items-center justify-between py-3 text-sm">
+                <div>
+                  <p className="font-medium">{conta.nome}</p>
+                  {ehCartao && (
+                    <p className="text-xs text-muted-foreground">
+                      Fechamento dia {conta.diaFechamento} · Vencimento dia {conta.diaVencimento}
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => onEditar(conta)}>
+                    Editar
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => onApagar(conta)}>
+                    Apagar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ContasClient({ contas }) {
+  const router = useRouter();
+  const [novaContaAberta, setNovaContaAberta] = useState(false);
+  const [contaEditando, setContaEditando] = useState(null);
 
   async function handleApagar(conta) {
     if (!window.confirm(`Apagar a conta "${conta.nome}"?`)) {
@@ -95,134 +290,59 @@ export function ContasClient({ contas }) {
       return;
     }
 
-    if (editandoId === conta.id) {
-      cancelarEdicao();
-    }
     router.refresh();
   }
 
+  const contasCorrente = contas.filter((c) => c.tipo === "CONTA_CORRENTE");
+  const contasCartao = contas.filter((c) => c.tipo === "CARTAO_CREDITO");
+  const contasInvestimento = contas.filter((c) => c.tipo === "CONTA_INVESTIMENTO");
+
   return (
-    <div className="flex flex-col gap-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>{editandoId ? "Editar conta" : "Nova conta"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="nome">Nome</Label>
-              <Input
-                id="nome"
-                required
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-              />
-            </div>
+    <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <Button onClick={() => setNovaContaAberta(true)}>
+          <Plus className="h-4 w-4" />
+          Nova conta
+        </Button>
+      </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="tipo">Tipo</Label>
-              <Select
-                value={form.tipo}
-                onValueChange={(tipo) => setForm({ ...form, tipo })}
-              >
-                <SelectTrigger id="tipo">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(TIPO_LABELS).map(([valor, label]) => (
-                    <SelectItem key={valor} value={valor}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <SecaoContas
+        titulo="Contas correntes"
+        Icone={Wallet}
+        contas={contasCorrente}
+        onEditar={setContaEditando}
+        onApagar={handleApagar}
+      />
+      <SecaoContas
+        titulo="Cartões de crédito"
+        Icone={CreditCard}
+        contas={contasCartao}
+        ehCartao
+        onEditar={setContaEditando}
+        onApagar={handleApagar}
+      />
+      <SecaoContas
+        titulo="Contas de investimento"
+        Icone={PiggyBank}
+        contas={contasInvestimento}
+        onEditar={setContaEditando}
+        onApagar={handleApagar}
+      />
 
-            {ehCartao && (
-              <div className="flex gap-4">
-                <div className="flex flex-1 flex-col gap-2">
-                  <Label htmlFor="diaFechamento">Dia de fechamento</Label>
-                  <Input
-                    id="diaFechamento"
-                    type="number"
-                    min={1}
-                    max={31}
-                    required
-                    value={form.diaFechamento}
-                    onChange={(e) => setForm({ ...form, diaFechamento: e.target.value })}
-                  />
-                </div>
-                <div className="flex flex-1 flex-col gap-2">
-                  <Label htmlFor="diaVencimento">Dia de vencimento</Label>
-                  <Input
-                    id="diaVencimento"
-                    type="number"
-                    min={1}
-                    max={31}
-                    required
-                    value={form.diaVencimento}
-                    onChange={(e) => setForm({ ...form, diaVencimento: e.target.value })}
-                  />
-                </div>
-              </div>
-            )}
+      <NovaContaDialog
+        aberto={novaContaAberta}
+        onOpenChange={setNovaContaAberta}
+        onCriada={() => router.refresh()}
+      />
 
-            {erro && <p className="text-sm text-destructive">{erro}</p>}
-
-            <div className="flex gap-2">
-              <Button type="submit" disabled={carregando}>
-                {carregando ? "Salvando..." : editandoId ? "Salvar" : "Adicionar"}
-              </Button>
-              {editandoId && (
-                <Button type="button" variant="outline" onClick={cancelarEdicao}>
-                  Cancelar
-                </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Contas cadastradas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {contas.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma conta cadastrada ainda.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Fechamento</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contas.map((conta) => (
-                  <TableRow key={conta.id}>
-                    <TableCell>{conta.nome}</TableCell>
-                    <TableCell>{TIPO_LABELS[conta.tipo]}</TableCell>
-                    <TableCell>{conta.diaFechamento ?? "—"}</TableCell>
-                    <TableCell>{conta.diaVencimento ?? "—"}</TableCell>
-                    <TableCell className="flex justify-end gap-2">
-                      <Button size="sm" variant="outline" onClick={() => iniciarEdicao(conta)}>
-                        Editar
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleApagar(conta)}>
-                        Apagar
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <EditarContaDialog
+        conta={contaEditando}
+        onOpenChange={(open) => !open && setContaEditando(null)}
+        onEditada={() => {
+          setContaEditando(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
