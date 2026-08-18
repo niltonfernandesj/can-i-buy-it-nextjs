@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
+import { criarTransacao, criarTransacaoParcelada, criarTransacaoRecorrente } from "@/lib/actions/transacoes";
 import { CATEGORIA_LABELS, TIPO_LABELS } from "@/lib/categorias";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,8 @@ const FORM_INICIAL = {
   parcelado: false,
   numeroParcelas: "2",
   valorParcelaCentavos: 0,
+  recorrente: false,
+  numeroMeses: "3",
 };
 
 export function LancamentoClient({ contas }) {
@@ -69,6 +71,16 @@ export function LancamentoClient({ contas }) {
       parcelado: marcado,
       tipo: marcado ? "SAIDA" : form.tipo,
       ehInvestimento: marcado ? false : form.ehInvestimento,
+      recorrente: marcado ? false : form.recorrente,
+    });
+  }
+
+  function marcarRecorrente(marcado) {
+    setForm({
+      ...form,
+      recorrente: marcado,
+      tipo: marcado ? "SAIDA" : form.tipo,
+      parcelado: marcado ? false : form.parcelado,
     });
   }
 
@@ -90,6 +102,17 @@ export function LancamentoClient({ contas }) {
           dataCompra: form.dataCompra,
           valorParcela: form.valorParcelaCentavos / 100,
           numeroParcelas: form.numeroParcelas,
+        })
+      : form.recorrente
+      ? await criarTransacaoRecorrente({
+          descricao: form.descricao,
+          categoria: form.categoria,
+          contaId: form.contaId,
+          dataCompra: form.dataCompra,
+          valor: form.valorCentavos / 100,
+          numeroMeses: form.numeroMeses,
+          ehInvestimento: form.ehInvestimento,
+          contaInvestimentoId: form.ehInvestimento ? form.contaInvestimentoId : undefined,
         })
       : await criarTransacao({
           tipo: form.tipo,
@@ -122,7 +145,7 @@ export function LancamentoClient({ contas }) {
             <Select
               value={form.tipo}
               onValueChange={(tipo) => setForm({ ...form, tipo })}
-              disabled={form.parcelado}
+              disabled={form.parcelado || form.recorrente}
             >
               <SelectTrigger id="tipo">
                 <SelectValue />
@@ -153,16 +176,18 @@ export function LancamentoClient({ contas }) {
             </Select>
           </div>
 
-          {ehCartao && (
+          {(ehCartao || ehContaCorrente) && (
             <div className="flex flex-col gap-4 rounded-md border p-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="parcelado"
-                  checked={form.parcelado}
-                  onCheckedChange={marcarParcelado}
-                />
-                <Label htmlFor="parcelado">Parcelado</Label>
-              </div>
+              {ehCartao && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="parcelado"
+                    checked={form.parcelado}
+                    onCheckedChange={marcarParcelado}
+                  />
+                  <Label htmlFor="parcelado">Parcelado</Label>
+                </div>
+              )}
 
               {form.parcelado && (
                 <div className="flex gap-4">
@@ -183,6 +208,31 @@ export function LancamentoClient({ contas }) {
                     className="flex-1"
                     valorCentavos={form.valorParcelaCentavos}
                     onChange={(valorParcelaCentavos) => setForm({ ...form, valorParcelaCentavos })}
+                  />
+                </div>
+              )}
+
+              {!form.parcelado && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="recorrente"
+                    checked={form.recorrente}
+                    onCheckedChange={marcarRecorrente}
+                  />
+                  <Label htmlFor="recorrente">Recorrente</Label>
+                </div>
+              )}
+
+              {form.recorrente && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="numeroMeses">Quantidade de meses</Label>
+                  <Input
+                    id="numeroMeses"
+                    type="number"
+                    min={2}
+                    required
+                    value={form.numeroMeses}
+                    onChange={(e) => setForm({ ...form, numeroMeses: e.target.value })}
                   />
                 </div>
               )}
