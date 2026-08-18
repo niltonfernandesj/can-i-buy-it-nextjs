@@ -22,6 +22,14 @@ function somarInvestimentos(investimentos) {
   return investimentos.reduce((soma, i) => soma + Number(i.total), 0);
 }
 
+// Decimal do Prisma não é serializável para um Client Component.
+function paraNumero(grupos) {
+  return grupos.map((grupo) => ({
+    ...grupo,
+    transacoes: grupo.transacoes.map((t) => ({ ...t, valor: Number(t.valor) })),
+  }));
+}
+
 export default async function VisaoGeralPage({ searchParams }) {
   const atual = mesAnoAtual();
   const mesParam = Number(searchParams?.mes);
@@ -50,10 +58,10 @@ export default async function VisaoGeralPage({ searchParams }) {
       <VisaoGeralClient
         mes={mes}
         ano={ano}
-        entradas={entradas}
-        saidasDebito={saidasDebito}
-        saidasCredito={saidasCredito}
-        investimentos={investimentos}
+        entradas={paraNumero(entradas)}
+        saidasDebito={paraNumero(saidasDebito)}
+        saidasCredito={paraNumero(saidasCredito)}
+        investimentos={investimentos.map((i) => ({ ...i, total: Number(i.total) }))}
         totalEntradas={totalEntradas}
         totalSaidas={totalSaidas}
         totalSaidasDebito={totalSaidasDebito}

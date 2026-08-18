@@ -48,12 +48,12 @@ function CabecalhoBloco({ Icone, cor, titulo, total }) {
   );
 }
 
-function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag }) {
+function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag, mensagemVazia }) {
   return (
     <section className="flex flex-col gap-4 py-6 first:pt-0 last:pb-0">
       <CabecalhoBloco Icone={Icone} cor={cor} titulo={titulo} total={total} />
       {grupos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum lançamento no período.</p>
+        <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
       ) : (
         grupos.map((grupo) => (
           <DetalheDiario
@@ -82,7 +82,7 @@ function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
     <section className="flex flex-col gap-2 py-6 first:pt-0 last:pb-0">
       <CabecalhoBloco Icone={Icone} cor={cor} titulo="Investimentos" total={total} />
       {investimentos.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nenhum aporte no período.</p>
+        <p className="text-sm text-muted-foreground">Nenhum investimento neste mês.</p>
       ) : (
         investimentos.map((i) => (
           <div key={i.contaInvestimentoId} className="flex items-center justify-between text-sm">
@@ -125,6 +125,7 @@ export function VisaoGeralClient({
           total={totalEntradas}
           grupos={entradas}
           renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
+          mensagemVazia="Nenhuma entrada neste mês."
         />
         <BlocoInvestimentos
           Icone={PiggyBank}
@@ -138,6 +139,7 @@ export function VisaoGeralClient({
           cor="text-amber-600"
           total={totalSaidasDebito}
           grupos={saidasDebito}
+          mensagemVazia="Nenhuma saída no débito neste mês."
         />
         <BlocoPorDia
           titulo="Saídas no crédito"
@@ -145,6 +147,7 @@ export function VisaoGeralClient({
           cor="text-rose-600"
           total={totalSaidasCredito}
           grupos={saidasCredito}
+          mensagemVazia="Nenhuma saída no crédito neste mês."
         />
       </div>
     </div>
