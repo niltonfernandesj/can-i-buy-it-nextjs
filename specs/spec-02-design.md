@@ -176,7 +176,7 @@ model Transacao {
   totalParcelas     Int?
   parcelamentoId    String?
 
-  // Recorrência (null quando não é saída recorrente)
+  // Recorrência (null quando não é uma transação recorrente)
   numeroOcorrencia  Int?
   totalOcorrencias  Int?
   recorrenciaId     String?
@@ -386,6 +386,10 @@ function gerarOcorrenciasRecorrencia(dataCompra, valor, n, conta) {
 
 **Edição e exclusão:** `editarTransacao`/`apagarTransacao` (`lib/actions/transacoes.js`) precisam tratar linhas com `recorrenciaId !== null` com a mesma restrição de campos editáveis (valor/descrição/categoria) e a mesma opção `propagarParaRestantes` (`WHERE recorrenciaId = X AND dataEfetiva >= selecionada`) já usadas para `parcelamentoId !== null` (seção 5.1). Uma transação nunca tem `parcelamentoId` e `recorrenciaId` preenchidos ao mesmo tempo.
 
+**Validação por tipo:** `criarTransacaoRecorrente` (`lib/actions/transacoes.js`) passa a receber `tipo` (`ENTRADA` ou `SAIDA`) e usa `gerarOcorrenciasRecorrencia` sem alteração — a função já é agnóstica de tipo, só usa `conta`. A validação de entrada é:
+- `tipo = SAIDA`: `conta.tipo` deve ser `CONTA_CORRENTE` ou `CARTAO_CREDITO` (regra já existente).
+- `tipo = ENTRADA`: `conta.tipo` deve ser **apenas** `CONTA_CORRENTE`; rejeita se `ehInvestimento = true` (resgate recorrente fora do escopo).
+
 ## 6. Regras de consolidação (Visão geral)
 
 Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já reflete a ordem de exibição definida na seção 8.3.3 (Entradas → Investimentos → Saídas no débito → Saídas no crédito):
@@ -397,7 +401,7 @@ Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já r
 
 Essas quatro queries alimentam os quatro blocos da Visão geral (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
 
-Ocorrências de saída recorrente são transações comuns (mesma `mesReferencia`/`anoReferencia` de qualquer outra) — nenhuma query de consolidação precisa mudar.
+Ocorrências de transação recorrente (entrada ou saída) são transações comuns (mesma `mesReferencia`/`anoReferencia` de qualquer outra) — nenhuma query de consolidação precisa mudar.
 
 ## 7. Telas e componentes principais
 
@@ -407,7 +411,7 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 |---|---|---|
 | `/login`, `/cadastro` | Autenticação | Form + NextAuth |
 | `/contas` | CRUD de Contas | Criação em **duas etapas** (seção 8.2.3): 1) seleção do tipo; 2) formulário específico do tipo. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
-| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). **Novo:** checkbox "Recorrente" (+ nº de meses), disponível para saída em Conta corrente ou Cartão de crédito, mutuamente exclusivo com "Parcelado" (seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
+| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). Checkbox "Recorrente" (+ nº de meses): disponível para saída em Conta corrente ou Cartão de crédito, **e também para entrada em Conta corrente** (não para entrada em Cartão de crédito); mutuamente exclusivo com "Parcelado" (só existe p/ saída no crédito). Quando "Recorrente" + tipo Entrada, o checkbox "É investimento" fica indisponível (resgate recorrente fora do escopo — seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
 | `/visao-geral` | Visão geral (renomeada de `/acompanhamento`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
 | `/transacoes` | Tabela | Tabela com coluna de filtro por header (shadcn `DataTable`), ações de editar/apagar por linha |
 
