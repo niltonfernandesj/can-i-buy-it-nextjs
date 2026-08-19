@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { editarTransacao, apagarTransacao } from "@/lib/actions/transacoes";
 import { formatarReais } from "@/lib/moeda";
-import { formatarDataCurta } from "@/lib/datas";
+import { formatarDataCurta, formatarMesReferencia, MESES } from "@/lib/datas";
 import { TIPO_LABELS, CATEGORIA_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
@@ -86,14 +86,16 @@ const COLUNAS_BASE = [
   {
     id: "categoria",
     header: "Categoria",
-    accessorFn: (row) => CATEGORIA_LABELS[row.categoria] ?? row.categoria,
-    cell: (info) => info.getValue(),
+    accessorFn: (row) => row.categoria,
+    filterFn: "equals",
+    cell: (info) => CATEGORIA_LABELS[info.getValue()] ?? info.getValue(),
   },
   {
     id: "conta",
     header: "Conta",
-    accessorFn: (row) => row.conta?.nome ?? "—",
-    cell: (info) => info.getValue(),
+    accessorFn: (row) => row.contaId,
+    filterFn: "equals",
+    cell: (info) => info.row.original.conta?.nome ?? "—",
   },
   {
     id: "valor",
@@ -110,6 +112,122 @@ const COLUNAS_BASE = [
     },
   },
 ];
+
+// Colunas ocultas: existem só para permitir filtro por Mês/Ano de referência,
+// que saíram da tabela visível (Design §12.1, §12.3).
+const COLUNAS_OCULTAS = [
+  { id: "mesReferencia", accessorFn: (row) => row.mesReferencia, filterFn: "equals" },
+  { id: "anoReferencia", accessorFn: (row) => row.anoReferencia, filterFn: "equals" },
+];
+
+function BarraFiltros({ table, contas, anosDisponiveis }) {
+  const colunaDescricao = table.getColumn("descricao");
+  const colunaConta = table.getColumn("conta");
+  const colunaCategoria = table.getColumn("categoria");
+  const colunaMes = table.getColumn("mesReferencia");
+  const colunaAno = table.getColumn("anoReferencia");
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="filtro-busca">Buscar</Label>
+        <Input
+          id="filtro-busca"
+          placeholder="Descrição..."
+          className="w-48"
+          value={colunaDescricao.getFilterValue() ?? ""}
+          onChange={(e) => colunaDescricao.setFilterValue(e.target.value || undefined)}
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="filtro-conta">Conta</Label>
+        <Select
+          value={colunaConta.getFilterValue() ?? "todas"}
+          onValueChange={(v) => colunaConta.setFilterValue(v === "todas" ? undefined : v)}
+        >
+          <SelectTrigger id="filtro-conta" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas</SelectItem>
+            {contas.map((c) => {
+              const IconeConta = TIPO_CONTA_ICONES[c.tipo];
+              return (
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    <IconeConta className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    {c.nome}
+                  </span>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="filtro-categoria">Categoria</Label>
+        <Select
+          value={colunaCategoria.getFilterValue() ?? "todas"}
+          onValueChange={(v) => colunaCategoria.setFilterValue(v === "todas" ? undefined : v)}
+        >
+          <SelectTrigger id="filtro-categoria" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas</SelectItem>
+            {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
+              <SelectItem key={valor} value={valor}>
+                {label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="filtro-mes">Mês de referência</Label>
+        <Select
+          value={colunaMes.getFilterValue()?.toString() ?? "todos"}
+          onValueChange={(v) => colunaMes.setFilterValue(v === "todos" ? undefined : Number(v))}
+        >
+          <SelectTrigger id="filtro-mes" className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            {MESES.map((nome, i) => (
+              <SelectItem key={nome} value={String(i + 1)}>
+                {nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <Label htmlFor="filtro-ano">Ano de referência</Label>
+        <Select
+          value={colunaAno.getFilterValue()?.toString() ?? "todos"}
+          onValueChange={(v) => colunaAno.setFilterValue(v === "todos" ? undefined : Number(v))}
+        >
+          <SelectTrigger id="filtro-ano" className="w-28">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            {anosDisponiveis.map((ano) => (
+              <SelectItem key={ano} value={String(ano)}>
+                {ano}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
 
 function CamposCompletos({ form, setForm, contas }) {
   const contasParaSelecao = contas.filter((c) => c.tipo !== "CONTA_INVESTIMENTO");
@@ -322,6 +440,11 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        Data efetiva: {formatarDataCurta(transacao.dataEfetiva)} · Mês de referência:{" "}
+        {formatarMesReferencia(transacao.mesReferencia, transacao.anoReferencia)}
+      </p>
+
       {ehParcela && (
         <p className="text-sm text-muted-foreground">
           Parcela {transacao.numeroParcela} de {transacao.totalParcelas} — conta, data e tipo não
@@ -427,16 +550,26 @@ function DetalheTransacaoDialog({ transacao, contas, open, onOpenChange, onFecha
 export function TransacoesClient({ transacoes, contas }) {
   const router = useRouter();
   const [columnFilters, setColumnFilters] = useState([]);
+  const [columnVisibility, setColumnVisibility] = useState({
+    mesReferencia: false,
+    anoReferencia: false,
+  });
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
   const [transacaoSelecionada, setTransacaoSelecionada] = useState(null);
 
-  const columns = useMemo(() => COLUNAS_BASE, []);
+  const columns = useMemo(() => [...COLUNAS_BASE, ...COLUNAS_OCULTAS], []);
+
+  const anosDisponiveis = useMemo(() => {
+    const anos = new Set(transacoes.map((t) => t.anoReferencia));
+    return Array.from(anos).sort((a, b) => b - a);
+  }, [transacoes]);
 
   const table = useReactTable({
     data: transacoes,
     columns,
-    state: { columnFilters, pagination },
+    state: { columnFilters, columnVisibility, pagination },
     onColumnFiltersChange: setColumnFilters,
+    onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -448,26 +581,20 @@ export function TransacoesClient({ transacoes, contas }) {
     router.refresh();
   }
 
+  const colunasVisiveis = table.getHeaderGroups()[0]?.headers.length ?? COLUNAS_BASE.length;
+
   return (
     <div className="flex flex-col gap-4">
+      <BarraFiltros table={table} contas={contas} anosDisponiveis={anosDisponiveis} />
+
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="whitespace-nowrap align-top">
-                    <div className="flex flex-col gap-1">
-                      <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                      {header.column.getCanFilter() && (
-                        <Input
-                          className="h-7 w-32 text-xs"
-                          value={header.column.getFilterValue() ?? ""}
-                          onChange={(e) => header.column.setFilterValue(e.target.value)}
-                          placeholder="Filtrar..."
-                        />
-                      )}
-                    </div>
+                  <TableHead key={header.id} className="whitespace-nowrap">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
@@ -476,7 +603,7 @@ export function TransacoesClient({ transacoes, contas }) {
           <TableBody>
             {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-muted-foreground">
+                <TableCell colSpan={colunasVisiveis} className="text-center text-muted-foreground">
                   Nenhuma transação encontrada.
                 </TableCell>
               </TableRow>
