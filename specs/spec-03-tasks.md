@@ -167,6 +167,18 @@ Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test ma
 
 ---
 
+## M10 — Menu do usuário e login
+
+**Task 35. Menu do usuário (logoff)**
+Componente `MenuUsuario` (Design §8.1.3): nome do usuário + ação "Sair" via `DropdownMenu` do shadcn/ui, usando `useSession()`/`signOut()` do `next-auth/react` direto em `NavegacaoPrincipal`. Rodapé do `<aside>` no desktop; barra superior fixa e enxuta no mobile (`layout.jsx` ganha `pt-14 md:pt-0` correspondente).
+
+**Task 36. Redirecionamento pós-login**
+Login bem-sucedido passa a redirecionar para `/visao-geral` em vez de `/`.
+
+*(Checkpoint sugerido: critérios de aceite de menu do usuário e redirecionamento pós-login — spec-01 §6.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -180,3 +192,4 @@ Deploy no Vercel, variáveis de ambiente (banco, NextAuth secret), smoke test ma
 | M7 | Escopo item 10 (navegação principal, ação global, wizard de Contas) e alterações de escopo da Visão geral |
 | M8 | Escopo item 11 (saída recorrente) |
 | M9 | Publicação (spec-01 §4) |
+| M10 | Escopo itens 1, 10 (redirecionamento pós-login, menu do usuário) |
