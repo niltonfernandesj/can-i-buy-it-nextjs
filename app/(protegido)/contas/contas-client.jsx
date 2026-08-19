@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Wallet, CreditCard, PiggyBank, Plus, ChevronLeft } from "lucide-react";
+import { Plus, ChevronLeft } from "lucide-react";
 import { criarConta, editarConta, apagarConta } from "@/lib/actions/contas";
+import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,13 +17,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-const TIPO_OPCOES = [
-  { valor: "CONTA_CORRENTE", label: "Conta corrente", Icone: Wallet },
-  { valor: "CARTAO_CREDITO", label: "Cartão de crédito", Icone: CreditCard },
-  { valor: "CONTA_INVESTIMENTO", label: "Conta de investimento", Icone: PiggyBank },
-];
-
-const TIPO_LABELS = Object.fromEntries(TIPO_OPCOES.map(({ valor, label }) => [valor, label]));
+const TIPO_OPCOES = Object.keys(TIPO_CONTA_LABELS).map((valor) => ({
+  valor,
+  label: TIPO_CONTA_LABELS[valor],
+  Icone: TIPO_CONTA_ICONES[valor],
+}));
 
 const FORM_INICIAL = { nome: "", diaFechamento: "", diaVencimento: "" };
 
@@ -195,7 +194,7 @@ function EditarContaConteudo({ conta, onCancelar, onEditada }) {
 
   return (
     <>
-      <p className="text-sm text-muted-foreground">Tipo: {TIPO_LABELS[conta.tipo]}</p>
+      <p className="text-sm text-muted-foreground">Tipo: {TIPO_CONTA_LABELS[conta.tipo]}</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <CamposConta form={form} setForm={setForm} ehCartao={conta.tipo === "CARTAO_CREDITO"} />
         {erro && <p className="text-sm text-destructive">{erro}</p>}
@@ -308,14 +307,14 @@ export function ContasClient({ contas }) {
 
       <SecaoContas
         titulo="Contas correntes"
-        Icone={Wallet}
+        Icone={TIPO_CONTA_ICONES.CONTA_CORRENTE}
         contas={contasCorrente}
         onEditar={setContaEditando}
         onApagar={handleApagar}
       />
       <SecaoContas
         titulo="Cartões de crédito"
-        Icone={CreditCard}
+        Icone={TIPO_CONTA_ICONES.CARTAO_CREDITO}
         contas={contasCartao}
         ehCartao
         onEditar={setContaEditando}
@@ -323,7 +322,7 @@ export function ContasClient({ contas }) {
       />
       <SecaoContas
         titulo="Contas de investimento"
-        Icone={PiggyBank}
+        Icone={TIPO_CONTA_ICONES.CONTA_INVESTIMENTO}
         contas={contasInvestimento}
         onEditar={setContaEditando}
         onApagar={handleApagar}

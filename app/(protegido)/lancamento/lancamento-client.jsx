@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { criarTransacao, criarTransacaoParcelada, criarTransacaoRecorrente } from "@/lib/actions/transacoes";
 import { CATEGORIA_LABELS, TIPO_LABELS } from "@/lib/categorias";
+import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,11 +168,20 @@ export function LancamentoClient({ contas }) {
                 <SelectValue placeholder="Selecione uma conta" />
               </SelectTrigger>
               <SelectContent>
-                {contasParaSelecao.map((conta) => (
-                  <SelectItem key={conta.id} value={conta.id}>
-                    {conta.nome}
-                  </SelectItem>
-                ))}
+                {contasParaSelecao.map((conta) => {
+                  const IconeConta = TIPO_CONTA_ICONES[conta.tipo];
+                  return (
+                    <SelectItem key={conta.id} value={conta.id}>
+                      <span className="flex items-center gap-2">
+                        <IconeConta className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {conta.nome}
+                        <span className="text-xs text-muted-foreground">
+                          · {TIPO_CONTA_LABELS[conta.tipo]}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>

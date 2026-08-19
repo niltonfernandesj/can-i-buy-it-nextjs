@@ -13,6 +13,7 @@ import { editarTransacao, apagarTransacao } from "@/lib/actions/transacoes";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta, formatarMesReferencia } from "@/lib/datas";
 import { TIPO_LABELS, CATEGORIA_LABELS } from "@/lib/categorias";
+import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,11 +133,20 @@ function CamposCompletos({ form, setForm, contas }) {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {contasParaSelecao.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.nome}
-              </SelectItem>
-            ))}
+            {contasParaSelecao.map((c) => {
+              const IconeConta = TIPO_CONTA_ICONES[c.tipo];
+              return (
+                <SelectItem key={c.id} value={c.id}>
+                  <span className="flex items-center gap-2">
+                    <IconeConta className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    {c.nome}
+                    <span className="text-xs text-muted-foreground">
+                      · {TIPO_CONTA_LABELS[c.tipo]}
+                    </span>
+                  </span>
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>
