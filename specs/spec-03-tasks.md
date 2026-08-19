@@ -191,6 +191,21 @@ Checkbox "Recorrente" passa a ficar disponível também com Tipo = Entrada quand
 
 ---
 
+## M12 — Redesenho de `/transacoes`
+
+**Task 39. Tabela enxuta com indicadores visuais compactos**
+Reduz as colunas visíveis para Data da compra, Descrição, Categoria, Conta e Valor (Design §12.1). Remove as demais colunas (Tipo, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) da tabela. Adiciona os indicadores compactos: cor/sinal no Valor para Tipo, badge "X de Y" para Parcela, badge "X de Y ↻" para Recorrência, badge "Aporte"/"Resgate" para investimento.
+
+**Task 40. Modal único de detalhe/edição/exclusão**
+Substitui `EditarTransacaoDialog` e `ApagarTransacaoDialog` por um único `DetalheTransacaoDialog` (Design §12.2), aberto ao clicar em qualquer ponto da linha (remove a coluna "Ações" — Design §12.4). Contém o formulário de edição existente + botão "Apagar" que troca o conteúdo do mesmo modal para a confirmação de exclusão (com a opção de propagar, quando aplicável).
+
+**Task 41. Barra de filtros (busca + Conta/Categoria/Mês-Ano)**
+Substitui o filtro por coluna por uma barra acima da tabela: busca livre por Descrição, e filtros por Conta, Categoria e Mês/Ano de referência (Design §12.3), reaproveitando o `columnFilters` do `@tanstack/react-table` com colunas ocultas para os campos que saíram da tabela.
+
+*(Checkpoint sugerido: critérios de aceite de `/transacoes` — spec-01 §6.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -206,3 +221,4 @@ Checkbox "Recorrente" passa a ficar disponível também com Tipo = Entrada quand
 | M9 | Publicação (spec-01 §4) |
 | M10 | Escopo itens 1, 10 (redirecionamento pós-login, menu do usuário) |
 | M11 | Escopo item 11 (transação recorrente — entrada) |
+| M12 | Escopo item 9 (redesenho da tela `/transacoes`) |
