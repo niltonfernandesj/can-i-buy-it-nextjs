@@ -9,6 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
+export function useNavegacaoPeriodo(mes, ano) {
+  const router = useRouter();
+
+  function irPara(novoMes, novoAno) {
+    router.push(`/visao-geral?mes=${novoMes}&ano=${novoAno}`);
+  }
+
+  function mesAnterior() {
+    if (mes === 1) irPara(12, ano - 1);
+    else irPara(mes - 1, ano);
+  }
+
+  function mesSeguinte() {
+    if (mes === 12) irPara(1, ano + 1);
+    else irPara(mes + 1, ano);
+  }
+
+  return { irPara, mesAnterior, mesSeguinte };
+}
+
 function GradeMeses({ mes, ano, anoGrade, onMudarAno, onSelecionarMes }) {
   return (
     <div className="flex flex-col gap-4">
@@ -47,25 +67,11 @@ function GradeMeses({ mes, ano, anoGrade, onMudarAno, onSelecionarMes }) {
 }
 
 export function SeletorPeriodo({ mes, ano }) {
-  const router = useRouter();
+  const { irPara, mesAnterior, mesSeguinte } = useNavegacaoPeriodo(mes, ano);
   const [anoGradeDesktop, setAnoGradeDesktop] = useState(ano);
   const [anoGradeMobile, setAnoGradeMobile] = useState(ano);
   const [abertoDesktop, setAbertoDesktop] = useState(false);
   const [abertoMobile, setAbertoMobile] = useState(false);
-
-  function irPara(novoMes, novoAno) {
-    router.push(`/visao-geral?mes=${novoMes}&ano=${novoAno}`);
-  }
-
-  function mesAnterior() {
-    if (mes === 1) irPara(12, ano - 1);
-    else irPara(mes - 1, ano);
-  }
-
-  function mesSeguinte() {
-    if (mes === 12) irPara(1, ano + 1);
-    else irPara(mes + 1, ano);
-  }
 
   const rotulo = `${MESES[mes - 1]} ${ano}`;
 

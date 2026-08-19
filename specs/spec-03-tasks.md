@@ -212,6 +212,15 @@ Troca o rótulo "Data da compra" por "Data do lançamento" no texto somente-leit
 
 ---
 
+## M13 — Swipe de mês na Visão geral (mobile)
+
+**Task 44. Swipe horizontal troca de mês no mobile**
+Extrai `mesAnterior`/`mesSeguinte` de `SeletorPeriodo` para um hook compartilhado `useNavegacaoPeriodo(mes, ano)` (Design §8.3.1). Adiciona um listener de `touchstart`/`touchend` no container raiz de `VisaoGeralClient`: deslizar para a esquerda chama `mesSeguinte()`, para a direita `mesAnterior()` — só quando o deslocamento horizontal supera o vertical e passa de 50px, e só abaixo do breakpoint `md`. Layout desktop inalterado.
+
+*(Checkpoint sugerido: critérios de aceite da Visão geral — spec-01 §6.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -228,3 +237,4 @@ Troca o rótulo "Data da compra" por "Data do lançamento" no texto somente-leit
 | M10 | Escopo itens 1, 10 (redirecionamento pós-login, menu do usuário) |
 | M11 | Escopo item 11 (transação recorrente — entrada) |
 | M12 | Escopo item 9 (redesenho da tela `/transacoes`) |
+| M13 | Escopo item 7 (swipe de mês na Visão geral, mobile) |

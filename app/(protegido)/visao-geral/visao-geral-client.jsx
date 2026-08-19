@@ -1,12 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard, ChevronDown } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SeletorPeriodo } from "@/components/visao-geral/seletor-periodo";
+import { SeletorPeriodo, useNavegacaoPeriodo } from "@/components/visao-geral/seletor-periodo";
 import { DetalheDiario } from "@/components/visao-geral/detalhe-diario";
+
+const LIMIAR_SWIPE_PX = 50;
+const BREAKPOINT_MD_PX = 768;
+
+function useSwipeMes(mesAnterior, mesSeguinte) {
+  const toqueInicial = useRef(null);
+
+  function onTouchStart(e) {
+    const t = e.touches[0];
+    toqueInicial.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onTouchEnd(e) {
+    if (!toqueInicial.current || window.innerWidth >= BREAKPOINT_MD_PX) {
+      toqueInicial.current = null;
+      return;
+    }
+    const t = e.changedTouches[0];
+    const deltaX = t.clientX - toqueInicial.current.x;
+    const deltaY = t.clientY - toqueInicial.current.y;
+    toqueInicial.current = null;
+
+    if (Math.abs(deltaX) <= Math.abs(deltaY) || Math.abs(deltaX) < LIMIAR_SWIPE_PX) return;
+
+    if (deltaX < 0) mesSeguinte();
+    else mesAnterior();
+  }
+
+  return { onTouchStart, onTouchEnd };
+}
 
 function somarGrupo(grupo) {
   return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
@@ -143,8 +173,11 @@ export function VisaoGeralClient({
   totalInvestimentos,
   disponivel,
 }) {
+  const { mesAnterior, mesSeguinte } = useNavegacaoPeriodo(mes, ano);
+  const { onTouchStart, onTouchEnd } = useSwipeMes(mesAnterior, mesSeguinte);
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div className="flex justify-center">
         <SeletorPeriodo mes={mes} ano={ano} />
       </div>
