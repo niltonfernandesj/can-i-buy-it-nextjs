@@ -11,7 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { editarTransacao, apagarTransacao } from "@/lib/actions/transacoes";
 import { formatarReais } from "@/lib/moeda";
-import { formatarDataCurta, formatarMesReferencia } from "@/lib/datas";
+import { formatarDataCurta } from "@/lib/datas";
 import { TIPO_LABELS, CATEGORIA_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
@@ -54,53 +54,72 @@ function paraISO(data) {
   return `${ano}-${mes}-${dia}`;
 }
 
+function BadgeTransacao({ children }) {
+  return (
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      {children}
+    </span>
+  );
+}
+
 const COLUNAS_BASE = [
-  { id: "conta", header: "Conta", accessorFn: (row) => row.conta?.nome ?? "—" },
-  { id: "tipo", header: "Tipo", accessorFn: (row) => TIPO_LABELS[row.tipo] ?? row.tipo },
-  { id: "descricao", header: "Descrição", accessorFn: (row) => row.descricao },
-  { id: "valor", header: "Valor", accessorFn: (row) => formatarReais(row.valor) },
-  {
-    id: "categoria",
-    header: "Categoria",
-    accessorFn: (row) => CATEGORIA_LABELS[row.categoria] ?? row.categoria,
-  },
   {
     id: "dataCompra",
     header: "Data da compra",
     accessorFn: (row) => formatarDataCurta(row.dataCompra),
+    cell: (info) => info.getValue(),
   },
   {
-    id: "dataEfetiva",
-    header: "Data efetiva",
-    accessorFn: (row) => formatarDataCurta(row.dataEfetiva),
+    id: "descricao",
+    header: "Descrição",
+    accessorFn: (row) => row.descricao,
+    cell: (info) => {
+      const t = info.row.original;
+      return (
+        <span className="flex items-center gap-2">
+          <span className="truncate">{t.descricao}</span>
+          {t.numeroParcela && (
+            <BadgeTransacao>
+              {t.numeroParcela} de {t.totalParcelas}
+            </BadgeTransacao>
+          )}
+          {t.numeroOcorrencia && (
+            <BadgeTransacao>
+              {t.numeroOcorrencia} de {t.totalOcorrencias} ↻
+            </BadgeTransacao>
+          )}
+          {t.ehInvestimento && <BadgeTransacao>{t.tipo === "SAIDA" ? "Aporte" : "Resgate"}</BadgeTransacao>}
+        </span>
+      );
+    },
   },
   {
-    id: "mesReferencia",
-    header: "Mês de referência",
-    accessorFn: (row) => formatarMesReferencia(row.mesReferencia, row.anoReferencia),
+    id: "categoria",
+    header: "Categoria",
+    accessorFn: (row) => CATEGORIA_LABELS[row.categoria] ?? row.categoria,
+    cell: (info) => info.getValue(),
   },
   {
-    id: "parcela",
-    header: "Parcela",
-    accessorFn: (row) => (row.numeroParcela ? `${row.numeroParcela} de ${row.totalParcelas}` : "—"),
+    id: "conta",
+    header: "Conta",
+    accessorFn: (row) => row.conta?.nome ?? "—",
+    cell: (info) => info.getValue(),
   },
   {
-    id: "recorrencia",
-    header: "Recorrência",
-    accessorFn: (row) =>
-      row.numeroOcorrencia ? `${row.numeroOcorrencia} de ${row.totalOcorrencias}` : "—",
+    id: "valor",
+    header: "Valor",
+    accessorFn: (row) => formatarReais(row.valor),
+    cell: (info) => {
+      const t = info.row.original;
+      const ehEntrada = t.tipo === "ENTRADA";
+      return (
+        <span className={ehEntrada ? "text-emerald-600" : "text-foreground"}>
+          {ehEntrada ? "+" : "-"} {formatarReais(t.valor)}
+        </span>
+      );
+    },
   },
-  {
-    id: "ehInvestimento",
-    header: "É investimento",
-    accessorFn: (row) => (row.ehInvestimento ? "Sim" : "Não"),
-  },
-  {
-    id: "contaInvestimento",
-    header: "Conta de investimento",
-    accessorFn: (row) => row.contaInvestimento?.nome ?? "—",
-  },
-].map((coluna) => ({ ...coluna, cell: (info) => info.getValue() }));
+];
 
 function CamposCompletos({ form, setForm, contas }) {
   const contasParaSelecao = contas.filter((c) => c.tipo !== "CONTA_INVESTIMENTO");
