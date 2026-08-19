@@ -54,9 +54,9 @@ function BadgeTransacao({ children }) {
 
 const COLUNAS_BASE = [
   {
-    id: "dataCompra",
-    header: "Data da compra",
-    accessorFn: (row) => formatarDataCurta(row.dataCompra),
+    id: "dataEfetiva",
+    header: "Data efetiva",
+    accessorFn: (row) => formatarDataCurta(row.dataEfetiva),
     cell: (info) => info.getValue(),
   },
   {
@@ -441,7 +441,7 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Data efetiva: {formatarDataCurta(transacao.dataEfetiva)} · Mês de referência:{" "}
+        Data da compra: {formatarDataCurta(transacao.dataCompra)} · Mês de referência:{" "}
         {formatarMesReferencia(transacao.mesReferencia, transacao.anoReferencia)}
       </p>
 

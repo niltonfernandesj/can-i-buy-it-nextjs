@@ -583,7 +583,7 @@ Resolve a seção 3.3 dos Requisitos. Em caso de conflito com a seção 7 ou qua
 
 ### 12.1 Tabela enxuta
 
-5 colunas visíveis: Data da compra, Descrição, Categoria, Conta, Valor. As demais informações hoje em colunas (Tipo, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2).
+5 colunas visíveis: Data efetiva, Descrição, Categoria, Conta, Valor. A coluna de data usa `dataEfetiva` (não `dataCompra`) e a tabela é ordenada por ela — é o campo que já determina `mesReferencia`/`anoReferencia` em toda a aplicação (cálculo de fatura, consolidação da Visão geral, filtro de Mês/Ano da seção 12.3); numa compra parcelada, `dataCompra` é idêntica em todas as parcelas, então não serve para distinguir quando cada uma ocorre. As demais informações hoje em colunas (Tipo, Data da compra, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2).
 
 **Indicadores visuais compactos** (sem coluna própria), junto à Descrição ou ao Valor:
 - **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão geral), Saída na cor padrão do texto.

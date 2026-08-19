@@ -202,6 +202,9 @@ Substitui `EditarTransacaoDialog` e `ApagarTransacaoDialog` por um único `Detal
 **Task 41. Barra de filtros (busca + Conta/Categoria/Mês-Ano)**
 Substitui o filtro por coluna por uma barra acima da tabela: busca livre por Descrição, e filtros por Conta, Categoria e Mês/Ano de referência (Design §12.3), reaproveitando o `columnFilters` do `@tanstack/react-table` com colunas ocultas para os campos que saíram da tabela.
 
+**Task 42. Coluna de data usa Data efetiva, não Data da compra**
+Troca a primeira coluna da tabela de `dataCompra` para `dataEfetiva` e a ordenação (`orderBy`) da consulta em `page.jsx` para `dataEfetiva` (Design §12.1). O modal de detalhe passa a exibir "Data da compra" no lugar de "Data efetiva" no bloco somente-leitura.
+
 *(Checkpoint sugerido: critérios de aceite de `/transacoes` — spec-01 §6.)*
 
 ---

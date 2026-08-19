@@ -5,7 +5,7 @@ export default async function TransacoesPage() {
   const [transacoesRaw, contas] = await Promise.all([
     db.transacao.findMany({
       include: { conta: true, contaInvestimento: true },
-      orderBy: { dataCompra: "desc" },
+      orderBy: { dataEfetiva: "desc" },
     }),
     db.conta.findMany({ orderBy: { criadoEm: "asc" } }),
   ]);

@@ -95,13 +95,14 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 ### 3.3 Especificação — Tela de listagem de transações (tabela)
 
 - Exibe todas as transações lançadas, uma linha por registro, com as seguintes colunas visíveis:
-  1. Data da compra
+  1. Data efetiva
   2. Descrição
   3. Categoria
   4. Conta (nome/apelido)
   5. Valor
+- **Data efetiva**, não Data da compra: é a data que determina o mês/fatura em que a transação realmente é cobrada. Numa compra parcelada, a Data da compra é a mesma em todas as parcelas — só a Data efetiva distingue quando cada parcela ocorre.
 - Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X"), recorrência ("X de X") e marcação de investimento.
-- Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data efetiva, Mês de referência **por extenso**, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
+- Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data da compra, Mês de referência **por extenso**, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
 - **Filtros:** uma busca geral por descrição, mais filtros específicos por Conta, Categoria e Mês/Ano de referência — substitui o filtro por coluna individual usado até então.
 - Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
 
