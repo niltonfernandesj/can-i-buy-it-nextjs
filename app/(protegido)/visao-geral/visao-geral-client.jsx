@@ -14,7 +14,7 @@ function somarGrupo(grupo) {
 
 function Resumo({ totalEntradas, totalSaidas, disponivel }) {
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-normal text-muted-foreground">Entradas</CardTitle>
