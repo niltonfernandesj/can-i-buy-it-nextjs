@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard, ChevronDown } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,12 @@ function useSwipeMes(mesAnterior, mesSeguinte) {
   }
 
   return { onTouchStart, onTouchEnd };
+}
+
+function classeAnimacaoSwipe(direcao) {
+  if (direcao === "proxima") return "animate-in fade-in slide-in-from-right-8 duration-200";
+  if (direcao === "anterior") return "animate-in fade-in slide-in-from-left-8 duration-200";
+  return "";
 }
 
 function somarGrupo(grupo) {
@@ -174,7 +180,27 @@ export function VisaoGeralClient({
   disponivel,
 }) {
   const { mesAnterior, mesSeguinte } = useNavegacaoPeriodo(mes, ano);
-  const { onTouchStart, onTouchEnd } = useSwipeMes(mesAnterior, mesSeguinte);
+
+  // VisaoGeralClient não desmonta entre navegações de mês (confirmado: a rota tem
+  // loading.jsx, mas a troca de searchParams não remonta a árvore de componentes —
+  // só atualiza as props). Por isso um ref comum sobrevive até o próximo render.
+  const direcaoSwipeRef = useRef(null);
+
+  useEffect(() => {
+    direcaoSwipeRef.current = null;
+  }, [mes, ano]);
+
+  function mesAnteriorViaSwipe() {
+    direcaoSwipeRef.current = "anterior";
+    mesAnterior();
+  }
+
+  function mesSeguinteViaSwipe() {
+    direcaoSwipeRef.current = "proxima";
+    mesSeguinte();
+  }
+
+  const { onTouchStart, onTouchEnd } = useSwipeMes(mesAnteriorViaSwipe, mesSeguinteViaSwipe);
 
   return (
     <div className="flex flex-col gap-6" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -182,40 +208,45 @@ export function VisaoGeralClient({
         <SeletorPeriodo mes={mes} ano={ano} />
       </div>
 
-      <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} disponivel={disponivel} />
+      <div
+        key={`${mes}-${ano}`}
+        className={cn("flex flex-col gap-6", classeAnimacaoSwipe(direcaoSwipeRef.current))}
+      >
+        <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} disponivel={disponivel} />
 
-      <div className="flex flex-col divide-y divide-border">
-        <BlocoPorDia
-          titulo="Entradas"
-          Icone={ArrowDownCircle}
-          cor="text-emerald-600"
-          total={totalEntradas}
-          grupos={entradas}
-          renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
-          mensagemVazia="Nenhuma entrada neste mês."
-        />
-        <BlocoInvestimentos
-          Icone={PiggyBank}
-          cor="text-blue-600"
-          total={totalInvestimentos}
-          investimentos={investimentos}
-        />
-        <BlocoPorDia
-          titulo="Saídas no débito"
-          Icone={ArrowUpCircle}
-          cor="text-amber-600"
-          total={totalSaidasDebito}
-          grupos={saidasDebito}
-          mensagemVazia="Nenhuma saída no débito neste mês."
-        />
-        <BlocoPorDia
-          titulo="Saídas no crédito"
-          Icone={CreditCard}
-          cor="text-rose-600"
-          total={totalSaidasCredito}
-          grupos={saidasCredito}
-          mensagemVazia="Nenhuma saída no crédito neste mês."
-        />
+        <div className="flex flex-col divide-y divide-border">
+          <BlocoPorDia
+            titulo="Entradas"
+            Icone={ArrowDownCircle}
+            cor="text-emerald-600"
+            total={totalEntradas}
+            grupos={entradas}
+            renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
+            mensagemVazia="Nenhuma entrada neste mês."
+          />
+          <BlocoInvestimentos
+            Icone={PiggyBank}
+            cor="text-blue-600"
+            total={totalInvestimentos}
+            investimentos={investimentos}
+          />
+          <BlocoPorDia
+            titulo="Saídas no débito"
+            Icone={ArrowUpCircle}
+            cor="text-amber-600"
+            total={totalSaidasDebito}
+            grupos={saidasDebito}
+            mensagemVazia="Nenhuma saída no débito neste mês."
+          />
+          <BlocoPorDia
+            titulo="Saídas no crédito"
+            Icone={CreditCard}
+            cor="text-rose-600"
+            total={totalSaidasCredito}
+            grupos={saidasCredito}
+            mensagemVazia="Nenhuma saída no crédito neste mês."
+          />
+        </div>
       </div>
     </div>
   );
