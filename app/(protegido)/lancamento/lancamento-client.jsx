@@ -106,6 +106,7 @@ export function LancamentoClient({ contas }) {
         })
       : form.recorrente
       ? await criarTransacaoRecorrente({
+          tipo: form.tipo,
           descricao: form.descricao,
           categoria: form.categoria,
           contaId: form.contaId,
