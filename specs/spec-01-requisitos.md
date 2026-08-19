@@ -94,23 +94,16 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 
 ### 3.3 Especificação — Tela de listagem de transações (tabela)
 
-- Exibe todas as transações lançadas, uma linha por registro, com as seguintes colunas:
-  1. Conta (nome/apelido)
-  2. Tipo (Entrada/Saída)
-  3. Descrição
-  4. Valor
-  5. Categoria
-  6. Data da compra
-  7. Data efetiva
-  8. Mês de referência (**por extenso**, ex: "Agosto de 2026")
-  9. Parcela (formato "X de X", ex: "2 de 6"; vazio/traço quando não é uma compra parcelada)
-  10. Recorrência (formato "X de X", ex: "3 de 12"; vazio/traço quando não é uma transação recorrente)
-  11. É investimento (Sim/Não)
-  12. Conta de investimento vinculada (nome; vazio quando não se aplica)
-- **Filtros:** a tela permite filtrar por **todas as colunas exibidas** (Conta, Tipo, Descrição, Valor, Categoria, Data da compra, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — não apenas por mês/ano.
-- **Assunções a validar:**
-  - Ações de **editar e apagar** ficam disponíveis diretamente na tabela, reaproveitando as regras já definidas na seção 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
-  - Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
+- Exibe todas as transações lançadas, uma linha por registro, com as seguintes colunas visíveis:
+  1. Data da compra
+  2. Descrição
+  3. Categoria
+  4. Conta (nome/apelido)
+  5. Valor
+- Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X"), recorrência ("X de X") e marcação de investimento.
+- Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data efetiva, Mês de referência **por extenso**, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
+- **Filtros:** uma busca geral por descrição, mais filtros específicos por Conta, Categoria e Mês/Ano de referência — substitui o filtro por coluna individual usado até então.
+- Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
 
 ### 3.4 Especificação — Lançamento de transação recorrente
 
@@ -203,7 +196,9 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] É possível editar uma ocorrência recorrente isolada sem afetar as demais, ou editar e propagar para as ocorrências futuras.
 - [ ] Não é possível marcar uma mesma saída como Parcelada e Recorrente simultaneamente.
 - [ ] A Visão geral mostra corretamente entradas, saídas e disponível do mês corrente.
-- [ ] A tela de listagem em tabela exibe todas as colunas especificadas (Conta, Tipo, Descrição, Valor, Categoria, Data da compra, Data efetiva, Mês de referência por extenso, Parcela, Recorrência, É investimento, Conta de investimento vinculada), permite filtrar por qualquer uma delas, e permite editar/apagar cada registro.
+- [ ] A tela de listagem em tabela exibe as colunas Data da compra, Descrição, Categoria, Conta e Valor, com indicadores visuais compactos para tipo/parcela/recorrência/investimento.
+- [ ] Clicar em qualquer linha da tabela abre um modal com o detalhe completo do registro (Tipo, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) e as ações de editar/apagar.
+- [ ] A tela permite buscar por descrição e filtrar por Conta, Categoria e Mês/Ano de referência.
 - [ ] A navegação principal apresenta três áreas (Visão geral, Transações, Contas) e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
 - [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
 - [ ] Um usuário logado consegue abrir o menu do usuário e fazer logoff, sendo redirecionado para a tela de login.
