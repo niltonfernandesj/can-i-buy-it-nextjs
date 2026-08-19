@@ -217,6 +217,9 @@ Troca o rótulo "Data da compra" por "Data do lançamento" no texto somente-leit
 **Task 44. Swipe horizontal troca de mês no mobile**
 Extrai `mesAnterior`/`mesSeguinte` de `SeletorPeriodo` para um hook compartilhado `useNavegacaoPeriodo(mes, ano)` (Design §8.3.1). Adiciona um listener de `touchstart`/`touchend` no container raiz de `VisaoGeralClient`: deslizar para a esquerda chama `mesSeguinte()`, para a direita `mesAnterior()` — só quando o deslocamento horizontal supera o vertical e passa de 50px, e só abaixo do breakpoint `md`. Layout desktop inalterado.
 
+**Task 45. Transição visual (fade + slide) na troca de mês via swipe**
+Remonta o conteúdo abaixo do seletor de período com `key={mes-ano}` ao trocar de mês via swipe, disparando `animate-in fade-in slide-in-from-right-8`/`slide-in-from-left-8` (`tailwindcss-animate`, já instalado) conforme a direção do gesto (Design §8.3.1). Direção guardada num `ref` em `VisaoGeralClient`, consumida via `useEffect` quando `mes`/`ano` mudam. Sem animação no carregamento inicial nem nas trocas via setas/seletor de mês.
+
 *(Checkpoint sugerido: critérios de aceite da Visão geral — spec-01 §6.)*
 
 ---

@@ -66,6 +66,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 
 - A tela deve permitir **filtrar por mês/ano de referência**.
 - **No mobile**, além dos botões de seta e do seletor de mês/ano, o usuário pode trocar de mês arrastando horizontalmente (swipe) em qualquer ponto da tela: deslizar para a esquerda avança para o próximo mês, para a direita volta ao mês anterior.
+- Ao trocar de mês via swipe, a tela deve exibir uma transição visual (fade + slide na direção do gesto) entre o conteúdo do mês anterior e o do novo mês carregado, dando feedback imediato ao usuário.
 - Os dados devem ser exibidos em **quatro blocos consolidados e separados**, nesta ordem de exibição:
   1. **Entradas (receitas)** — inclui entradas regulares e resgates de investimento, rotulados de forma distinta (ex: tag "Resgate de investimento") para não se confundirem com renda regular.
   2. **Investimentos** — total bruto aportado no mês, **separado por Conta de investimento** (não inclui resgates, que aparecem no bloco Entradas).
