@@ -35,16 +35,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 function paraISO(data) {
   const d = new Date(data);
@@ -218,7 +208,49 @@ function CamposCompletos({ form, setForm, contas }) {
   );
 }
 
-function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
+function ConfirmarExclusao({ transacao, ehParcela, ehRecorrencia, ehLinhaBloqueada, onVoltar, onApagado }) {
+  const [carregando, setCarregando] = useState(false);
+
+  async function apagar(propagarParaRestantes) {
+    setCarregando(true);
+    const resultado = await apagarTransacao(transacao.id, { propagarParaRestantes });
+    setCarregando(false);
+
+    if (resultado?.error) {
+      window.alert(resultado.error);
+      return;
+    }
+    onApagado();
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-muted-foreground">
+        {ehParcela &&
+          `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`}
+        {ehRecorrencia &&
+          `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma saída recorrente. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
+        {!ehLinhaBloqueada && "Esta ação não pode ser desfeita."}
+      </p>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onVoltar} disabled={carregando}>
+          Voltar
+        </Button>
+        {ehLinhaBloqueada && (
+          <Button variant="destructive" onClick={() => apagar(true)} disabled={carregando}>
+            Apagar esta e as restantes
+          </Button>
+        )}
+        <Button variant="destructive" onClick={() => apagar(false)} disabled={carregando}>
+          {ehLinhaBloqueada ? "Apagar só esta" : "Apagar"}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
+
+function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
   const ehParcela = transacao.parcelamentoId !== null;
   const ehRecorrencia = transacao.recorrenciaId !== null;
   const ehLinhaBloqueada = ehParcela || ehRecorrencia;
@@ -228,6 +260,7 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
     ? transacao.numeroOcorrencia < transacao.totalOcorrencias
     : false;
 
+  const [modo, setModo] = useState("detalhe"); // "detalhe" | "confirmarExclusao"
   const [form, setForm] = useState({
     tipo: transacao.tipo,
     contaId: transacao.contaId,
@@ -241,6 +274,19 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
   });
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+
+  if (modo === "confirmarExclusao") {
+    return (
+      <ConfirmarExclusao
+        transacao={transacao}
+        ehParcela={ehParcela}
+        ehRecorrencia={ehRecorrencia}
+        ehLinhaBloqueada={ehLinhaBloqueada}
+        onVoltar={() => setModo("detalhe")}
+        onApagado={onApagado}
+      />
+    );
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -345,9 +391,9 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
 
       {erro && <p className="text-sm text-destructive">{erro}</p>}
 
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancelar}>
-          Cancelar
+      <DialogFooter className="sm:justify-between">
+        <Button type="button" variant="destructive" onClick={() => setModo("confirmarExclusao")}>
+          Apagar
         </Button>
         <Button type="submit" disabled={carregando}>
           {carregando ? "Salvando..." : "Salvar"}
@@ -357,20 +403,20 @@ function EditarTransacaoConteudo({ transacao, contas, onSalvo, onCancelar }) {
   );
 }
 
-function EditarTransacaoDialog({ transacao, contas, open, onOpenChange, onSalvo }) {
+function DetalheTransacaoDialog({ transacao, contas, open, onOpenChange, onFechar }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar transação</DialogTitle>
+          <DialogTitle>Detalhe da transação</DialogTitle>
         </DialogHeader>
         {transacao && (
-          <EditarTransacaoConteudo
+          <DetalheTransacaoConteudo
             key={transacao.id}
             transacao={transacao}
             contas={contas}
-            onSalvo={onSalvo}
-            onCancelar={() => onOpenChange(false)}
+            onSalvo={onFechar}
+            onApagado={onFechar}
           />
         )}
       </DialogContent>
@@ -378,80 +424,13 @@ function EditarTransacaoDialog({ transacao, contas, open, onOpenChange, onSalvo 
   );
 }
 
-function ApagarTransacaoDialog({ transacao, open, onOpenChange, onApagado }) {
-  const ehParcela = transacao?.parcelamentoId != null;
-  const ehRecorrencia = transacao?.recorrenciaId != null;
-  const ehLinhaBloqueada = ehParcela || ehRecorrencia;
-
-  async function apagar(propagarParaRestantes) {
-    const resultado = await apagarTransacao(transacao.id, { propagarParaRestantes });
-    if (resultado?.error) {
-      window.alert(resultado.error);
-      return;
-    }
-    onApagado();
-  }
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Apagar transação</AlertDialogTitle>
-          <AlertDialogDescription>
-            {ehParcela &&
-              `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`}
-            {ehRecorrencia &&
-              `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma saída recorrente. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
-            {!ehLinhaBloqueada && "Esta ação não pode ser desfeita."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          {ehLinhaBloqueada && (
-            <AlertDialogAction onClick={() => apagar(true)}>
-              Apagar esta e as restantes
-            </AlertDialogAction>
-          )}
-          <AlertDialogAction onClick={() => apagar(false)}>
-            {ehLinhaBloqueada ? "Apagar só esta" : "Apagar"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
 export function TransacoesClient({ transacoes, contas }) {
   const router = useRouter();
   const [columnFilters, setColumnFilters] = useState([]);
   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
-  const [transacaoEditando, setTransacaoEditando] = useState(null);
-  const [transacaoApagando, setTransacaoApagando] = useState(null);
+  const [transacaoSelecionada, setTransacaoSelecionada] = useState(null);
 
-  const columns = useMemo(
-    () => [
-      ...COLUNAS_BASE,
-      {
-        id: "acoes",
-        header: "Ações",
-        enableColumnFilter: false,
-        cell: (info) => {
-          const t = info.row.original;
-          return (
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => setTransacaoEditando(t)}>
-                Editar
-              </Button>
-              <Button size="sm" variant="destructive" onClick={() => setTransacaoApagando(t)}>
-                Apagar
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    []
-  );
+  const columns = useMemo(() => COLUNAS_BASE, []);
 
   const table = useReactTable({
     data: transacoes,
@@ -465,8 +444,7 @@ export function TransacoesClient({ transacoes, contas }) {
   });
 
   function aposMudanca() {
-    setTransacaoEditando(null);
-    setTransacaoApagando(null);
+    setTransacaoSelecionada(null);
     router.refresh();
   }
 
@@ -504,7 +482,11 @@ export function TransacoesClient({ transacoes, contas }) {
               </TableRow>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  key={row.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setTransacaoSelecionada(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -542,19 +524,12 @@ export function TransacoesClient({ transacoes, contas }) {
         </div>
       </div>
 
-      <EditarTransacaoDialog
-        transacao={transacaoEditando}
+      <DetalheTransacaoDialog
+        transacao={transacaoSelecionada}
         contas={contas}
-        open={!!transacaoEditando}
-        onOpenChange={(open) => !open && setTransacaoEditando(null)}
-        onSalvo={aposMudanca}
-      />
-
-      <ApagarTransacaoDialog
-        transacao={transacaoApagando}
-        open={!!transacaoApagando}
-        onOpenChange={(open) => !open && setTransacaoApagando(null)}
-        onApagado={aposMudanca}
+        open={!!transacaoSelecionada}
+        onOpenChange={(open) => !open && setTransacaoSelecionada(null)}
+        onFechar={aposMudanca}
       />
     </div>
   );
