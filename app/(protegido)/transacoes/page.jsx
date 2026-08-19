@@ -10,8 +10,13 @@ export default async function TransacoesPage() {
     db.conta.findMany({ orderBy: { criadoEm: "asc" } }),
   ]);
 
+  console.log(contas);
+
   // Decimal do Prisma não é serializável para um Client Component.
-  const transacoes = transacoesRaw.map((t) => ({ ...t, valor: Number(t.valor) }));
+  const transacoes = transacoesRaw.map((t) => ({
+    ...t,
+    valor: Number(t.valor),
+  }));
 
   return (
     <main className="mx-auto max-w-6xl p-8">
