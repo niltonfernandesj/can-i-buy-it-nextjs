@@ -72,7 +72,7 @@ export function SeletorPeriodo({ mes, ano }) {
   const classeSeta =
     "flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm hover:bg-muted";
   const classePill =
-    "inline-flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100";
+    "items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100";
 
   return (
     <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export function SeletorPeriodo({ mes, ano }) {
         }}
       >
         <SheetTrigger asChild>
-          <button type="button" className={cn("md:hidden", classePill)}>
+          <button type="button" className={cn("inline-flex md:hidden", classePill)}>
             <Calendar className="h-4 w-4" />
             {rotulo}
             <ChevronDown className="h-4 w-4" />
