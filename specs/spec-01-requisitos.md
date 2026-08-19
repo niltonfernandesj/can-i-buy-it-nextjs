@@ -58,8 +58,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
     - A aplicação possui três áreas principais: Visão geral, Transações e Contas. Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
     - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
     - Um menu do usuário logado, acessível a partir de qualquer área, exibe o nome do usuário autenticado e permite fazer logoff da aplicação, redirecionando para a tela de login.
-11. **Saída recorrente**
-    - Uma saída (no débito ou no crédito) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
+11. **Transação recorrente**
+    - Uma saída (no débito ou no crédito) ou uma entrada (só em Conta corrente) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
     - Ver especificação detalhada na seção 3.4 abaixo.
 
 ### 3.1 Especificação — Visão geral
@@ -104,7 +104,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   7. Data efetiva
   8. Mês de referência (**por extenso**, ex: "Agosto de 2026")
   9. Parcela (formato "X de X", ex: "2 de 6"; vazio/traço quando não é uma compra parcelada)
-  10. Recorrência (formato "X de X", ex: "3 de 12"; vazio/traço quando não é uma saída recorrente)
+  10. Recorrência (formato "X de X", ex: "3 de 12"; vazio/traço quando não é uma transação recorrente)
   11. É investimento (Sim/Não)
   12. Conta de investimento vinculada (nome; vazio quando não se aplica)
 - **Filtros:** a tela permite filtrar por **todas as colunas exibidas** (Conta, Tipo, Descrição, Valor, Categoria, Data da compra, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — não apenas por mês/ano.
@@ -112,23 +112,24 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - Ações de **editar e apagar** ficam disponíveis diretamente na tabela, reaproveitando as regras já definidas na seção 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
   - Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
 
-### 3.4 Especificação — Lançamento de saída recorrente
+### 3.4 Especificação — Lançamento de transação recorrente
 
-- Aplica-se a saídas vinculadas a Conta corrente **ou** Cartão de crédito (não se aplica a entradas).
-- Na tela de lançamento, o usuário marca a saída como **Recorrente** e informa a **quantidade de meses** (N ≥ 2) pelos quais ela deve se repetir.
-- **Recorrente** e **Parcelado** são mutuamente exclusivos — o formulário não permite marcar os dois ao mesmo tempo numa mesma saída no crédito.
+- Aplica-se a: saídas vinculadas a Conta corrente **ou** Cartão de crédito; e entradas, **apenas** vinculadas a Conta corrente.
+- Na tela de lançamento, o usuário marca a transação como **Recorrente** e informa a **quantidade de meses** (N ≥ 2) pelos quais ela deve se repetir.
+- **Recorrente** e **Parcelado** são mutuamente exclusivos — aplica-se apenas a saídas no crédito (parcelado não existe para entrada).
 - Ao salvar, o sistema cria **N transações**, uma por ocorrência, todas com o mesmo valor, conta, categoria e descrição, cada uma no mesmo dia do mês da data original, avançando um mês por ocorrência (ex: lançada dia 5/ago, as ocorrências seguintes caem em 5/set, 5/out...).
   - Caso o dia da data original não exista em algum mês seguinte (ex: dia 31 num mês de 30 dias, ou 29/30/31 em fevereiro), a ocorrência daquele mês cai no último dia do mês — mesmo tratamento já usado no parcelamento (seção 3.2).
 - O **mês de referência** de cada ocorrência segue a mesma regra já definida para o tipo de conta vinculada (seção 3.1): mês da própria data para débito; mês de vencimento da fatura, calculado a partir da data daquela ocorrência, para crédito.
 - Cada ocorrência registra sua posição na recorrência (ex: "3 de 12") e todas as ocorrências de uma mesma recorrência compartilham um identificador de grupo — mecanismo análogo ao parcelamento, mas distinto dele (uma saída não é simultaneamente parcela e ocorrência recorrente).
 - **Edição e exclusão de ocorrências:** mesmo padrão já definido para parcelas (seção 3.2) — por padrão, afeta apenas a ocorrência selecionada; o usuário tem a opção adicional de propagar a ação (edição ou exclusão) para todas as ocorrências futuras da mesma recorrência.
 - Uma saída recorrente vinculada à Conta corrente pode também ser marcada como investimento (aporte), como qualquer saída no débito — as duas marcações são independentes.
+- Uma **entrada recorrente não pode** ser marcada como investimento (resgate) — combinação fora do escopo do MVP.
 
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).
 - Controle de orçamento (limite por categoria).
-- Entradas recorrentes (ex: salário fixo) — apenas saídas podem ser marcadas como recorrentes no MVP (ver item 11).
+- Entrada recorrente marcada como investimento (resgate recorrente) — só saída recorrente pode ser aporte.
 - Recorrência "sem data de término" — a quantidade de meses é sempre definida pelo usuário no lançamento.
 - Dados privados por usuário / permissões diferenciadas.
 - Histórico de alterações (auditoria) em transações.
@@ -155,8 +156,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - mês_referência (1–12) e ano_referência — calculados a partir de data_efetiva + regras de fechamento da conta (quando aplicável, ex: cartão de crédito). Juntos identificam de forma única o período (ex: mês 8 / ano 2026), evitando ambiguidade entre anos diferentes.
 - numero_parcela, total_parcelas (opcional; null/1 quando não é compra parcelada)
 - parcelamento_id (opcional; agrupa as N transações de uma mesma compra parcelada)
-- numero_ocorrencia, total_ocorrencias (opcional; null quando não é saída recorrente)
-- recorrencia_id (opcional; agrupa as N transações de uma mesma saída recorrente — mecanismo distinto de parcelamento_id)
+- numero_ocorrencia, total_ocorrencias (opcional; null quando não é uma transação recorrente)
+- recorrencia_id (opcional; agrupa as N transações de uma mesma transação recorrente — mecanismo distinto de parcelamento_id)
 - é_investimento (booleano; default false) — marca a transação como aporte (se saída) ou resgate (se entrada)
 - conta_investimento_id (opcional; obrigatório quando é_investimento = true) — a conta de investimento envolvida na operação (destino do aporte ou origem do resgate)
 
@@ -194,8 +195,10 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] É possível apagar uma parcela e, na mesma ação, optar por apagar também todas as parcelas restantes daquela compra.
 - [ ] É possível editar uma parcela isolada sem afetar as demais.
 - [ ] É possível editar uma parcela e, na mesma ação, optar por propagar a alteração para todas as parcelas restantes daquela compra.
-- [ ] Ao lançar uma saída recorrente com N meses, o sistema cria N transações, cada uma no mês de referência correto conforme o tipo de conta (débito ou crédito).
-- [ ] As N ocorrências de uma saída recorrente aparecem, cada uma em seu respectivo mês de referência.
+- [ ] Ao lançar uma transação recorrente (entrada ou saída) com N meses, o sistema cria N transações, cada uma no mês de referência correto.
+- [ ] Uma entrada recorrente só pode ser vinculada a Conta corrente, nunca a Cartão de crédito.
+- [ ] Não é possível marcar uma entrada recorrente como investimento (resgate).
+- [ ] As N ocorrências de uma transação recorrente aparecem, cada uma em seu respectivo mês de referência.
 - [ ] É possível apagar uma ocorrência recorrente isolada sem afetar as demais, ou apagar e propagar para as ocorrências futuras.
 - [ ] É possível editar uma ocorrência recorrente isolada sem afetar as demais, ou editar e propagar para as ocorrências futuras.
 - [ ] Não é possível marcar uma mesma saída como Parcelada e Recorrente simultaneamente.
