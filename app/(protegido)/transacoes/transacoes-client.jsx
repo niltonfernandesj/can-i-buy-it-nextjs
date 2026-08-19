@@ -347,7 +347,9 @@ function ConfirmarExclusao({ transacao, ehParcela, ehRecorrencia, ehLinhaBloquea
         {ehParcela &&
           `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`}
         {ehRecorrencia &&
-          `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma saída recorrente. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
+          `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma ${
+            transacao.tipo === "ENTRADA" ? "entrada recorrente" : "saída recorrente"
+          }. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
         {!ehLinhaBloqueada && "Esta ação não pode ser desfeita."}
       </p>
 
@@ -454,8 +456,9 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
 
       {ehRecorrencia && (
         <p className="text-sm text-muted-foreground">
-          Ocorrência {transacao.numeroOcorrencia} de {transacao.totalOcorrencias} de uma saída
-          recorrente — conta, data e tipo não são editáveis numa ocorrência.
+          Ocorrência {transacao.numeroOcorrencia} de {transacao.totalOcorrencias} de uma{" "}
+          {transacao.tipo === "ENTRADA" ? "entrada recorrente" : "saída recorrente"} — conta, data
+          e tipo não são editáveis numa ocorrência.
         </p>
       )}
 
