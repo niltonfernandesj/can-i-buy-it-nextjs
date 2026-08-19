@@ -413,7 +413,7 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 | `/contas` | CRUD de Contas | Criação em **duas etapas** (seção 8.2.3): 1) seleção do tipo; 2) formulário específico do tipo. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
 | `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). Checkbox "Recorrente" (+ nº de meses): disponível para saída em Conta corrente ou Cartão de crédito, **e também para entrada em Conta corrente** (não para entrada em Cartão de crédito); mutuamente exclusivo com "Parcelado" (só existe p/ saída no crédito). Quando "Recorrente" + tipo Entrada, o checkbox "É investimento" fica indisponível (resgate recorrente fora do escopo — seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
 | `/visao-geral` | Visão geral (renomeada de `/acompanhamento`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
-| `/transacoes` | Tabela | Tabela com coluna de filtro por header (shadcn `DataTable`), ações de editar/apagar por linha |
+| `/transacoes` | Tabela | Tabela enxuta (5 colunas) com indicadores visuais compactos, barra de filtros acima (busca + Conta/Categoria/Mês-Ano), linha inteira clicável abrindo modal único de detalhe/edição/exclusão (seção 12) |
 
 ## 8. Arquitetura de UX/UI — Navegação e Interação
 
@@ -576,3 +576,36 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 - Formato do CSV de fatura (fase futura).
 - Categorização automática (fase futura).
 - Formatação de data `DD MMM` da Visão geral (§8.3.10, ex.: "05 AGO"): removida do escopo da Task 26 a pedido do usuário; a Visão geral continua usando `formatarDataCurta` (`DD/MM/AAAA`). Revisitar se/quando decidido.
+
+## 12. Arquitetura de UX/UI — Transações
+
+Resolve a seção 3.3 dos Requisitos. Em caso de conflito com a seção 7 ou qualquer descrição anterior da tela `/transacoes`, as definições desta seção prevalecem.
+
+### 12.1 Tabela enxuta
+
+5 colunas visíveis: Data da compra, Descrição, Categoria, Conta, Valor. As demais informações hoje em colunas (Tipo, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2).
+
+**Indicadores visuais compactos** (sem coluna própria), junto à Descrição ou ao Valor:
+- **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão geral), Saída na cor padrão do texto.
+- **Parcela**: badge "X de Y" (mesmo estilo de tag usado para "Resgate de investimento" na Visão geral — `rounded-full bg-muted px-2 py-0.5 text-xs`).
+- **Recorrência**: badge "X de Y ↻", mesmo estilo.
+- **Investimento**: badge "Aporte" (saída) ou "Resgate" (entrada).
+
+Uma linha pode acumular mais de um badge (ex.: saída recorrente marcada como aporte tem badge de Recorrência **e** de Investimento) — badges quebram linha se não couberem lado a lado.
+
+### 12.2 Modal de detalhe (view + edição + exclusão unificadas)
+
+Clicar em qualquer ponto da linha (não um botão/ícone específico) abre um único `Dialog` com:
+- Todos os campos do registro, nos mesmos moldes do formulário de edição já existente (`EditarTransacaoConteudo`) — editáveis ou travados seguindo a mesma regra já definida para parcela/recorrência.
+- Botão "Salvar" (reaproveita `editarTransacao`).
+- Botão destrutivo "Apagar", que troca o conteúdo do **mesmo modal** para a confirmação de exclusão já existente (incluindo a opção de propagar para parcelas/ocorrências restantes) — sem sobrepor um segundo overlay.
+
+Substitui os dois componentes atuais `EditarTransacaoDialog` e `ApagarTransacaoDialog` por um único `DetalheTransacaoDialog`, com estado interno `modo: "detalhe" | "confirmarExclusao"`.
+
+### 12.3 Filtros
+
+Substitui o filtro por coluna (um `Input` por cabeçalho) por uma barra de filtros acima da tabela: busca livre por **Descrição**; filtro por **Conta** (`Select`, opção "Todas"); filtro por **Categoria** (`Select`, opção "Todas"); filtro por **Mês/Ano de referência** (dois `Select`, opção "Todos"). Reaproveita o motor de filtragem já existente do `@tanstack/react-table` — colunas que saem da tabela como visíveis (ex.: mês/ano de referência) continuam existindo como colunas ocultas (`columnVisibility`) só para fins de filtro.
+
+### 12.4 Ações removidas da tabela
+
+A coluna "Ações" deixa de existir — a linha inteira é clicável e abre o modal de detalhe (seção 12.2), eliminando o vazamento horizontal da tabela.
