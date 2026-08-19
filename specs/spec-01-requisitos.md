@@ -22,6 +22,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 1. **Autenticação**
    - Cadastro e login por email + senha.
    - Sessão autenticada obrigatória para acessar qualquer dado.
+   - Após um login bem-sucedido, o usuário é redirecionado para a Visão geral (`/visao-geral`).
 2. **Lançamento manual de transações**
    - Tela para registrar transações de **entrada** (receita) e **saída** (despesa).
    - Campos: valor, data, descrição, tipo (entrada/saída), categoria.
@@ -56,6 +57,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 10. **Navegação principal**
     - A aplicação possui três áreas principais: Visão geral, Transações e Contas. Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
     - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
+    - Um menu do usuário logado, acessível a partir de qualquer área, exibe o nome do usuário autenticado e permite fazer logoff da aplicação, redirecionando para a tela de login.
 11. **Saída recorrente**
     - Uma saída (no débito ou no crédito) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
     - Ver especificação detalhada na seção 3.4 abaixo.
@@ -173,6 +175,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 ## 6. Critérios de aceite (MVP)
 
 - [ ] Um usuário consegue se cadastrar e fazer login.
+- [ ] Após um login bem-sucedido, o usuário é redirecionado para a Visão geral.
 - [ ] Um usuário logado consegue lançar uma transação de entrada e uma de saída, com categoria e conta vinculada.
 - [ ] Um usuário consegue cadastrar, editar e apagar contas dos três tipos (Conta corrente, Cartão de crédito, Conta de investimento), com os campos específicos de cada tipo.
 - [ ] Ao lançar uma saída, o débito/crédito é deduzido automaticamente da conta escolhida (Conta corrente = débito, Cartão de crédito = crédito), sem exigir escolha manual separada.
@@ -200,6 +203,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] A tela de listagem em tabela exibe todas as colunas especificadas (Conta, Tipo, Descrição, Valor, Categoria, Data da compra, Data efetiva, Mês de referência por extenso, Parcela, Recorrência, É investimento, Conta de investimento vinculada), permite filtrar por qualquer uma delas, e permite editar/apagar cada registro.
 - [ ] A navegação principal apresenta três áreas (Visão geral, Transações, Contas) e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
 - [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
+- [ ] Um usuário logado consegue abrir o menu do usuário e fazer logoff, sendo redirecionado para a tela de login.
 - [ ] A aplicação está publicada e acessível via Vercel.
 
 ## 7. Perguntas em aberto / decisões futuras
