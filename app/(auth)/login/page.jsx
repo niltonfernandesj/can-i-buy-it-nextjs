@@ -40,7 +40,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push("/visao-geral");
     router.refresh();
   }
 
