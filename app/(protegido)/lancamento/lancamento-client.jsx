@@ -55,14 +55,24 @@ export function LancamentoClient({ contas }) {
   const ehContaCorrente = contaSelecionada?.tipo === "CONTA_CORRENTE";
   const ehCartao = contaSelecionada?.tipo === "CARTAO_CREDITO";
 
+  // Saída pode ser recorrente em conta corrente ou cartão; entrada recorrente
+  // só é permitida em conta corrente (não faz sentido em cartão de crédito).
+  const recorrenteDisponivel =
+    form.tipo === "SAIDA" ? ehCartao || ehContaCorrente : ehContaCorrente;
+
   function selecionarConta(contaId) {
     const conta = contas.find((c) => c.id === contaId);
+    const recorrenteAindaValido =
+      form.tipo === "SAIDA"
+        ? conta?.tipo === "CONTA_CORRENTE" || conta?.tipo === "CARTAO_CREDITO"
+        : conta?.tipo === "CONTA_CORRENTE";
     setForm({
       ...form,
       contaId,
       ehInvestimento: conta?.tipo === "CONTA_CORRENTE" ? form.ehInvestimento : false,
       contaInvestimentoId: conta?.tipo === "CONTA_CORRENTE" ? form.contaInvestimentoId : "",
       parcelado: conta?.tipo === "CARTAO_CREDITO" ? form.parcelado : false,
+      recorrente: form.recorrente && recorrenteAindaValido,
     });
   }
 
@@ -80,8 +90,9 @@ export function LancamentoClient({ contas }) {
     setForm({
       ...form,
       recorrente: marcado,
-      tipo: marcado ? "SAIDA" : form.tipo,
       parcelado: marcado ? false : form.parcelado,
+      // Entrada recorrente não pode ser marcada como investimento (resgate).
+      ehInvestimento: marcado && form.tipo === "ENTRADA" ? false : form.ehInvestimento,
     });
   }
 
@@ -223,7 +234,7 @@ export function LancamentoClient({ contas }) {
                 </div>
               )}
 
-              {!form.parcelado && (
+              {!form.parcelado && recorrenteDisponivel && (
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="recorrente"
@@ -299,7 +310,7 @@ export function LancamentoClient({ contas }) {
             />
           </div>
 
-          {ehContaCorrente && (
+          {ehContaCorrente && !(form.recorrente && form.tipo === "ENTRADA") && (
             <div className="flex flex-col gap-4 rounded-md border p-4">
               <div className="flex items-center gap-2">
                 <Checkbox
