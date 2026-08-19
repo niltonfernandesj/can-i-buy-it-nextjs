@@ -427,6 +427,18 @@ Estrutura persistente em menu lateral, com os três destinos e a ação "+ Nova 
 #### 8.1.2 Mobile
 Barra inferior fixa com acesso direto às três áreas. A interface não depende de menu hambúrguer para os três destinos principais.
 
+#### 8.1.3 Menu do usuário
+
+Um menu do usuário logado fica acessível a partir de qualquer área (spec-01 item 10). Mostra o nome do usuário autenticado (`session.user.name`) e uma ação "Sair".
+
+**Implementação:** `useSession()` e `signOut()` de `next-auth/react`, direto no componente `NavegacaoPrincipal` (já client component) — o `SessionProvider` já está montado na raiz (`app/providers.jsx`), sem necessidade de buscar a sessão em `layout.jsx` nem prop-drilling. `signOut({ callbackUrl: "/login" })` cuida do redirecionamento pós-logoff.
+
+Componente novo: `Button` (gatilho) + `DropdownMenu` do shadcn/ui (ainda não instalado no projeto — adicionar via `npx shadcn add dropdown-menu`), com um item de rótulo (nome/e-mail) e um item de ação "Sair".
+
+**Desktop:** rodapé do `<aside>` (`mt-auto`, abaixo da navegação), mesmo padrão visual dos itens de navegação (ícone + texto).
+
+**Mobile:** a barra inferior já está ocupada (3 destinos + "Nova"). O menu do usuário fica numa **barra superior fixa e enxuta** (`fixed top-0 inset-x-0 md:hidden`), só com esse menu, alinhado à direita. `layout.jsx` ganha padding-top no mobile (`pt-14 md:pt-0`) para compensar, simétrico ao `pb-16` já existente para a barra inferior.
+
 ### 8.2 Estrutura das áreas principais
 
 #### 8.2.1 Visão geral (`/visao-geral`)
@@ -522,6 +534,7 @@ Descrições no detalhamento diário ocupam uma única linha, truncadas com reti
 | `BlocoConsolidado` | `components/visao-geral/BlocoConsolidado.jsx` | Estrutura comum de Entradas/Saídas débito/Saídas crédito: cabeçalho + agrupamento diário (8.3.4, 8.3.6, 8.3.7), reaproveitado com props de ícone/cor/dados por tipo |
 | `BlocoInvestimentos` | `components/visao-geral/BlocoInvestimentos.jsx` | Variante agrupada por conta de investimento, não por dia (8.3.14) |
 | `DetalheDiario` | `components/visao-geral/DetalheDiario.jsx` | `Popover` (desktop) / `Sheet` bottom (mobile) de detalhamento (8.3.4) |
+| `MenuUsuario` | `components/navegacao/menu-usuario.jsx` | Nome do usuário + ação "Sair" (`DropdownMenu`), usado dentro de `NavegacaoPrincipal` (8.1.3) |
 
 ### 8.5 Impacto em código já implementado (não coberto por este documento — gera novas tasks em spec-03)
 
