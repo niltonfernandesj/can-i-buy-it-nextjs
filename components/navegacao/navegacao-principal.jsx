@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, ArrowLeftRight, Wallet, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MenuUsuario } from "@/components/navegacao/menu-usuario";
 
 const DESTINOS = [
   { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
@@ -44,7 +45,15 @@ export function NavegacaoPrincipal() {
             );
           })}
         </nav>
+
+        <div className="mt-auto">
+          <MenuUsuario />
+        </div>
       </aside>
+
+      <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-end border-b bg-background px-4 py-2 md:hidden">
+        <MenuUsuario align="end" />
+      </header>
 
       <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t bg-background md:hidden">
         {DESTINOS.map(({ href, label, Icone }) => {
