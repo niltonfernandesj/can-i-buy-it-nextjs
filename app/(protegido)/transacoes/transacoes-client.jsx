@@ -441,7 +441,7 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <p className="text-sm text-muted-foreground">
-        Data da compra: {formatarDataCurta(transacao.dataCompra)} · Mês de referência:{" "}
+        Data do lançamento: {formatarDataCurta(transacao.dataCompra)} · Mês de referência:{" "}
         {formatarMesReferencia(transacao.mesReferencia, transacao.anoReferencia)}
       </p>
 

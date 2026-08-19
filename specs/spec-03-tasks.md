@@ -205,6 +205,9 @@ Substitui o filtro por coluna por uma barra acima da tabela: busca livre por Des
 **Task 42. Coluna de data usa Data efetiva, não Data da compra**
 Troca a primeira coluna da tabela de `dataCompra` para `dataEfetiva` e a ordenação (`orderBy`) da consulta em `page.jsx` para `dataEfetiva` (Design §12.1). O modal de detalhe passa a exibir "Data da compra" no lugar de "Data efetiva" no bloco somente-leitura.
 
+**Task 43. Rótulo "Data do lançamento" no modal de detalhe**
+Troca o rótulo "Data da compra" por "Data do lançamento" no texto somente-leitura do modal de detalhe (Design §12.1) — termo neutro para entrada, saída e investimento. Só o rótulo muda; o campo `dataCompra` no schema não é renomeado.
+
 *(Checkpoint sugerido: critérios de aceite de `/transacoes` — spec-01 §6.)*
 
 ---
