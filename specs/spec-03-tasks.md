@@ -179,6 +179,18 @@ Login bem-sucedido passa a redirecionar para `/visao-geral` em vez de `/`.
 
 ---
 
+## M11 — Entrada recorrente
+
+**Task 37. Estender `criarTransacaoRecorrente` para aceitar `tipo`**
+Passa a receber `tipo` (`ENTRADA` ou `SAIDA`). `gerarOcorrenciasRecorrencia` não muda (Design §5.2, já agnóstica de tipo). Validação: `ENTRADA` só é permitida em `CONTA_CORRENTE` (rejeita `CARTAO_CREDITO`) e nunca pode vir com `ehInvestimento = true` (rejeita resgate recorrente).
+
+**Task 38. Habilitar "Recorrente" para entrada em `/lancamento`**
+Checkbox "Recorrente" passa a ficar disponível também com Tipo = Entrada quando a conta é Conta corrente (não quando é Cartão de crédito). Quando Recorrente + Entrada estiverem marcados, o checkbox "É investimento" fica indisponível (Design §7).
+
+*(Checkpoint sugerido: critérios de aceite de entrada recorrente — spec-01 §6.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -190,6 +202,7 @@ Login bem-sucedido passa a redirecionar para `/visao-geral` em vez de `/`.
 | M5 | Escopo itens 2, 3, 6, 8 (lançamento, edição, investimento, parcelamento) |
 | M6 | Escopo itens 7, 9 (Visão geral, tabela) |
 | M7 | Escopo item 10 (navegação principal, ação global, wizard de Contas) e alterações de escopo da Visão geral |
-| M8 | Escopo item 11 (saída recorrente) |
+| M8 | Escopo item 11 (transação recorrente — saída) |
 | M9 | Publicação (spec-01 §4) |
 | M10 | Escopo itens 1, 10 (redirecionamento pós-login, menu do usuário) |
+| M11 | Escopo item 11 (transação recorrente — entrada) |
