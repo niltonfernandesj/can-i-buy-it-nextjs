@@ -50,7 +50,7 @@ export default async function VisaoGeralPage({ searchParams }) {
   const totalSaidasCredito = somarBloco(saidasCredito);
   const totalSaidas = totalSaidasDebito + totalSaidasCredito;
   const totalInvestimentos = somarInvestimentos(investimentos);
-  const disponivel = totalEntradas - totalSaidas;
+  const disponivel = totalEntradas - totalSaidas - totalInvestimentos;
 
   return (
     <main className="mx-auto max-w-4xl p-8">
