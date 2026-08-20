@@ -1017,6 +1017,39 @@ Entre os avisos do Next há um diretamente relevante para esta arquitetura: *"Un
 
 A task correspondente deve, portanto, **avaliar antes de atualizar**: verificar quais avisos se aplicam a um deploy na Vercel (parte afeta apenas self-hosted), tratar primeiro o que é explorável neste contexto, e tratar o salto de major como trabalho próprio, com QA completo — nunca como um comando automático.
 
+**Avaliação (Task 52):**
+
+Confirmado por inspeção do projeto: sem `rewrites`/`i18n` em `next.config.mjs` (arquivo praticamente vazio), sem runtime Edge em nenhuma rota, sem uso de `next/image` ou `next/script`, sem servidor customizado (deploy padrão da Vercel via `next start`, sem `server.js`). Isso elimina a maior parte dos avisos do `next` por não se aplicarem a este projeto:
+
+| Aviso | Aplica-se aqui? |
+|---|---|
+| DoS no Image Optimizer via `remotePatterns` | Não — self-hosted only; hospedado na Vercel e sem `next/image` |
+| Cache de disco do `next/image` sem limite | Não — mesma razão |
+| DoS na API de Image Optimization | Não — mesma razão |
+| Contrabando de requisição HTTP em `rewrites` | Não — sem `rewrites` configurado |
+| SSRF em `rewrites` via hostname controlado | Não — mesma razão |
+| XSS com nonces de CSP no App Router | Não — CSP com nonce não é usado |
+| XSS em scripts `beforeInteractive` | Não — `next/script` não é usado |
+| SSRF em upgrades de WebSocket | Não — sem uso de WebSocket |
+| Bypass de Middleware/Proxy em i18n do Pages Router | Não — App Router puro, sem i18n |
+| SSRF em Server Actions em servidores customizados | Não — deploy padrão da Vercel, sem `server.js` |
+| Payload de Server Action sem limite no runtime Edge | Não — nenhuma rota roda em Edge |
+| DoS via deserialização de requisição HTTP em RSC | **Potencialmente** — a aplicação usa Server Components extensivamente |
+| DoS com Server Components (2 avisos) | **Potencialmente** — mesma razão |
+| Cache poisoning em redirects de Middleware/Proxy | **Potencialmente** — a aplicação tem middleware de autenticação |
+| Cache poisoning por colisão no cache-busting de RSC | **Potencialmente** — uso extensivo de RSC |
+| DoS no App Router usando Server Actions | **Potencialmente** — toda mutação da aplicação passa por Server Actions |
+| Confusão de cache em requisições com corpo (2 avisos) | **Potencialmente** — Server Actions são requisições POST com corpo |
+| Divulgação não autenticada de endpoints internos de Server Function | **Sim, diretamente relevante** — arquitetura inteiramente baseada em Server Actions |
+
+Os itens marcados como relevantes são todos avisos da própria maquinaria de RSC/Server Actions do Next.js — não têm patch isolado disponível na série 14.x; só se resolvem com o salto de major já identificado como fora do escopo desta task.
+
+Para `@auth/core`/`next-auth`: o app usa somente `CredentialsProvider`, sem provider de Email nem OAuth — a falha de normalização de e-mail (usada pelo provider de Magic Link) e a de cookies de state/nonce/PKCE (usada por providers OAuth) **não se aplicam**. O `getToken()` com cabeçalho `Bearer` malformado é uma exceção não capturada que teoricamente poderia derrubar uma requisição ao middleware; os nomes/domínios de cookie usados pelo NextAuth são fixos por configuração, não vêm de input do usuário, o que limita a exploração do problema do pacote `cookie`. Confirmado via `npm view next-auth versions` que **4.24.15 (a versão em uso) é a última da série 4.x** — não existe patch mais novo na mesma major esperando para ser instalado; o único caminho de correção real é a migração para o Auth.js v5.
+
+Para `glob` (via `eslint-config-next`): a vulnerabilidade é na **CLI** do pacote (flags `-c`/`--cmd`), nunca invocada por nós — é dependência de build/lint apenas, nunca executa em produção. Confirmado via `npm view eslint-config-next versions` que não existe uma versão 14.x estável que corrija isso (o changelog pula de `14.2.x` direto para `14.3.0-canary.*` e depois `15.x`); a correção só chega ao acompanhar o Next 15+.
+
+**Conclusão:** nenhum dos oito avisos tem correção segura e isolada disponível dentro da major version atual. Os dois saltos de major (`next` 14→15 e `next-auth` 4→5) ficam registrados como próximos passos dedicados em spec-01 §7, cada um exigindo seu próprio ciclo de QA completo — não algo a ser feito dentro desta task nem via `npm audit fix --force`.
+
 ### 17.7 Achados avaliados e conscientemente não tratados
 
 | Achado | Por que não vira task |

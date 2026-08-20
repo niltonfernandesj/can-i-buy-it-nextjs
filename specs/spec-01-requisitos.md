@@ -222,7 +222,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - **Segurança:** a aplicação hospeda dados financeiros reais de uma família numa URL pública. Portanto:
   - Nenhuma rota que crie usuários pode ser exposta (seção 2).
   - Toda Server Action verifica sessão antes de ler ou escrever.
-  - Dependências com falhas conhecidas de severidade alta ou crítica são tratadas, não acumuladas — `npm audit` faz parte da revisão antes de publicar.
+  - Dependências com falhas conhecidas de severidade alta ou crítica são **avaliadas antes de publicar** — `npm audit` faz parte da revisão. "Tratar" nem sempre significa atualizar na hora: quando a única correção disponível exige um salto de major com esforço próprio (ex.: `next-auth` fixa só no Auth.js v5), a decisão consciente de adiar — registrada com o motivo em spec-02 §17.6 e o trabalho futuro em spec-01 §7 — conta como tratamento. O que não é aceitável é a falha ficar sem avaliação nenhuma.
   - Dados que dependem de regras de cálculo já aplicadas (ex.: `mesReferencia` derivado do fechamento do cartão) não podem ser invalidados por uma edição posterior da configuração que os originou.
   - Sessões têm duração limitada, proporcional ao risco de um token vazado.
 
@@ -335,3 +335,5 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - Formato exato do CSV de fatura de cartão (a definir quando essa fase for priorizada).
 - Se e como implementar categorização automática (regras vs. IA) numa fase 2.
 - Se o histórico de alterações (quem editou o quê) será necessário conforme o uso familiar evoluir.
+- **Atualização do Next.js (14 → 15+)** — resolveria os avisos de segurança da própria maquinaria de RSC/Server Actions (spec-02 §17.6), incluindo um diretamente relevante para esta arquitetura ("Unauthenticated disclosure of internal Server Function endpoints"). Exige trabalho dedicado: no Next 15 `searchParams`/`params` viram assíncronos, o que quebra `visao-geral/page.jsx`, e pede QA completo em todas as rotas — não é um `npm audit fix --force`.
+- **Migração do NextAuth para Auth.js v5 (next-auth 4 → 5)** — resolveria as falhas do `@auth/core` (spec-02 §17.6). A versão em uso (4.24.15) é a última da série 4.x; não há patch mais novo na mesma major esperando. Também exige trabalho dedicado e QA completo do fluxo de autenticação.
