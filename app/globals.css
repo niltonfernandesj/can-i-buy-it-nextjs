@@ -27,14 +27,14 @@ body {
     --secondary: #232328;
     --secondary-foreground: #F4F4F5;
     --muted: #232328;
-    --muted-foreground: #85858F;
+    --muted-foreground: #8C8C96;
     --accent: #232328;
     --accent-foreground: #F4F4F5;
-    --destructive: #DC2626;
+    --destructive: #C82222;
     --destructive-foreground: #F4F4F5;
     --border: #2E2E34;
-    --input: #2E2E34;
-    --ring: #85858F;
+    --input: #6C6C76;
+    --ring: #8C8C96;
     --chart-1: #E4E4E7;
     --chart-2: #A1A1AA;
     --chart-3: #71717A;
@@ -48,7 +48,7 @@ body {
     --sidebar-accent: #232328;
     --sidebar-accent-foreground: #F4F4F5;
     --sidebar-border: #2E2E34;
-    --sidebar-ring: #85858F;
+    --sidebar-ring: #8C8C96;
 
     /* Cores semânticas (spec-02 §16.1) — antes classes literais do Tailwind
        (text-emerald-600 etc.), agora tokens do tema, substituídas na Task 54. */
@@ -58,7 +58,7 @@ body {
     --saida-credito: #FB7185;
     --periodo-bg: #262640;
     --periodo-fg: #A5B4FC;
-    --estimado: #85858F;
+    --estimado: #8C8C96;
   }
 }
 @layer base {
