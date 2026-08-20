@@ -55,12 +55,26 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Visualização tabular de todas as transações lançadas, uma linha por registro.
    - Ver especificação detalhada na seção 3.3 abaixo.
 10. **Navegação principal**
-    - A aplicação possui três áreas principais: Visão geral, Transações e Contas. Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
+    - A aplicação possui cinco áreas, organizadas em **dois grupos semânticos**:
+      - **Dados** — Visão geral, Transações e Projeção.
+      - **Ajustes** — Contas e Valores padrão.
+    - Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
+    - **No mobile**, o menu inferior tem três alvos: o grupo Dados, a ação "Nova transação" em destaque no centro, e o grupo Ajustes. Dentro do grupo Dados, as três telas são alternadas por **abas fixas no topo do conteúdo**, a um único toque de distância uma da outra. O grupo Ajustes abre uma folha inferior com seus dois destinos.
+    - **No desktop**, a barra lateral exibe os cinco destinos simultaneamente, com os dois grupos separados apenas por um **divisor** (sem rótulos de grupo).
     - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
     - Um menu do usuário logado, acessível a partir de qualquer área, exibe o nome do usuário autenticado e permite fazer logoff da aplicação, redirecionando para a tela de login.
 11. **Transação recorrente**
     - Uma saída (no débito ou no crédito) ou uma entrada (só em Conta corrente) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
     - Ver especificação detalhada na seção 3.4 abaixo.
+12. **Valores padrão (estimativas mensais)**
+    - O usuário mantém duas listas de valores esperados por mês — uma de **receitas** e uma de **despesas** — usadas para projetar meses cujos lançamentos reais ainda não existem.
+    - Ver especificação detalhada na seção 3.5 abaixo.
+13. **Projeção de 12 meses**
+    - Tela dedicada que consolida os 12 meses seguintes, combinando lançamentos reais, compromissos já assumidos (parcelas e recorrências) e os valores padrão.
+    - Ver especificação detalhada na seção 3.6 abaixo.
+14. **Simulação de compra ("Can I Buy It?")**
+    - Na tela de Projeção, o usuário simula uma compra parcelada no crédito e vê o impacto imediato nos 12 meses.
+    - Ver especificação detalhada na seção 3.7 abaixo.
 
 ### 3.1 Especificação — Visão geral
 
@@ -73,6 +87,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   3. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
   4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
 - Nos blocos 1, 2 e 3, as transações são **agrupadas e exibidas por dia** dentro do mês filtrado.
+- Quando aplicável (ver seção 3.5), os **valores padrão** entram nos blocos Entradas, Saídas no débito e Saídas no crédito como uma linha própria, **visualmente distinta dos lançamentos reais** — deixando claro qual parcela do total é estimativa e qual é fato consumado.
 - **Regra de mês de referência:**
   - Para **Entradas**, **Saídas no débito** e **Investimentos**: o mês de referência é o mês da própria data da transação.
   - Para **Saídas no crédito**: o mês de referência é o **mês do vencimento da fatura** à qual a compra foi atribuída — não o mês da data da compra. Como o fechamento do cartão pode cair antes do fim do mês, uma compra feita, por exemplo, em fins de um mês pode cair na fatura (e portanto no mês de referência) do mês seguinte.
@@ -121,12 +136,60 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - Uma saída recorrente vinculada à Conta corrente pode também ser marcada como investimento (aporte), como qualquer saída no débito — as duas marcações são independentes.
 - Uma **entrada recorrente não pode** ser marcada como investimento (resgate) — combinação fora do escopo do MVP.
 
+### 3.5 Especificação — Valores padrão
+
+- O usuário mantém **duas listas** de valores esperados por mês:
+  - **Receitas padrão** — ex.: "Salário: R$ 8.000".
+  - **Despesas padrão** — ex.: "Alimentação: R$ 1.000", "Combustível: R$ 200".
+- Cada item tem **descrição livre** e **valor**. Itens de despesa indicam ainda se são **crédito ou débito**; itens de receita não têm essa distinção (assume-se Conta corrente).
+- Os itens **não são vinculados a uma conta específica** nem a uma categoria — são estimativas difusas, não lançamentos.
+- A mesma lista vale para **todos os meses projetados**; não há exceção por mês.
+- Os valores são **informados pelo usuário**. O sistema não os calcula a partir do histórico de lançamentos.
+- Valores padrão **não geram transações**: não aparecem na tela de Transações, não podem ser editados como lançamento e não possuem data.
+
+**Regra do teto — como a estimativa se combina com o real:**
+
+- Um valor padrão funciona como **teto esperado**, que os lançamentos reais vão consumindo. O valor projetado para um item é `máx(0, valor padrão − real avulso já lançado no período)`.
+- Se o real ultrapassar a estimativa, **vale o real** — a estimativa apenas deixa de somar.
+- **Apenas gastos avulsos consomem a estimativa.** Parcelas e ocorrências de recorrência não a consomem, pois já se projetam sozinhas para os meses futuros; contá-las duplicaria o mesmo compromisso.
+- A estimativa deixa de ser aplicada quando o período não pode mais receber novos gastos:
+  - **Despesas no crédito:** vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
+  - **Despesas no débito e receitas:** valem até o **fim do mês** de referência.
+- Como consequência, a composição de cada mês degrada naturalmente com o tempo: **meses passados** nunca exibem estimativa; o **mês corrente** exibe uma composição de real e estimado; **meses futuros** são majoritariamente estimados, somados aos compromissos já assumidos.
+
+### 3.6 Especificação — Projeção de 12 meses
+
+- Tela dedicada, **separada da Visão geral**, que consolida os **12 meses seguintes** a partir do mês atual (janela deslizante).
+- Para cada mês projetado, exibe o consolidado de entradas, saídas e disponível, calculado a partir de três fontes somadas:
+  1. **Lançamentos reais** já existentes naquele mês de referência.
+  2. **Compromissos já assumidos** — parcelas e ocorrências de recorrência que caem naquele mês.
+  3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
+- A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês.
+- A Visão geral (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
+
+### 3.7 Especificação — Simulação de compra ("Can I Buy It?")
+
+- Disponível **apenas** na tela de Projeção (3.6).
+- O usuário informa: **cartão de crédito**, **data da compra**, **valor** e **quantidade de parcelas**. Não há campo de descrição.
+- Aplica-se **somente a compras no crédito** — não há simulação de gasto no débito.
+- Ao simular, os números dos 12 meses são recalculados como se a compra existisse, distribuindo as parcelas pelos meses de referência conforme as mesmas regras de fechamento de fatura e parcelamento já definidas (seções 3.1 e 3.2).
+- A simulação é **efêmera**: não é persistida, não gera transações e é descartada ao sair da tela.
+- O sistema **não emite veredito** ("pode comprar" / "não pode") nem aplica reserva mínima — apenas apresenta os números recalculados, deixando a conclusão com o usuário.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).
 - Controle de orçamento (limite por categoria).
 - Entrada recorrente marcada como investimento (resgate recorrente) — só saída recorrente pode ser aporte.
-- Recorrência "sem data de término" — a quantidade de meses é sempre definida pelo usuário no lançamento.
+- Recorrência "sem data de término" — a quantidade de meses é sempre definida pelo usuário no lançamento. (A necessidade de projetar valores indefinidamente é atendida pelos **valores padrão** da seção 3.5, que são um mecanismo distinto e não geram transações.)
+- Veredito automático da simulação ("pode comprar" / "não pode") e reserva mínima configurável.
+- Salvar e comparar múltiplos cenários de simulação.
+- Simulação de compra à vista no débito — a simulação cobre apenas o crédito.
+- Converter uma simulação em lançamento real.
+- Vincular valores padrão a uma conta específica ou a uma categoria.
+- Exceções mensais nos valores padrão (ex.: um valor diferente só em dezembro).
+- Cálculo automático dos valores padrão a partir do histórico de lançamentos.
+- Alternância entre tema claro e escuro — a aplicação adota tema escuro único.
 - Dados privados por usuário / permissões diferenciadas.
 - Histórico de alterações (auditoria) em transações.
 - Multi-moeda (assume-se BRL único).
@@ -138,6 +201,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - **Stack sugerida:** Next.js (full-stack) + banco de dados leve (SQLite via Prisma/Drizzle) + NextAuth (ou equivalente) para autenticação. A ser confirmado na fase de Design.
 - **Hospedagem:** Vercel (plano hobby/gratuito).
 - **Responsividade:** deve funcionar bem em desktop e mobile (uso familiar no dia a dia, provavelmente via celular).
+- **Tema visual:** a aplicação adota um **tema escuro único**, sem alternância claro/escuro e sem seguir a preferência do sistema. Todas as cores devem vir do sistema de tokens — incluindo as cores semânticas hoje cravadas na paleta clara (entradas, investimentos, saídas no débito, saídas no crédito e o destaque do seletor de período) — e o contraste de cada elemento sobre o novo fundo precisa ser revisado, não apenas herdado.
 
 ## 5. Modelo de dados (preliminar — a refinar no Design)
 
@@ -169,6 +233,12 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 **Categoria**
 - Lista fixa (enum ou seed no banco), sem tabela de gestão via UI.
 
+**Valor padrão**
+- id, descrição, valor
+- tipo (entrada | saída)
+- meio (crédito | débito) — aplicável apenas quando tipo = saída; nulo para entradas
+- Não possui data, conta vinculada nem categoria: vale para todos os meses projetados e nunca gera transações. É consumido pelos lançamentos reais conforme a regra do teto (seção 3.5), mas não é alterado por eles.
+
 ## 6. Critérios de aceite (MVP)
 
 - [ ] Um usuário consegue se cadastrar e fazer login.
@@ -199,12 +269,32 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] É possível editar uma ocorrência recorrente isolada sem afetar as demais, ou editar e propagar para as ocorrências futuras.
 - [ ] Não é possível marcar uma mesma saída como Parcelada e Recorrente simultaneamente.
 - [ ] A Visão geral mostra corretamente entradas, saídas e disponível do mês corrente.
-- [ ] A tela de listagem em tabela exibe as colunas Data da compra, Descrição, Categoria, Conta e Valor, com indicadores visuais compactos para tipo/parcela/recorrência/investimento.
-- [ ] Clicar em qualquer linha da tabela abre um modal com o detalhe completo do registro (Tipo, Data efetiva, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) e as ações de editar/apagar.
+- [ ] A tela de listagem em tabela exibe as colunas Data efetiva, Descrição, Categoria, Conta e Valor, com indicadores visuais compactos para tipo/parcela/recorrência/investimento.
+- [ ] Clicar em qualquer linha da tabela abre um modal com o detalhe completo do registro (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) e as ações de editar/apagar.
 - [ ] A tela permite buscar por descrição e filtrar por Conta, Categoria e Mês/Ano de referência.
-- [ ] A navegação principal apresenta três áreas (Visão geral, Transações, Contas) e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
+- [ ] A navegação principal apresenta cinco áreas em dois grupos — Dados (Visão geral, Transações, Projeção) e Ajustes (Contas, Valores padrão) — e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
 - [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
 - [ ] Um usuário logado consegue abrir o menu do usuário e fazer logoff, sendo redirecionado para a tela de login.
+- [ ] O usuário consegue cadastrar, editar e apagar itens nas listas de receitas padrão e despesas padrão, informando descrição e valor.
+- [ ] Um item de despesa padrão indica se é crédito ou débito; um item de receita padrão não pede essa informação.
+- [ ] Valores padrão não aparecem na tela de Transações e não podem ser editados como lançamento.
+- [ ] Num mês futuro sem lançamentos reais, a projeção exibe o valor padrão integral.
+- [ ] Num mês cuja fatura ainda está aberta, com gastos reais avulsos já lançados, a projeção exibe apenas a diferença entre o valor padrão e o real já gasto.
+- [ ] Quando o gasto real avulso ultrapassa o valor padrão, a projeção passa a exibir o valor real, sem somar a estimativa por cima.
+- [ ] Parcelas e ocorrências de recorrência não consomem o valor padrão.
+- [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
+- [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
+- [ ] A Visão geral distingue visualmente a parcela estimada da parcela real dos totais.
+- [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual, com entradas, saídas e disponível de cada um.
+- [ ] A tela de Projeção distingue visualmente valores reais de estimados.
+- [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
+- [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.
+- [ ] A simulação não é persistida: ao sair e voltar à tela de Projeção, os números voltam ao estado sem simulação.
+- [ ] A simulação não cria transações reais.
+- [ ] No mobile, o menu inferior apresenta três alvos: grupo Dados, ação "Nova transação" ao centro e grupo Ajustes.
+- [ ] Dentro do grupo Dados no mobile, alternar entre Visão geral, Transações e Projeção custa um único toque.
+- [ ] No desktop, a barra lateral exibe os cinco destinos, com os dois grupos separados por um divisor.
+- [ ] A aplicação é exibida em tema escuro, com todos os elementos legíveis sobre o novo fundo.
 - [ ] A aplicação está publicada e acessível via Vercel.
 
 ## 7. Perguntas em aberto / decisões futuras
