@@ -4,6 +4,15 @@ export default withAuth({
   pages: {
     signIn: "/login",
   },
+  callbacks: {
+    authorized: ({ token, req }) => {
+      if (!token) return false;
+      if (req.nextUrl.pathname.startsWith("/usuarios")) {
+        return token.ehAdmin === true;
+      }
+      return true;
+    },
+  },
 });
 
 export const config = {

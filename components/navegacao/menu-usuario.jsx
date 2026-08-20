@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { User, LogOut } from "lucide-react";
+import { User, Users, LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,6 +26,16 @@ export function MenuUsuario({ align = "start" }) {
           {session?.user?.email}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {session?.user?.ehAdmin && (
+          // Link temporário (Task 49) — a entrada definitiva no grupo Ajustes
+          // vem na Task 65, quando a navegação é reorganizada.
+          <DropdownMenuItem asChild>
+            <Link href="/usuarios">
+              <Users className="h-4 w-4" />
+              Gerenciar usuários
+            </Link>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => signOut({ callbackUrl: "/login" })}>
           <LogOut className="h-4 w-4" />
           Sair
