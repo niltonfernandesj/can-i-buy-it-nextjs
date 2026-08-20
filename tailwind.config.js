@@ -58,6 +58,15 @@ module.exports = {
   				'accent-foreground': 'var(--sidebar-accent-foreground)',
   				border: 'var(--sidebar-border)',
   				ring: 'var(--sidebar-ring)'
+  			},
+  			entrada: 'var(--entrada)',
+  			investimento: 'var(--investimento)',
+  			'saida-debito': 'var(--saida-debito)',
+  			'saida-credito': 'var(--saida-credito)',
+  			estimado: 'var(--estimado)',
+  			periodo: {
+  				DEFAULT: 'var(--periodo-bg)',
+  				foreground: 'var(--periodo-fg)'
   			}
   		},
   		borderRadius: {
