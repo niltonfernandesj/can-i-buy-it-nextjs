@@ -50,14 +50,17 @@ O roteiro:
 
 **O banco de desenvolvimento contém as contas e transações reais do usuário, e a aplicação não tem isolamento por usuário** — qualquer sessão autenticada enxerga tudo. Um seletor amplo do Playwright alcança dados reais.
 
-Isso já causou estrago: um locator genérico pegou o primeiro botão "Editar" da página e renomeou uma conta real do usuário. Foi detectado por uma verificação no banco logo depois e revertido, mas não pode se repetir.
+Isso já causou estrago **duas vezes**. Primeiro, um locator genérico pegou o primeiro botão "Editar" da página e renomeou uma conta real do usuário. Depois, num CRUD de usuários, um locator do tipo `locator("div", { has: ... }).filter({ has: ... })` combinou matches de várias divs aninhadas (a linha específica **e** seus containers ancestrais, que também "continham" o texto-alvo por conterem a linha inteira) e acabou editando o **usuário admin real** — nome e senha sobrescritos, senha original perdida sem backup. Em ambos os casos o registro atingido era o **primeiro da lista** (o mais antigo, por `orderBy: criadoEm asc`) — e é exatamente esse o registro real do usuário, já que ele foi o primeiro a existir no banco. Ambos foram detectados por verificação no banco logo depois e corrigidos, mas o segundo incidente prova que a regra já escrita aqui não bastou — reforçando-a:
 
 Regras, portanto:
 
 - **Nunca** use locators genéricos (`page.locator("button").first()`, filtros por classe solta) em telas que misturam dados reais e de QA.
+- **Cuidado especial com `locator(seletor, { has: ... }).filter({ has: ... })`**: se o `has` interno casa com qualquer descendente (não só filho direto), a busca externa pode combinar a linha certa **e** todos os containers ancestrais dela — e um `.first()` subsequente pode pegar um elemento de um container muito mais amplo que a linha pretendida. Prefira selecionar a linha por uma classe exclusiva daquele nível de aninhamento (`locator("div.flex.items-center.justify-between").filter({ hasText: "..." })`) a compor `has`/`filter` em cascata.
+- **Numa lista ordenada por `criadoEm` (ou qualquer critério onde o registro real é o mais antigo/primeiro), o risco de um locator ambíguo acertar o mais antigo é maior, não menor** — é ele que aparece primeiro na página. Trate isso como motivo a mais para escopar com precisão, nunca como "provavelmente vai pegar um item de QA".
 - **Filtre a tela pelos dados de QA antes de agir** — ex.: digite a descrição exclusiva do registro de teste no campo de busca e só então interaja com a linha.
 - Prefixe tudo que criar com um marcador exclusivo (`QA41 ...`) para que os seletores nunca sejam ambíguos.
 - Ao limpar, apague **por `usuarioId` do usuário de QA** — nunca por nome, descrição ou data.
+- **Depois de qualquer ação de edição/exclusão via locator não trivial, confirme no banco *antes* de seguir** — não só ao final do QA. O segundo incidente só foi pego porque um teste de persistência, rodado horas depois, checou o registro errado por e-mail; uma verificação imediata pós-clique teria pego na hora.
 
 ### `next dev` × `next start`
 
