@@ -36,6 +36,7 @@ model Usuario {
   nome         String
   email        String   @unique
   senhaHash    String
+  ehAdmin      Boolean  @default(false) // gestão de usuários — spec-02 §17.2
   criadoEm     DateTime @default(now())
 
   contas       Conta[]
