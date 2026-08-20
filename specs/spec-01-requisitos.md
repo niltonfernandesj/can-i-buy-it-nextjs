@@ -66,8 +66,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 11. **Transação recorrente**
     - Uma saída (no débito ou no crédito) ou uma entrada (só em Conta corrente) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
     - Ver especificação detalhada na seção 3.4 abaixo.
-12. **Valores padrão (estimativas mensais)**
-    - O usuário mantém duas listas de valores esperados por mês — uma de **receitas** e uma de **despesas** — usadas para projetar meses cujos lançamentos reais ainda não existem.
+12. **Valores padrão**
+    - O usuário mantém duas listas de valores mensais: **receitas padrão**, que entram integralmente em todo mês (renda perpétua, sem data de término), e **despesas padrão**, que estimam o gasto corrente dos meses ainda não realizados.
     - Ver especificação detalhada na seção 3.5 abaixo.
 13. **Projeção de 12 meses**
     - Tela dedicada que consolida os 12 meses seguintes, combinando lançamentos reais, compromissos já assumidos (parcelas e recorrências) e os valores padrão.
@@ -147,15 +147,25 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - Os valores são **informados pelo usuário**. O sistema não os calcula a partir do histórico de lançamentos.
 - Valores padrão **não geram transações**: não aparecem na tela de Transações, não podem ser editados como lançamento e não possuem data.
 
-**Regra do teto — como a estimativa se combina com o real:**
+As duas listas **não seguem a mesma regra** — receita padrão é um lançamento perpétuo, despesa padrão é uma estimativa com teto.
 
-- Um valor padrão funciona como **teto esperado**, que os lançamentos reais vão consumindo. O valor projetado para um item é `máx(0, valor padrão − real avulso já lançado no período)`.
+**Receitas padrão — valor cheio, sempre:**
+
+- Uma receita padrão entra **integralmente em todo mês**, sem teto e sem ser consumida por nada. Ela não é uma estimativa: é a renda mensal do usuário, declarada uma vez e válida indefinidamente.
+- **Entradas reais somam por cima**, sem descontar. Uma receita pontual (bônus, 13º, freelance) é um ganho adicional àquele mês, não parte da renda padrão.
+- **Consequência operacional:** a mesma renda não deve existir nos dois lugares. Ao adotar receitas padrão, o usuário deixa de lançar entradas recorrentes para aquela renda — do contrário, os meses em que ambas existirem contarão o valor duas vezes.
+- **Limitação aceita:** como uma receita padrão não tem vigência, alterar seu valor muda também os meses já passados. Para um app de uso pessoal com foco no futuro, isso é preferível à complexidade de versionar o valor no tempo.
+
+**Despesas padrão — teto consumido pelo real:**
+
+- Uma despesa padrão funciona como **teto esperado**, que os lançamentos reais vão consumindo. O valor projetado é `máx(0, total padrão do meio − real já lançado que consome)`.
 - Se o real ultrapassar a estimativa, **vale o real** — a estimativa apenas deixa de somar.
-- **Apenas gastos avulsos consomem a estimativa.** Parcelas e ocorrências de recorrência não a consomem, pois já se projetam sozinhas para os meses futuros; contá-las duplicaria o mesmo compromisso.
+- **Consomem a estimativa:** gastos avulsos e **ocorrências de recorrência** — ambos representam o gasto corrente e previsível que a tabela modela.
+- **Não consomem, somam por cima:** **parcelas**. Uma parcela é o compromisso pontual de uma compra específica, não parte do gasto do dia a dia — é exatamente o que o usuário quer ver somado à sua média.
 - A estimativa deixa de ser aplicada quando o período não pode mais receber novos gastos:
-  - **Despesas no crédito:** vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
-  - **Despesas no débito e receitas:** valem até o **fim do mês** de referência.
-- Como consequência, a composição de cada mês degrada naturalmente com o tempo: **meses passados** nunca exibem estimativa; o **mês corrente** exibe uma composição de real e estimado; **meses futuros** são majoritariamente estimados, somados aos compromissos já assumidos.
+  - **Crédito:** vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
+  - **Débito:** vale até o **fim do mês** de referência.
+- Como consequência, a composição de despesas de cada mês degrada naturalmente com o tempo: **meses passados** nunca exibem estimativa; o **mês corrente** exibe uma composição de real e estimado; **meses futuros** são majoritariamente estimados, somados às parcelas já comprometidas.
 
 ### 3.6 Especificação — Projeção de 12 meses
 
@@ -278,10 +288,12 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - [ ] O usuário consegue cadastrar, editar e apagar itens nas listas de receitas padrão e despesas padrão, informando descrição e valor.
 - [ ] Um item de despesa padrão indica se é crédito ou débito; um item de receita padrão não pede essa informação.
 - [ ] Valores padrão não aparecem na tela de Transações e não podem ser editados como lançamento.
-- [ ] Num mês futuro sem lançamentos reais, a projeção exibe o valor padrão integral.
-- [ ] Num mês cuja fatura ainda está aberta, com gastos reais avulsos já lançados, a projeção exibe apenas a diferença entre o valor padrão e o real já gasto.
-- [ ] Quando o gasto real avulso ultrapassa o valor padrão, a projeção passa a exibir o valor real, sem somar a estimativa por cima.
-- [ ] Parcelas e ocorrências de recorrência não consomem o valor padrão.
+- [ ] Uma receita padrão entra pelo valor cheio em todo mês exibido, sem ser consumida por lançamentos reais.
+- [ ] Uma entrada real lançada num mês soma ao valor da receita padrão daquele mês, em vez de descontá-lo.
+- [ ] Num mês futuro sem despesas reais, a projeção exibe a despesa padrão integral.
+- [ ] Num mês cuja fatura ainda está aberta, com gastos reais já lançados, a projeção exibe apenas a diferença entre a despesa padrão e o real já gasto.
+- [ ] Quando o gasto real ultrapassa a despesa padrão, a projeção passa a exibir o valor real, sem somar a estimativa por cima.
+- [ ] Ocorrências de recorrência de despesa consomem a despesa padrão; parcelas não a consomem e somam por cima.
 - [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
 - [ ] A Visão geral distingue visualmente a parcela estimada da parcela real dos totais.

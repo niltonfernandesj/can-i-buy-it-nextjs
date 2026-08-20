@@ -125,6 +125,11 @@ enum Categoria {
   OUTROS
 }
 
+enum MeioPagamento {
+  CREDITO
+  DEBITO
+}
+
 model Usuario {
   id           String   @id @default(cuid())
   nome         String
@@ -132,8 +137,9 @@ model Usuario {
   senhaHash    String
   criadoEm     DateTime @default(now())
 
-  contas       Conta[]
-  transacoes   Transacao[]
+  contas         Conta[]
+  transacoes     Transacao[]
+  valoresPadrao  ValorPadrao[]
 }
 
 model Conta {
@@ -194,7 +200,27 @@ model Transacao {
   @@index([parcelamentoId])
   @@index([recorrenciaId])
 }
+
+model ValorPadrao {
+  id         String         @id @default(cuid())
+  usuarioId  String
+  usuario    Usuario        @relation(fields: [usuarioId], references: [id])
+
+  descricao  String
+  valor      Decimal        // sempre positivo; sinal é dado pelo `tipo`
+  tipo       TipoTransacao  // ENTRADA (receita padrão) | SAIDA (despesa padrão)
+  meio       MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
+
+  criadoEm   DateTime       @default(now())
+
+  @@index([usuarioId])
+}
 ```
+
+**Notas sobre `ValorPadrao`:**
+- **Não tem data, conta nem categoria** — é uma declaração atemporal, não um lançamento. Nunca vira `Transacao` e nunca aparece em `/transacoes`.
+- **`meio` só se aplica a despesas.** Receitas são sempre creditadas em Conta corrente conceitualmente, e a Visão geral não separa receitas por meio — por isso o campo é nulo para `ENTRADA`. A obrigatoriedade quando `tipo = SAIDA` é validada na Server Action, não no banco (o Prisma não expressa `CHECK` condicional de forma portátil).
+- **`usuarioId` é apenas autoria**, como em `Conta` e `Transacao`: os valores padrão são compartilhados entre os membros da família, coerente com o modelo de dados único da spec-01 §2.
 
 **Nota sobre `Categoria` como enum:** como a spec define lista fixa definida no código, um `enum` do Prisma é mais simples que uma tabela — não precisa de seed nem de FK. Se no futuro categorias passarem a ser editáveis pelo usuário (fora do MVP), migra-se para uma tabela própria.
 
@@ -613,3 +639,292 @@ Substitui o filtro por coluna (um `Input` por cabeçalho) por uma barra de filtr
 ### 12.4 Ações removidas da tabela
 
 A coluna "Ações" deixa de existir — a linha inteira é clicável e abre o modal de detalhe (seção 12.2), eliminando o vazamento horizontal da tabela.
+
+## 13. Valores padrão e composição da projeção
+
+Resolve as seções 3.5 e 3.6 dos Requisitos. Toda a lógica desta seção é **pura** (entra dado, sai número) e mora em `lib/projecao.js` — o que a torna testável no Vitest sem banco, como já acontece com `lib/fatura.js`, `lib/parcelamento.js` e `lib/recorrencia.js`.
+
+### 13.1 Quando a fatura de um mês de referência fechou
+
+Para saber se a estimativa de crédito ainda vale num mês, é preciso descobrir **quando a fatura daquele mês de referência fechou**. Isso é a inversa de `calcularFatura` (seção 4): lá, a data da compra leva ao mês de referência; aqui, o mês de referência leva à data de fechamento.
+
+```javascript
+/**
+ * Data/hora em que a fatura de um mês de referência fecha para um cartão.
+ * Inversa de calcularFatura (seção 4).
+ */
+function dataFechamentoDaReferencia(mesReferencia, anoReferencia, cartao) {
+  let mesFech = mesReferencia;
+  let anoFech = anoReferencia;
+
+  // calcularFatura empurra a referência para o mês seguinte quando o
+  // vencimento é "menor" que o fechamento — aqui desfazemos esse passo.
+  if (cartao.diaVencimento < cartao.diaFechamento) {
+    mesFech -= 1;
+    if (mesFech < 1) { mesFech = 12; anoFech -= 1; }
+  }
+
+  const dia = Math.min(cartao.diaFechamento, ultimoDiaDoMes(mesFech, anoFech));
+  return new Date(anoFech, mesFech - 1, dia, 23, 59, 59, 999);
+}
+```
+
+O `Math.min` reaproveita o mesmo cuidado já usado no parcelamento (seção 5.1): um cartão configurado para fechar dia 31 fecha no dia 28/29/30 nos meses que não têm dia 31.
+
+**Verificação contra os exemplos da seção 4:**
+
+| Cartão | Mês de referência | Fatura fechou em |
+|---|---|---|
+| Fech. 25, venc. 5 (`5 < 25`) | set/2026 | **25/ago/2026** |
+| Fech. 10, venc. 17 (`17 ≥ 10`) | ago/2026 | **10/ago/2026** |
+
+Ambos batem com a tabela da seção 4 lida no sentido inverso — uma compra em 10/ago cai na fatura que fecha em 25/ago e vence em setembro.
+
+### 13.2 Fronteiras da estimativa
+
+```javascript
+/** A estimativa de crédito ainda vale? Vale enquanto ao menos um cartão não fechou. */
+function creditoAindaEstimavel(mesReferencia, anoReferencia, cartoes, hoje) {
+  if (cartoes.length === 0) return false; // sem cartão cadastrado não há gasto no crédito
+  return cartoes.some(
+    (c) => hoje <= dataFechamentoDaReferencia(mesReferencia, anoReferencia, c)
+  );
+}
+
+/** A estimativa de débito ainda vale? Vale até o fim do mês de referência. */
+function debitoAindaEstimavel(mesReferencia, anoReferencia, hoje) {
+  const ultimoInstante = new Date(anoReferencia, mesReferencia, 0, 23, 59, 59, 999);
+  return hoje <= ultimoInstante;
+}
+```
+
+Usar `.some()` é equivalente a comparar com o fechamento mais tardio, e evita construir o máximo explicitamente.
+
+**Receitas não têm fronteira:** uma receita padrão entra em todo mês exibido, passado ou futuro (Requisitos 3.5). Não existe `receitaAindaEstimavel`.
+
+### 13.3 Composição de um mês
+
+```javascript
+/**
+ * Compõe os totais de um mês a partir das três fontes:
+ * lançamentos reais, compromissos já assumidos e valores padrão.
+ */
+function comporMes({ mesReferencia, anoReferencia, transacoes, valoresPadrao, cartoes, hoje }) {
+  const doMes = transacoes.filter(
+    (t) => t.mesReferencia === mesReferencia && t.anoReferencia === anoReferencia
+  );
+  const ehParcela = (t) => t.parcelamentoId !== null;
+
+  // --- Entradas: real + receita padrão integral, sem consumo de parte a parte ---
+  const entradaReal   = somar(doMes.filter((t) => t.tipo === "ENTRADA"));
+  const entradaPadrao = somar(valoresPadrao.filter((v) => v.tipo === "ENTRADA"));
+
+  // --- Saídas: teto por meio, consumido pelo real ---
+  function comporSaidas(meio) {
+    const tipoConta = meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE";
+    const doMeio = doMes.filter(
+      (t) => t.tipo === "SAIDA" && !t.ehInvestimento && t.conta.tipo === tipoConta
+    );
+
+    const parcelas   = somar(doMeio.filter(ehParcela));            // somam por cima
+    const consumidor = somar(doMeio.filter((t) => !ehParcela(t))); // avulsos + recorrências
+
+    const teto = somar(
+      valoresPadrao.filter((v) => v.tipo === "SAIDA" && v.meio === meio)
+    );
+    const aindaEstimavel =
+      meio === "CREDITO"
+        ? creditoAindaEstimavel(mesReferencia, anoReferencia, cartoes, hoje)
+        : debitoAindaEstimavel(mesReferencia, anoReferencia, hoje);
+
+    const estimado = aindaEstimavel ? Math.max(0, teto - consumidor) : 0;
+
+    return { real: parcelas + consumidor, estimado, total: parcelas + consumidor + estimado };
+  }
+
+  const credito       = comporSaidas("CREDITO");
+  const debito        = comporSaidas("DEBITO");
+  const investimentos = somar(doMes.filter((t) => t.tipo === "SAIDA" && t.ehInvestimento));
+
+  return {
+    mesReferencia,
+    anoReferencia,
+    entradas: { real: entradaReal, estimado: entradaPadrao, total: entradaReal + entradaPadrao },
+    credito,
+    debito,
+    investimentos,
+    disponivel: (entradaReal + entradaPadrao) - credito.total - debito.total - investimentos,
+  };
+}
+```
+
+Pontos que merecem atenção:
+
+- **Investimentos nunca são estimados.** Não há valor padrão de aporte; o bloco reflete apenas o que foi lançado.
+- **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
+- **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
+- **A mesma função serve as duas telas.** A Visão geral chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
+
+### 13.4 Casos de teste obrigatórios (Vitest)
+
+Como a regra tem várias bordas, `lib/projecao.test.js` deve cobrir no mínimo:
+
+1. Mês futuro sem lançamento algum → estimativa integral em crédito e débito; receita padrão integral.
+2. Mês com gasto avulso menor que o teto → estimativa = teto − avulso.
+3. Mês com gasto avulso maior que o teto → estimativa zero, total = real.
+4. Mês com parcela → parcela soma por cima do teto, sem consumi-lo.
+5. Mês com ocorrência de recorrência → consome o teto, como um avulso.
+6. Mês com fatura já fechada em todos os cartões → estimativa de crédito zero.
+7. Mês com dois cartões de fechamentos distintos, um fechado e outro não → estimativa de crédito ainda vale.
+8. Nenhum cartão cadastrado → estimativa de crédito zero.
+9. Mês passado → estimativa de despesa zero, mas receita padrão presente.
+10. Entrada real pontual → soma à receita padrão, sem descontá-la.
+11. Cartão com fechamento dia 31 em mês de 30 dias → fronteira no último dia do mês.
+
+## 14. Tela de Projeção e simulação
+
+Resolve as seções 3.6 e 3.7 dos Requisitos.
+
+### 14.1 Rota e carregamento
+
+Rota `/projecao`, dentro do grupo `(protegido)`. O Server Component (`page.jsx`) busca de uma vez:
+
+- **Transações** dos 12 meses da janela — filtro por `(mesReferencia, anoReferencia)`, aproveitando o índice composto já existente.
+- **Valores padrão** (todos — a lista é curta e vale para todos os meses).
+- **Contas** — os cartões alimentam `creditoAindaEstimavel` e o formulário de simulação.
+
+Chama `comporMes` doze vezes no servidor e passa o array pronto para o Client Component, junto com os cartões (necessários para a simulação recalcular no cliente).
+
+**Cuidado já conhecido:** `Decimal` do Prisma não é serializável de Server para Client Component — converter com `Number(...)` antes de passar, como já é feito em `visao-geral/page.jsx` e `transacoes/page.jsx`.
+
+**Cache:** a rota depende de "hoje" para calcular as fronteiras, então não pode ser estática. Como a janela é derivada da data atual e não de `searchParams`, é preciso forçar renderização dinâmica com `export const dynamic = "force-dynamic"` — do contrário o Next prerenderiza no build e a projeção congela na data da publicação. Este é o mesmo tipo de armadilha do Full Route Cache que já causou o bug da conta nova não aparecer em `/lancamento`.
+
+### 14.2 Estrutura visual
+
+Três faixas, de cima para baixo:
+
+1. **Gráfico de barras do Disponível** — 12 barras, uma por mês, construídas com `div` + CSS (altura proporcional), **sem Recharts**. A seção 1 registra "gráficos removidos do escopo"; esta é uma reabertura deliberada e limitada, que não adiciona dependência. Meses com Disponível negativo descem a partir da linha de base e usam a cor de alerta, tornando o "onde afunda" imediato.
+2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
+3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2). No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
+
+### 14.3 Simulação
+
+Roda **inteiramente no cliente**, sobre os dados já carregados — nenhuma chamada ao servidor, nenhuma Server Action, nenhuma escrita.
+
+- **Entradas do formulário:** cartão, data da compra, **valor total** e quantidade de parcelas.
+- **Divergência deliberada de `/lancamento`:** lá o usuário informa o *valor da parcela*; aqui informa o *valor total*, porque numa simulação se pensa no preço do produto ("um celular de R$ 3.000 em 10x"). O valor da parcela é derivado (`total / n`, arredondado a duas casas), e um eventual centavo de resíduo é irrelevante numa projeção.
+- **O valor total nunca é aplicado a um único mês.** Ele existe apenas como entrada de conveniência: é imediatamente dividido em N parcelas, e o que impacta a projeção são **as parcelas, distribuídas mês a mês** — que é justamente o efeito que a simulação existe para revelar.
+- **Distribuição:** reaproveita `gerarParcelas` de `lib/parcelamento.js` — função pura, roda no cliente sem adaptação. Isso garante que a simulação obedeça exatamente às mesmas regras de fechamento de fatura de um lançamento real.
+- **Aplicação:** cada parcela simulada soma ao `credito.total` (e reduz o `disponivel`) do seu mês de referência. Como parcelas **não consomem o teto** (seção 13.3), somar direto ao total está correto e não exige recompor o mês inteiro.
+
+**Exemplo trabalhado** — R$ 3.000 em 10x, cartão com fechamento dia 25 e vencimento dia 5, compra em 10/ago/2026:
+
+| Passo | Resultado |
+|---|---|
+| Valor da parcela | `3000 / 10` = **R$ 300** |
+| Parcela 1 | fatura fecha 25/ago → **set/2026** |
+| Parcelas 2–10 | faturas consecutivas → **out/2026** a **jun/2027** |
+| Efeito em cada um dos 10 meses | `credito.total` +R$ 300 · `disponivel` −R$ 300 |
+| Efeito em ago/2026 e jul/2027+ | **nenhum** — fora do intervalo das parcelas |
+
+**Parcelamentos que ultrapassam a janela:** uma compra em 24x tem parcelas caindo além do 12º mês projetado. Elas simplesmente não são exibidas — a tela mostra a janela de 12 meses, não o parcelamento inteiro. A simulação deve deixar isso perceptível (ex.: "10 de 24 parcelas dentro da janela"), para o usuário não concluir que a dívida termina antes do que termina.
+- **Efêmera:** vive em `useState`. Sair da rota descarta. Não há persistência, não há URL compartilhável, não há conversão em lançamento.
+- **Exibição:** o resultado simulado deve ser distinguível do valor base — a proposta é exibir o delta ao lado do número (ex.: `R$ 1.140 → R$ 840`), para que o impacto seja lido diretamente, sem o usuário precisar memorizar o estado anterior.
+
+## 15. Navegação agrupada
+
+Revisa a seção 8.1. Em caso de conflito, **esta seção prevalece**.
+
+### 15.1 Estrutura
+
+Cinco destinos em dois grupos semânticos:
+
+| Grupo | Destinos |
+|---|---|
+| **Dados** | `/visao-geral`, `/transacoes`, `/projecao` |
+| **Ajustes** | `/contas`, `/valores-padrao` |
+
+### 15.2 Desktop
+
+A barra lateral exibe **os cinco destinos simultaneamente**, na ordem acima, com um **divisor** (`border-t`) entre os grupos. Sem rótulos de grupo: o agrupamento é comunicado apenas pela separação visual.
+
+O botão "+ Nova transação" permanece no topo e o menu do usuário no rodapé (`mt-auto`), sem mudanças.
+
+### 15.3 Mobile
+
+A barra inferior passa de quatro alvos para **três**:
+
+| Posição | Alvo | Comportamento |
+|---|---|---|
+| Esquerda | **Dados** | Navega para `/visao-geral` |
+| Centro | **Nova** | Botão circular em destaque → `/lancamento` |
+| Direita | **Ajustes** | Abre um `Sheet` inferior com os dois destinos de configuração |
+
+Dentro do grupo Dados, a troca entre as três telas acontece por uma **barra de abas fixa no topo do conteúdo**, a um único toque — é o que evita o custo de dois toques que motivou a escolha deste padrão.
+
+**Implementação das abas:** um novo componente cliente `components/navegacao/abas-dados.jsx`, renderizado por `app/(protegido)/layout.jsx` imediatamente acima de `{children}`. Ele se auto-oculta em dois casos: no desktop (`md:hidden`) e quando `usePathname()` não corresponde a nenhuma das três rotas do grupo. Essa abordagem evita reorganizar as rotas em um route group aninhado — nenhum arquivo precisa mudar de lugar.
+
+**Atenção ao `tailwind-merge`:** ao compor as classes responsivas deste componente e dos alvos da barra inferior, não repetir um utilitário de `display` sem prefixo de breakpoint dentro de uma constante compartilhada. Foi exatamente esse padrão que duplicou o seletor de período no mobile — ver o histórico do `seletor-periodo.jsx`.
+
+### 15.4 Tela de Valores padrão
+
+Rota `/valores-padrao`, dentro do grupo Ajustes. Tela única com **duas listas** — Receitas padrão e Despesas padrão — cada uma com CRUD inline: linha com descrição e valor, botão de adicionar, e edição/exclusão por item.
+
+O formulário de despesa tem um seletor **Crédito/Débito**; o de receita não (seção 3 do schema). Reaproveita `CampoValor` (máscara monetária) já usado em `/lancamento` e no modal de `/transacoes`.
+
+Mutações via Server Actions em `lib/actions/valores-padrao.js`, com `revalidatePath` para `/valores-padrao`, `/visao-geral` e `/projecao` — as três telas que consomem esses dados. Omitir alguma delas reproduz o bug de cache que já ocorreu com contas (seção 8.5).
+
+## 16. Tema escuro
+
+Resolve o requisito de tema da spec-01 §4. É um marco independente das seções 13–15 e pode ser implementado antes ou depois delas.
+
+### 16.1 Tokens
+
+O tema escuro é **único**: não há alternância nem leitura de `prefers-color-scheme`. Na prática, o bloco `:root` de `app/globals.css` passa a conter os valores escuros e o bloco `.dark` — hoje código morto, nunca ativado — é removido.
+
+Paleta base:
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--background` | `#131316` | Fundo da aplicação |
+| `--card`, `--popover` | `#1B1B1F` | Superfícies elevadas |
+| `--muted`, `--secondary`, `--accent` | `#232328` | Superfícies rebaixadas, hover |
+| `--foreground` | `#F4F4F5` | Texto principal |
+| `--muted-foreground` | `#85858F` | Texto secundário |
+| `--border`, `--input` | `#2E2E34` | Bordas e campos |
+| `--primary` | `#F4F4F5` | Botão primário (fundo claro) |
+| `--primary-foreground` | `#1B1B1F` | Texto do botão primário |
+
+**Cores semânticas** — hoje cravadas como classes literais do Tailwind e por isso invisíveis ao sistema de temas. Passam a ser tokens:
+
+| Token | Valor | Substitui |
+|---|---|---|
+| `--entrada` | `#4ADE80` | `text-emerald-600` |
+| `--investimento` | `#60A5FA` | `text-blue-600` |
+| `--saida-debito` | `#FBBF24` | `text-amber-600` |
+| `--saida-credito` | `#FB7185` | `text-rose-600` |
+| `--periodo-bg` / `--periodo-fg` | `#262640` / `#A5B4FC` | `bg-indigo-50` / `text-indigo-600` |
+
+A família `-400` substitui a `-600` porque os tons `-600` do Tailwind foram calibrados para contrastar com branco; sobre `#131316` eles ficam escuros demais.
+
+**Token novo, exigido pelas seções 13–14:**
+
+| Token | Valor | Uso |
+|---|---|---|
+| `--estimado` | `#85858F` | Texto e traço de valores estimados |
+
+### 16.2 Distinção visual entre real e estimado
+
+Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão geral quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins:
+
+- Valores estimados usam `--estimado` **e** um rótulo textual explícito ("estimado").
+- Na Visão geral, a estimativa entra como uma **linha própria** dentro do bloco, com borda tracejada, separada dos lançamentos reais — nunca somada silenciosamente ao total sem indicação.
+- Nos cards de resumo, a composição fica explícita como subtexto: `R$ 800 real + R$ 400 estimado`.
+
+### 16.3 Escopo da revisão de contraste
+
+Trocar os tokens não basta: cada elemento precisa ser verificado sobre o novo fundo. A varredura mínima cobre `Button` (todas as variantes), `Input`, `Select`, `Checkbox`, `Dialog`, `Sheet`, `Popover`, `DropdownMenu`, `Table`, `Card`, `Skeleton`, os quatro blocos da Visão geral, a pílula do seletor de período e os badges de parcela/recorrência/investimento.
+
+Alvo: **WCAG AA** (4.5:1 para texto normal, 3:1 para texto grande e elementos de interface). O `Skeleton` merece atenção específica — no claro ele é um cinza sutil sobre branco, e a transposição ingênua tende a sumir no fundo escuro.
+
+O precedente de por que isso importa: `--destructive-foreground` nunca foi definido no tema, e o resultado foi texto preto sobre botão vermelho em toda a aplicação — um bug que passou despercebido por várias tasks.
