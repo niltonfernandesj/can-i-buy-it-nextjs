@@ -218,7 +218,7 @@ export function VisaoGeralClient({
           <BlocoPorDia
             titulo="Entradas"
             Icone={ArrowDownCircle}
-            cor="text-emerald-600"
+            cor="text-entrada"
             total={totalEntradas}
             grupos={entradas}
             renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
@@ -226,14 +226,14 @@ export function VisaoGeralClient({
           />
           <BlocoInvestimentos
             Icone={PiggyBank}
-            cor="text-blue-600"
+            cor="text-investimento"
             total={totalInvestimentos}
             investimentos={investimentos}
           />
           <BlocoPorDia
             titulo="Saídas no débito"
             Icone={ArrowUpCircle}
-            cor="text-amber-600"
+            cor="text-saida-debito"
             total={totalSaidasDebito}
             grupos={saidasDebito}
             mensagemVazia="Nenhuma saída no débito neste mês."
@@ -241,7 +241,7 @@ export function VisaoGeralClient({
           <BlocoPorDia
             titulo="Saídas no crédito"
             Icone={CreditCard}
-            cor="text-rose-600"
+            cor="text-saida-credito"
             total={totalSaidasCredito}
             grupos={saidasCredito}
             mensagemVazia="Nenhuma saída no crédito neste mês."

@@ -78,7 +78,7 @@ export function SeletorPeriodo({ mes, ano }) {
   const classeSeta =
     "flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm hover:bg-muted";
   const classePill =
-    "items-center gap-2 rounded-full bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-100";
+    "items-center gap-2 rounded-full bg-periodo px-4 py-2 text-sm font-semibold text-periodo-foreground shadow-sm hover:bg-periodo/90";
 
   return (
     <div className="flex items-center gap-3">

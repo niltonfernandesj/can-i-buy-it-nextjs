@@ -105,7 +105,7 @@ const COLUNAS_BASE = [
       const t = info.row.original;
       const ehEntrada = t.tipo === "ENTRADA";
       return (
-        <span className={ehEntrada ? "text-emerald-600" : "text-foreground"}>
+        <span className={ehEntrada ? "text-entrada" : "text-foreground"}>
           {ehEntrada ? "+" : "-"} {formatarReais(t.valor)}
         </span>
       );

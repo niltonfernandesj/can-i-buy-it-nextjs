@@ -347,7 +347,7 @@ export function LancamentoClient({ contas }) {
           )}
 
           {erro && <p className="text-sm text-destructive">{erro}</p>}
-          {sucesso && <p className="text-sm text-emerald-600">{sucesso}</p>}
+          {sucesso && <p className="text-sm text-entrada">{sucesso}</p>}
 
           <Button type="submit" disabled={carregando}>
             {carregando ? "Salvando..." : "Lançar"}
