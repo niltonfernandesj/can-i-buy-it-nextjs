@@ -13,16 +13,20 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 ## 2. Usuários
 
 - Uso familiar (não é um produto multi-tenant para o público).
-- Cada pessoa tem login próprio (email + senha, cadastro manual).
+- Cada pessoa tem login próprio (email + senha).
+- **Não há cadastro público.** Usuários são criados por um script administrativo executado com acesso ao banco — não existe rota de autoatendimento na aplicação.
 - Todos os usuários autenticados veem os mesmos dados financeiros (não há dados privados por usuário no MVP).
+
+> **Por que essas duas últimas regras são inseparáveis:** como qualquer sessão autenticada enxerga e altera todos os dados financeiros da família, **quem pode se cadastrar é quem pode ver tudo**. Um cadastro aberto transformaria o compartilhamento intencional numa exposição pública. A ausência de isolamento por usuário só é aceitável enquanto a criação de contas for controlada.
 
 ## 3. Escopo do MVP
 
 ### Dentro do escopo
 1. **Autenticação**
-   - Cadastro e login por email + senha.
+   - Login por email + senha. **Sem rota de cadastro** — ver seção 2.
    - Sessão autenticada obrigatória para acessar qualquer dado.
    - Após um login bem-sucedido, o usuário é redirecionado para a Visão geral (`/visao-geral`).
+   - Tentativas de login são limitadas por taxa, para inviabilizar força bruta e uso de credenciais vazadas.
 2. **Lançamento manual de transações**
    - Tela para registrar transações de **entrada** (receita) e **saída** (despesa).
    - Campos: valor, data, descrição, tipo (entrada/saída), categoria.
@@ -212,6 +216,12 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - **Hospedagem:** Vercel (plano hobby/gratuito).
 - **Responsividade:** deve funcionar bem em desktop e mobile (uso familiar no dia a dia, provavelmente via celular).
 - **Tema visual:** a aplicação adota um **tema escuro único**, sem alternância claro/escuro e sem seguir a preferência do sistema. Todas as cores devem vir do sistema de tokens — incluindo as cores semânticas hoje cravadas na paleta clara (entradas, investimentos, saídas no débito, saídas no crédito e o destaque do seletor de período) — e o contraste de cada elemento sobre o novo fundo precisa ser revisado, não apenas herdado.
+- **Segurança:** a aplicação hospeda dados financeiros reais de uma família numa URL pública. Portanto:
+  - Nenhuma rota que crie usuários pode ser exposta (seção 2).
+  - Toda Server Action verifica sessão antes de ler ou escrever.
+  - Dependências com falhas conhecidas de severidade alta ou crítica são tratadas, não acumuladas — `npm audit` faz parte da revisão antes de publicar.
+  - Dados que dependem de regras de cálculo já aplicadas (ex.: `mesReferencia` derivado do fechamento do cartão) não podem ser invalidados por uma edição posterior da configuração que os originou.
+  - Sessões têm duração limitada, proporcional ao risco de um token vazado.
 
 ## 5. Modelo de dados (preliminar — a refinar no Design)
 
@@ -251,7 +261,9 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 
 ## 6. Critérios de aceite (MVP)
 
-- [ ] Um usuário consegue se cadastrar e fazer login.
+- [ ] Um usuário criado pelo script administrativo consegue fazer login.
+- [ ] Não existe rota de cadastro acessível na aplicação — nem por navegação, nem por URL direta.
+- [ ] Após um número definido de tentativas de login malsucedidas, novas tentativas são bloqueadas temporariamente.
 - [ ] Após um login bem-sucedido, o usuário é redirecionado para a Visão geral.
 - [ ] Um usuário logado consegue lançar uma transação de entrada e uma de saída, com categoria e conta vinculada.
 - [ ] Um usuário consegue cadastrar, editar e apagar contas dos três tipos (Conta corrente, Cartão de crédito, Conta de investimento), com os campos específicos de cada tipo.

@@ -584,8 +584,8 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 
 - NextAuth Credentials Provider: valida email/senha (bcrypt) contra a tabela `Usuario`.
 - Sessão JWT (mais simples que sessão em banco para este porte de app).
-- Middleware protege todas as rotas exceto `/login` e `/cadastro`.
-- **Sem filtro de dados por usuário** nas queries (exceto para saber "quem lançou") — todos os usuários autenticados veem o mesmo conjunto de dados, conforme decidido nos Requisitos.
+- Middleware protege todas as rotas exceto `/login`. **A rota `/cadastro` deixa de existir** — ver seção 17.
+- **Sem filtro de dados por usuário** nas queries (exceto para saber "quem lançou") — todos os usuários autenticados veem o mesmo conjunto de dados, conforme decidido nos Requisitos. Essa decisão depende criticamente do cadastro fechado (spec-01 §2).
 
 ## 10. Pendências resolvidas nesta fase
 
@@ -928,3 +928,66 @@ Trocar os tokens não basta: cada elemento precisa ser verificado sobre o novo f
 Alvo: **WCAG AA** (4.5:1 para texto normal, 3:1 para texto grande e elementos de interface). O `Skeleton` merece atenção específica — no claro ele é um cinza sutil sobre branco, e a transposição ingênua tende a sumir no fundo escuro.
 
 O precedente de por que isso importa: `--destructive-foreground` nunca foi definido no tema, e o resultado foi texto preto sobre botão vermelho em toda a aplicação — um bug que passou despercebido por várias tasks.
+
+## 17. Endurecimento de segurança
+
+Resolve os achados da revisão de segurança conduzida ao final da fase de Design. Complementa a seção 9.
+
+### 17.1 O achado que originou esta seção
+
+Três decisões isoladamente defensáveis se combinavam num vazamento completo:
+
+1. `middleware.js` excluía `cadastro` do matcher — rota pública por design.
+2. `criarUsuario` não exigia sessão, convite nem allowlist.
+3. Nenhuma query de leitura filtra por `usuarioId` (decisão consciente da spec-01 §2).
+
+Com a aplicação publicada, qualquer pessoa que descobrisse a URL criava uma conta e obtinha leitura **e escrita** sobre todos os dados financeiros da família. Nenhum dos três itens é um bug em si — o vazamento nasce da interação entre eles, e é por isso que a spec-01 §2 agora declara cadastro fechado e compartilhamento total como regras inseparáveis.
+
+### 17.2 Provisionamento de usuários
+
+A rota `/cadastro`, a página e a Server Action `criarUsuario` são **removidas**. O middleware passa a excluir apenas `/login` e os assets do Next.
+
+Usuários passam a ser criados por `scripts/criar-usuario.mjs`, executado localmente com acesso ao `DATABASE_URL`: recebe nome, e-mail e senha por argumento, aplica `bcrypt.hash` com o mesmo custo 10 e insere na tabela `Usuario`. É o único caminho de criação.
+
+**Consequência colateral positiva:** a enumeração de usuários (o formulário respondia "já existe um usuário com este email") desaparece junto com o formulário.
+
+### 17.3 Limitação de taxa no login
+
+O `authorize` do Credentials Provider passa a rejeitar tentativas quando um mesmo e-mail acumula falhas consecutivas dentro de uma janela de tempo.
+
+**Decisão de implementação:** contador em memória no processo do servidor, não em banco. Justificativa: o volume é de duas pessoas, um contador em memória não adiciona schema nem latência, e o pior caso de um restart da função na Vercel é zerar o contador — o que reduz a proteção, mas não a anula, já que o custo do bcrypt permanece. Persistir em banco seria a escolha correta num app multiusuário real, e fica registrado aqui como o próximo passo caso o app cresça.
+
+Parâmetros sugeridos: **5 tentativas** por e-mail, janela de **15 minutos**. A mensagem de erro devolvida ao usuário **não distingue** "senha errada" de "bloqueado por excesso de tentativas" — evita confirmar a existência da conta.
+
+### 17.4 Integridade de contas com transações vinculadas
+
+`editarConta` hoje permite alterar `tipo`, `diaFechamento` e `diaVencimento` livremente. Como `mesReferencia` das transações já foi calculado a partir desses valores (seção 4), alterá-los **invalida silenciosamente** dados já gravados: uma transação classificada como saída no crédito passa a apontar para uma conta corrente, e a Visão geral passa a somar errado sem nenhum sinal de erro.
+
+Regra: quando a conta **possui transações vinculadas**, `tipo`, `diaFechamento` e `diaVencimento` ficam **imutáveis**. O nome continua editável. A UI reflete a regra desabilitando os campos e explicando o motivo, em vez de deixar o usuário tentar e receber erro.
+
+Recalcular `mesReferencia` de todas as transações afetadas seria a alternativa mais flexível, mas exigiria reprocessar parcelamentos inteiros — cujas datas efetivas derivam em cadeia umas das outras (seção 5.1) — e foi descartada por desproporcional ao ganho.
+
+### 17.5 Sessão
+
+`session.maxAge` passa a ser declarado explicitamente em `authOptions`, em vez de herdar o padrão de 30 dias do NextAuth. Valor adotado: **7 dias**.
+
+**Limitação conhecida e aceita:** sessões JWT não são revogáveis do lado do servidor. Não existe "sair de todos os dispositivos", e como o app não tem troca de senha, também não há o cenário de invalidar sessões após uma troca. Migrar para sessões em banco resolveria, ao custo de uma tabela e uma consulta por requisição — desproporcional para duas pessoas, e registrado como próximo passo se o app crescer.
+
+### 17.6 Dependências
+
+`npm audit` acusa 2 falhas críticas e 5 altas. Elas **não se resolvem com `npm audit fix --force`**, e há duas armadilhas concretas:
+
+- A correção sugerida para `next-auth` é instalar a **4.24.7 — uma versão anterior** à 4.24.15 em uso. Um downgrade não é correção; a linha corrigida está no Auth.js v5, cuja migração é de porte considerável.
+- A correção sugerida para `next` é subir da **14.2.35 para a 15.5.23**, salto de major. O Next 15 torna `searchParams` e `params` assíncronos, o que **quebra `visao-geral/page.jsx`**, que os lê de forma síncrona. A atualização exige alteração de código, não só de versão.
+
+Entre os avisos do Next há um diretamente relevante para esta arquitetura: *"Unauthenticated disclosure of internal Server Function endpoints"* — o app é inteiramente construído sobre Server Actions.
+
+A task correspondente deve, portanto, **avaliar antes de atualizar**: verificar quais avisos se aplicam a um deploy na Vercel (parte afeta apenas self-hosted), tratar primeiro o que é explorável neste contexto, e tratar o salto de major como trabalho próprio, com QA completo — nunca como um comando automático.
+
+### 17.7 Achados avaliados e conscientemente não tratados
+
+| Achado | Por que não vira task |
+|---|---|
+| **Ausência de verificação de propriedade** em `editarConta`/`apagarConta` e nas ações de transação | Adicionar checagem por `usuarioId` **contradiria a spec-01 §2**: o modelo familiar exige que qualquer membro edite o que outro lançou. O risco real vinha do cadastro aberto (17.2), não da falta da checagem. Fechado o cadastro, toda sessão autenticada é, por definição, um membro da família |
+| **Ausência de auditoria** de alterações | Explicitamente fora de escopo desde a spec-01. `usuarioId` registra a autoria da criação, nunca da edição. Se o app passar a ter mais usuários, isso deve ser reavaliado junto com o isolamento de dados |
+| **Política de senha** (mínimo de 6 caracteres, sem complexidade) | A validação vivia em `criarUsuario`, removida em 17.2. O script de provisionamento passa a ser o ponto de controle, e senhas fortes são responsabilidade de quem o executa |

@@ -224,64 +224,87 @@ Remonta o conteúdo abaixo do seletor de período com `key={mes-ano}` ao trocar 
 
 ---
 
-## M14 — Tema escuro
+## M14 — Endurecimento de segurança
 
-Vem primeiro deliberadamente: os marcos seguintes criam três telas novas, e construí-las já no tema definitivo evita revisar contraste duas vezes.
+Vem antes de tudo: a aplicação está publicada com dados financeiros reais e, hoje, qualquer pessoa que descubra a URL pode se cadastrar e ler, editar e apagar tudo (Design §17.1). As Tasks 46 e 47 são as urgentes; as demais fecham o restante dos achados.
 
-**Task 46. Tokens do tema escuro**
+**Task 46. Fechar o cadastro público**
+Remove a rota `/cadastro`, sua página e a Server Action `criarUsuario`. Ajusta o matcher do `middleware.js` para excluir apenas `/login` e os assets do Next (Design §17.2). Depois desta task, não deve existir nenhum caminho na aplicação que crie um usuário.
+
+**Task 47. Script de provisionamento de usuário**
+Cria `scripts/criar-usuario.mjs`, executado localmente com acesso ao `DATABASE_URL`: recebe nome, e-mail e senha, aplica `bcrypt.hash` com custo 10 e insere na tabela `Usuario` (Design §17.2). Passa a ser o único caminho de criação de usuários. Documentar o uso no `README.md`.
+
+**Task 48. Limitação de taxa no login**
+Contador em memória por e-mail no `authorize` do Credentials Provider: 5 tentativas malsucedidas bloqueiam novas tentativas por 15 minutos (Design §17.3). A mensagem de erro **não distingue** senha incorreta de bloqueio, para não confirmar a existência da conta.
+
+**Task 49. Travar tipo e fechamento de contas com transações**
+`editarConta` passa a rejeitar alteração de `tipo`, `diaFechamento` e `diaVencimento` quando a conta possui transações vinculadas — esses valores originaram o `mesReferencia` já gravado, e alterá-los corrompe a consolidação silenciosamente (Design §17.4). O nome continua editável. A UI desabilita os campos e explica o motivo, em vez de deixar o usuário tentar e receber erro.
+
+**Task 50. Duração explícita da sessão e avaliação das dependências**
+Declara `session.maxAge` em `authOptions` (7 dias) em vez de herdar o padrão de 30 (Design §17.5). Na mesma task, trata as dependências vulneráveis conforme o Design §17.6 — **avaliando antes de atualizar**: `npm audit fix --force` sugere um *downgrade* do `next-auth` e um salto de major do Next que quebra `visao-geral/page.jsx` (no Next 15 `searchParams` é assíncrono). Verificar quais avisos se aplicam a um deploy na Vercel, tratar primeiro o que é explorável neste contexto, e rodar QA completo em todas as rotas depois de qualquer atualização.
+
+*(Checkpoint sugerido: critérios de aceite de autenticação — spec-01 §6.)*
+
+---
+
+## M15 — Tema escuro
+
+Os marcos seguintes criam três telas novas, e construí-las já no tema definitivo evita revisar contraste duas vezes.
+
+**Task 51. Tokens do tema escuro**
 Substitui os valores do bloco `:root` de `app/globals.css` pela paleta escura da tabela do Design §16.1 e **remove o bloco `.dark`** — hoje código morto, já que nada nunca aplica essa classe. Adiciona os tokens semânticos novos (`--entrada`, `--investimento`, `--saida-debito`, `--saida-credito`, `--periodo-bg`, `--periodo-fg`, `--estimado`) e registra todos em `tailwind.config.js`, seguindo o padrão `{ DEFAULT, foreground }` já usado por `primary`/`secondary`. Nenhum componente muda nesta task — só o sistema de tokens.
 
-**Task 47. Substituir cores literais por tokens**
-Troca as classes cravadas na paleta clara pelos tokens da Task 46 (Design §16.1): `text-emerald-600`, `text-blue-600`, `text-amber-600` e `text-rose-600` em `visao-geral-client.jsx`; `bg-indigo-50`/`text-indigo-600` em `seletor-periodo.jsx`; `text-emerald-600` em `transacoes-client.jsx`. Depois desta task, nenhuma cor semântica deve estar fora do sistema de tokens.
+**Task 52. Substituir cores literais por tokens**
+Troca as classes cravadas na paleta clara pelos tokens da Task 51 (Design §16.1): `text-emerald-600`, `text-blue-600`, `text-amber-600` e `text-rose-600` em `visao-geral-client.jsx`; `bg-indigo-50`/`text-indigo-600` em `seletor-periodo.jsx`; `text-emerald-600` em `transacoes-client.jsx`. Depois desta task, nenhuma cor semântica deve estar fora do sistema de tokens.
 
-**Task 48. Revisão de contraste dos componentes**
+**Task 53. Revisão de contraste dos componentes**
 Percorre a lista do Design §16.3 — `Button` (todas as variantes), `Input`, `Select`, `Checkbox`, `Dialog`, `Sheet`, `Popover`, `DropdownMenu`, `Table`, `Card`, `Skeleton`, os quatro blocos da Visão geral, a pílula do seletor de período e os badges de parcela/recorrência/investimento — verificando cada um sobre o novo fundo e corrigindo o que não atingir **WCAG AA** (4.5:1 para texto normal, 3:1 para texto grande e elementos de interface). Atenção específica ao `Skeleton`, que tende a sumir no escuro. QA com captura de tela de cada rota.
 
 *(Checkpoint sugerido: "A aplicação é exibida em tema escuro, com todos os elementos legíveis sobre o novo fundo" — spec-01 §6.)*
 
 ---
 
-## M15 — Valores padrão e Projeção
+## M16 — Valores padrão e Projeção
 
-**Task 49. Modelo `ValorPadrao` e migration**
+**Task 54. Modelo `ValorPadrao` e migration**
 Adiciona o enum `MeioPagamento` e o model `ValorPadrao` ao `schema.prisma` conforme o Design §3, com a relação em `Usuario`. Gera e aplica a migration. Sem UI nesta task.
 
-**Task 50. Server Actions de valores padrão**
+**Task 55. Server Actions de valores padrão**
 CRUD em `lib/actions/valores-padrao.js`: criar, editar e apagar. Valida que `meio` é obrigatório quando `tipo = SAIDA` e nulo quando `ENTRADA` (Design §3), e que o valor é positivo. `revalidatePath` para `/valores-padrao`, `/visao-geral` e `/projecao` — omitir alguma reproduz o bug de cache já ocorrido com contas.
 
-**Task 51. Tela `/valores-padrao`**
+**Task 56. Tela `/valores-padrao`**
 Tela única com as duas listas (Receitas padrão e Despesas padrão), cada uma com CRUD inline (Design §15.4). O formulário de despesa tem seletor Crédito/Débito; o de receita, não. Reaproveita `CampoValor`. Adiciona um link temporário na navegação existente para a tela ficar alcançável — a estrutura definitiva vem no M16.
 
-**Task 52. `lib/projecao.js` — fronteiras da estimativa**
+**Task 57. `lib/projecao.js` — fronteiras da estimativa**
 Implementa `dataFechamentoDaReferencia`, `creditoAindaEstimavel` e `debitoAindaEstimavel` conforme o Design §13.1 e §13.2 — a inversa de `calcularFatura`. Testes no Vitest cobrindo os casos 6, 7, 8 e 11 da lista do Design §13.4 (fatura fechada, dois cartões com fechamentos distintos, nenhum cartão cadastrado, fechamento dia 31 em mês de 30 dias). Função pura, sem banco.
 
-**Task 53. `lib/projecao.js` — composição de um mês**
+**Task 58. `lib/projecao.js` — composição de um mês**
 Implementa `comporMes` conforme o Design §13.3, devolvendo `real` e `estimado` separados por bloco. Testes cobrindo os casos 1 a 5, 9 e 10 do Design §13.4 — com atenção aos dois que a spec mudou no meio do caminho: ocorrência de recorrência **consome** o teto, parcela **soma por cima**, e receita padrão nunca é consumida.
 
-**Task 54. Composição real + estimado na Visão geral**
+**Task 59. Composição real + estimado na Visão geral**
 `visao-geral/page.jsx` passa a usar `comporMes` em vez de somar transações direto. Os blocos exibem a estimativa como **linha própria com borda tracejada e rótulo "estimado"** (Design §16.2), e os cards de resumo ganham o subtexto de composição (`R$ 800 real + R$ 400 estimado`). Primeira tela a consumir os valores padrão.
 
-**Task 55. Tela `/projecao`**
-Rota nova com `export const dynamic = "force-dynamic"` (Design §14.1 — sem isso a projeção congela na data do build). Server Component busca transações da janela, valores padrão e contas, chama `comporMes` doze vezes e converte `Decimal` para `Number` antes de passar ao cliente. Renderiza o gráfico de 12 barras em CSS puro e a lista de meses — cards empilhados no mobile. Link temporário na navegação, como na Task 51.
+**Task 60. Tela `/projecao`**
+Rota nova com `export const dynamic = "force-dynamic"` (Design §14.1 — sem isso a projeção congela na data do build). Server Component busca transações da janela, valores padrão e contas, chama `comporMes` doze vezes e converte `Decimal` para `Number` antes de passar ao cliente. Renderiza o gráfico de 12 barras em CSS puro e a lista de meses — cards empilhados no mobile. Link temporário na navegação, como na Task 56.
 
-**Task 56. Simulação de compra**
+**Task 61. Simulação de compra**
 Formulário client-side na `/projecao` com cartão, data, valor **total** e nº de parcelas (Design §14.3). Deriva o valor da parcela, distribui via `gerarParcelas` e soma cada parcela ao mês de referência correspondente. Efêmera, em `useState`. Exibe o delta ao lado do número e sinaliza quando o parcelamento ultrapassa a janela ("10 de 24 parcelas dentro da janela").
 
 *(Checkpoint sugerido: critérios de aceite de valores padrão, projeção e simulação — spec-01 §6.)*
 
 ---
 
-## M16 — Navegação agrupada
+## M17 — Navegação agrupada
 
-Fecha o ciclo: só agora os cinco destinos existem, e a estrutura definitiva pode substituir os links temporários das Tasks 51 e 55.
+Fecha o ciclo: só agora os cinco destinos existem, e a estrutura definitiva pode substituir os links temporários das Tasks 56 e 60.
 
-**Task 57. Barra lateral do desktop em dois grupos**
+**Task 62. Barra lateral do desktop em dois grupos**
 `NavegacaoPrincipal` passa a listar os cinco destinos na ordem do Design §15.1, com um divisor entre Dados e Ajustes e sem rótulos de grupo (Design §15.2). Botão "+ Nova transação" e menu do usuário permanecem onde estão.
 
-**Task 58. Menu inferior de três alvos no mobile**
+**Task 63. Menu inferior de três alvos no mobile**
 Reduz a barra inferior a Dados · Nova · Ajustes (Design §15.3). "Dados" navega para `/visao-geral`; "Nova" continua indo para `/lancamento`; "Ajustes" abre um `Sheet` inferior com Contas e Valores padrão. Remove os links temporários.
 
-**Task 59. Abas do grupo Dados no mobile**
+**Task 64. Abas do grupo Dados no mobile**
 Novo componente cliente `components/navegacao/abas-dados.jsx`, renderizado por `app/(protegido)/layout.jsx` acima de `{children}`, alternando Visão geral / Transações / Projeção em um único toque. Auto-oculta no desktop e fora das três rotas do grupo, sem reorganizar diretórios (Design §15.3). **Cuidado com o `tailwind-merge`:** não repetir utilitário de `display` sem prefixo de breakpoint em constante compartilhada — foi esse padrão que duplicou o seletor de período no mobile.
 
 *(Checkpoint sugerido: critérios de aceite de navegação — spec-01 §6.)*
@@ -305,6 +328,7 @@ Novo componente cliente `components/navegacao/abas-dados.jsx`, renderizado por `
 | M11 | Escopo item 11 (transação recorrente — entrada) |
 | M12 | Escopo item 9 (redesenho da tela `/transacoes`) |
 | M13 | Escopo item 7 (swipe de mês na Visão geral, mobile) |
-| M14 | Requisitos não funcionais — tema escuro (spec-01 §4) |
-| M15 | Escopo itens 12, 13, 14 (valores padrão, projeção de 12 meses, simulação) |
-| M16 | Escopo item 10 (navegação agrupada em Dados e Ajustes) |
+| M14 | Requisitos não funcionais — segurança (spec-01 §4) e correção do achado do Design §17 |
+| M15 | Requisitos não funcionais — tema escuro (spec-01 §4) |
+| M16 | Escopo itens 12, 13, 14 (valores padrão, projeção de 12 meses, simulação) |
+| M17 | Escopo item 10 (navegação agrupada em Dados e Ajustes) |
