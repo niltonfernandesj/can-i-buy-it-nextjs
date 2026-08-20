@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,12 +79,6 @@ export default function LoginPage() {
               {carregando ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Não tem uma conta?{" "}
-            <Link href="/cadastro" className="underline">
-              Cadastre-se
-            </Link>
-          </p>
         </CardContent>
       </Card>
     </main>
