@@ -25,7 +25,7 @@ const TIPO_OPCOES = Object.keys(TIPO_CONTA_LABELS).map((valor) => ({
 
 const FORM_INICIAL = { nome: "", diaFechamento: "", diaVencimento: "" };
 
-function CamposConta({ form, setForm, ehCartao }) {
+function CamposConta({ form, setForm, ehCartao, bloqueada }) {
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -39,30 +39,41 @@ function CamposConta({ form, setForm, ehCartao }) {
       </div>
 
       {ehCartao && (
-        <div className="flex gap-4">
-          <div className="flex flex-1 flex-col gap-2">
-            <Label htmlFor="diaFechamento">Dia de fechamento</Label>
-            <Input
-              id="diaFechamento"
-              type="number"
-              min={1}
-              max={31}
-              required
-              value={form.diaFechamento}
-              onChange={(e) => setForm({ ...form, diaFechamento: e.target.value })}
-            />
-          </div>
-          <div className="flex flex-1 flex-col gap-2">
-            <Label htmlFor="diaVencimento">Dia de vencimento</Label>
-            <Input
-              id="diaVencimento"
-              type="number"
-              min={1}
-              max={31}
-              required
-              value={form.diaVencimento}
-              onChange={(e) => setForm({ ...form, diaVencimento: e.target.value })}
-            />
+        <div className="flex flex-col gap-2">
+          {bloqueada && (
+            <p className="text-xs text-muted-foreground">
+              Esta conta já tem transações lançadas — dia de fechamento e vencimento não podem
+              mais ser alterados, pois já determinaram o mês de referência dos lançamentos
+              existentes.
+            </p>
+          )}
+          <div className="flex gap-4">
+            <div className="flex flex-1 flex-col gap-2">
+              <Label htmlFor="diaFechamento">Dia de fechamento</Label>
+              <Input
+                id="diaFechamento"
+                type="number"
+                min={1}
+                max={31}
+                required
+                disabled={bloqueada}
+                value={form.diaFechamento}
+                onChange={(e) => setForm({ ...form, diaFechamento: e.target.value })}
+              />
+            </div>
+            <div className="flex flex-1 flex-col gap-2">
+              <Label htmlFor="diaVencimento">Dia de vencimento</Label>
+              <Input
+                id="diaVencimento"
+                type="number"
+                min={1}
+                max={31}
+                required
+                disabled={bloqueada}
+                value={form.diaVencimento}
+                onChange={(e) => setForm({ ...form, diaVencimento: e.target.value })}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -174,6 +185,7 @@ function EditarContaConteudo({ conta, onCancelar, onEditada }) {
   });
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const bloqueada = conta._count.transacoes > 0;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -196,7 +208,12 @@ function EditarContaConteudo({ conta, onCancelar, onEditada }) {
     <>
       <p className="text-sm text-muted-foreground">Tipo: {TIPO_CONTA_LABELS[conta.tipo]}</p>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <CamposConta form={form} setForm={setForm} ehCartao={conta.tipo === "CARTAO_CREDITO"} />
+        <CamposConta
+          form={form}
+          setForm={setForm}
+          ehCartao={conta.tipo === "CARTAO_CREDITO"}
+          bloqueada={bloqueada}
+        />
         {erro && <p className="text-sm text-destructive">{erro}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancelar}>
