@@ -135,6 +135,7 @@ model Usuario {
   nome         String
   email        String   @unique
   senhaHash    String
+  ehAdmin      Boolean  @default(false) // gestão de usuários — seção 17.2
   criadoEm     DateTime @default(now())
 
   contas         Conta[]
@@ -943,13 +944,45 @@ Três decisões isoladamente defensáveis se combinavam num vazamento completo:
 
 Com a aplicação publicada, qualquer pessoa que descobrisse a URL criava uma conta e obtinha leitura **e escrita** sobre todos os dados financeiros da família. Nenhum dos três itens é um bug em si — o vazamento nasce da interação entre eles, e é por isso que a spec-01 §2 agora declara cadastro fechado e compartilhamento total como regras inseparáveis.
 
-### 17.2 Provisionamento de usuários
+### 17.2 Gestão de usuários pelo administrador
 
-A rota `/cadastro`, a página e a Server Action `criarUsuario` são **removidas**. O middleware passa a excluir apenas `/login` e os assets do Next.
+A rota `/cadastro`, a página e a Server Action `criarUsuario` pública são **removidas**. O middleware passa a excluir apenas `/login` e os assets do Next. A criação de usuários volta em seguida, mas restrita a um administrador.
 
-Usuários passam a ser criados por `scripts/criar-usuario.mjs`, executado localmente com acesso ao `DATABASE_URL`: recebe nome, e-mail e senha por argumento, aplica `bcrypt.hash` com o mesmo custo 10 e insere na tabela `Usuario`. É o único caminho de criação.
+**Consequência colateral positiva:** a enumeração de usuários (o formulário respondia "já existe um usuário com este email") desaparece junto com o formulário público.
 
-**Consequência colateral positiva:** a enumeração de usuários (o formulário respondia "já existe um usuário com este email") desaparece junto com o formulário.
+#### Identificação do administrador
+
+Campo `ehAdmin` no model `Usuario` (seção 3), propagado para a sessão pelos callbacks do NextAuth — o `jwt` copia o campo para o token, e o `session` o expõe em `session.user.ehAdmin`.
+
+**Bootstrap sem acesso manual ao banco:** a migration que cria a coluna inclui um passo de dados marcando **o usuário mais antigo** (`ORDER BY "criadoEm" ASC LIMIT 1`) como administrador. Em produção, esse é o usuário que criou a aplicação. Isso evita depender de um `UPDATE` manual no console do provedor — decisão coerente com a de não expor credenciais de produção à máquina local (ver 17.6 sobre o risco de `prisma migrate deploy` disparar contra o banco errado).
+
+Descartou-se a alternativa de identificar o admin por variável de ambiente (`ADMIN_EMAIL`): ela dispensaria a migration, mas amarraria a identidade do administrador ao e-mail, que é justamente um campo editável.
+
+#### Aplicação da regra em três camadas
+
+A verificação é feita no servidor, em todas as camadas — esconder o item de menu no cliente **não é proteção**, já que Server Actions são endpoints HTTP invocáveis diretamente:
+
+1. **Middleware** — `/usuarios` exige `token.ehAdmin`, via callback `authorized` do `withAuth`.
+2. **Server Component** — a página verifica a sessão antes de renderizar e redireciona quem não for admin.
+3. **Server Action** — um helper `exigirAdmin()` abre `criarUsuario` e `editarUsuario`, devolvendo erro sem executar nada.
+
+A camada 3 é a que realmente protege; as duas primeiras existem para dar a resposta certa ao usuário e reduzir superfície.
+
+#### Operações e travas
+
+| Operação | Regra |
+|---|---|
+| Criar usuário | Nome, e-mail e senha. E-mail único, senha com mínimo definido, hash bcrypt custo 10 — o mesmo do login |
+| Editar usuário | Nome e senha de qualquer usuário |
+| Editar o próprio e-mail | **Bloqueado** |
+| Remover o próprio `ehAdmin` | **Bloqueado** |
+| Apagar usuário | **Não existe** — `Transacao.usuarioId` e `Conta.usuarioId` referenciam `Usuario`, e apagar quem já lançou algo violaria a chave estrangeira. Revogar acesso é trocar a senha, o que preserva a autoria dos lançamentos |
+
+As duas travas de auto-bloqueio existem porque não há caminho de volta: um administrador que se rebaixe ou perca o próprio e-mail ficaria sem nenhuma forma de recuperar o acesso pela aplicação.
+
+#### Aviso na interface
+
+A tela concede acesso irrestrito às finanças da família — qualquer usuário criado ali lê e edita tudo (spec-01 §2). Isso deve estar **escrito na tela**, antes do formulário, e não subentendido. É um requisito de segurança, não de UX: evita que a decisão seja tomada sem consciência do alcance meses depois.
 
 ### 17.3 Limitação de taxa no login
 
@@ -990,4 +1023,4 @@ A task correspondente deve, portanto, **avaliar antes de atualizar**: verificar 
 |---|---|
 | **Ausência de verificação de propriedade** em `editarConta`/`apagarConta` e nas ações de transação | Adicionar checagem por `usuarioId` **contradiria a spec-01 §2**: o modelo familiar exige que qualquer membro edite o que outro lançou. O risco real vinha do cadastro aberto (17.2), não da falta da checagem. Fechado o cadastro, toda sessão autenticada é, por definição, um membro da família |
 | **Ausência de auditoria** de alterações | Explicitamente fora de escopo desde a spec-01. `usuarioId` registra a autoria da criação, nunca da edição. Se o app passar a ter mais usuários, isso deve ser reavaliado junto com o isolamento de dados |
-| **Política de senha** (mínimo de 6 caracteres, sem complexidade) | A validação vivia em `criarUsuario`, removida em 17.2. O script de provisionamento passa a ser o ponto de controle, e senhas fortes são responsabilidade de quem o executa |
+| **Política de senha** (mínimo de 6 caracteres, sem complexidade) | Mantida como está na tela de gestão (17.2). Com o cadastro fechado, senhas só são definidas pelo administrador para um grupo de duas pessoas — exigir complexidade protegeria pouco e atrapalharia mais. A limitação de taxa no login (17.3) é a defesa efetiva contra senha fraca |

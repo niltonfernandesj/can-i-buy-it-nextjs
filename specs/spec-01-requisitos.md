@@ -14,7 +14,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 
 - Uso familiar (não é um produto multi-tenant para o público).
 - Cada pessoa tem login próprio (email + senha).
-- **Não há cadastro público.** Usuários são criados por um script administrativo executado com acesso ao banco — não existe rota de autoatendimento na aplicação.
+- **Não há cadastro público.** Não existe rota de autoatendimento: novos usuários são criados **por um administrador**, de dentro da aplicação, numa tela restrita a ele.
+- **Administrador** é um usuário marcado como tal. Além de tudo que um usuário comum faz, ele pode criar e editar usuários. Não há exclusão de usuários — revogar acesso é trocar a senha, o que preserva a autoria dos lançamentos já feitos.
 - Todos os usuários autenticados veem os mesmos dados financeiros (não há dados privados por usuário no MVP).
 
 > **Por que essas duas últimas regras são inseparáveis:** como qualquer sessão autenticada enxerga e altera todos os dados financeiros da família, **quem pode se cadastrar é quem pode ver tudo**. Um cadastro aberto transformaria o compartilhamento intencional numa exposição pública. A ausência de isolamento por usuário só é aceitável enquanto a criação de contas for controlada.
@@ -22,11 +23,13 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 ## 3. Escopo do MVP
 
 ### Dentro do escopo
-1. **Autenticação**
-   - Login por email + senha. **Sem rota de cadastro** — ver seção 2.
+1. **Autenticação e gestão de usuários**
+   - Login por email + senha. **Sem rota de cadastro público** — ver seção 2.
    - Sessão autenticada obrigatória para acessar qualquer dado.
    - Após um login bem-sucedido, o usuário é redirecionado para a Visão geral (`/visao-geral`).
    - Tentativas de login são limitadas por taxa, para inviabilizar força bruta e uso de credenciais vazadas.
+   - Uma tela de **gestão de usuários**, acessível apenas ao administrador, permite criar novos usuários e editar os existentes (nome e senha). A tela deve deixar explícito que qualquer usuário criado ali passa a enxergar e editar todos os dados financeiros da família.
+   - O administrador não pode retirar a própria condição de administrador nem alterar o próprio e-mail por essa tela — do contrário perderia o acesso sem caminho de volta pela aplicação.
 2. **Lançamento manual de transações**
    - Tela para registrar transações de **entrada** (receita) e **saída** (despesa).
    - Campos: valor, data, descrição, tipo (entrada/saída), categoria.
@@ -261,8 +264,11 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 
 ## 6. Critérios de aceite (MVP)
 
-- [ ] Um usuário criado pelo script administrativo consegue fazer login.
-- [ ] Não existe rota de cadastro acessível na aplicação — nem por navegação, nem por URL direta.
+- [ ] Não existe rota de cadastro público na aplicação — nem por navegação, nem por URL direta.
+- [ ] O administrador consegue criar um usuário pela tela de gestão, e esse usuário consegue fazer login em seguida.
+- [ ] O administrador consegue alterar o nome e a senha de um usuário existente.
+- [ ] Um usuário comum que acesse a URL da tela de gestão diretamente é bloqueado, e uma chamada direta às ações de criar/editar usuário também é rejeitada.
+- [ ] O administrador não consegue remover a própria condição de administrador nem alterar o próprio e-mail.
 - [ ] Após um número definido de tentativas de login malsucedidas, novas tentativas são bloqueadas temporariamente.
 - [ ] Após um login bem-sucedido, o usuário é redirecionado para a Visão geral.
 - [ ] Um usuário logado consegue lançar uma transação de entrada e uma de saída, com categoria e conta vinculada.
