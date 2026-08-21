@@ -31,6 +31,11 @@ enum Categoria {
   OUTROS
 }
 
+enum MeioPagamento {
+  CREDITO
+  DEBITO
+}
+
 model Usuario {
   id           String   @id @default(cuid())
   nome         String
@@ -39,8 +44,9 @@ model Usuario {
   ehAdmin      Boolean  @default(false) // gestão de usuários — spec-02 §17.2
   criadoEm     DateTime @default(now())
 
-  contas       Conta[]
-  transacoes   Transacao[]
+  contas        Conta[]
+  transacoes    Transacao[]
+  valoresPadrao ValorPadrao[]
 }
 
 model Conta {
@@ -100,4 +106,19 @@ model Transacao {
   @@index([mesReferencia, anoReferencia])
   @@index([parcelamentoId])
   @@index([recorrenciaId])
+}
+
+model ValorPadrao {
+  id        String        @id @default(cuid())
+  usuarioId String
+  usuario   Usuario       @relation(fields: [usuarioId], references: [id])
+
+  descricao String
+  valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
+  tipo      TipoTransacao // ENTRADA (receita padrão) | SAIDA (despesa padrão)
+  meio      MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId])
 }
