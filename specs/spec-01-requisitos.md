@@ -94,7 +94,9 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   3. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
   4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
 - Nos blocos 1, 2 e 3, as transações são **agrupadas e exibidas por dia** dentro do mês filtrado.
-- Quando aplicável (ver seção 3.5), os **valores padrão** entram nos blocos Entradas, Saídas no débito e Saídas no crédito como uma linha própria, **visualmente distinta dos lançamentos reais** — deixando claro qual parcela do total é estimativa e qual é fato consumado.
+- Quando aplicável (ver seção 3.5), os **valores padrão** entram nos blocos Entradas, Saídas no débito e Saídas no crédito como uma linha própria, **visualmente distinta dos lançamentos reais**. A distinção não é a mesma nos três blocos — segue a diferença de natureza da seção 3.5:
+  - Em **Saídas no débito** e **Saídas no crédito**, a linha representa uma **estimativa** (teto ainda não consumido) — o tratamento visual deve comunicar incerteza, e a linha vem **depois** dos lançamentos reais do dia.
+  - Em **Entradas**, a linha representa a **receita padrão**, um valor **garantido, não uma estimativa** (seção 3.5) — o tratamento visual não pode sugerir incerteza que não existe, e a linha vem **antes** dos lançamentos reais do dia, como base sobre a qual as entradas pontuais somam.
 - **Regra de mês de referência:**
   - Para **Entradas**, **Saídas no débito** e **Investimentos**: o mês de referência é o mês da própria data da transação.
   - Para **Saídas no crédito**: o mês de referência é o **mês do vencimento da fatura** à qual a compra foi atribuída — não o mês da data da compra. Como o fechamento do cartão pode cair antes do fim do mês, uma compra feita, por exemplo, em fins de um mês pode cair na fatura (e portanto no mês de referência) do mês seguinte.
@@ -181,7 +183,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
   1. **Lançamentos reais** já existentes naquele mês de referência.
   2. **Compromissos já assumidos** — parcelas e ocorrências de recorrência que caem naquele mês.
   3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
-- A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês.
+- A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês — com a mesma ressalva da seção 3.1: a parcela de entradas vinda de receita padrão não é uma estimativa (é garantida) e não deve ser rotulada nem estilizada como tal.
 - A Visão mensal (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
 - Cada mês da lista funciona como **link** para a Visão mensal filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão mensal.
 
@@ -315,9 +317,10 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Ocorrências de recorrência de despesa consomem a despesa padrão; parcelas não a consomem e somam por cima.
 - [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
-- [ ] A Visão mensal distingue visualmente a parcela estimada da parcela real dos totais.
+- [ ] A Visão mensal distingue visualmente a parcela estimada (despesa) da parcela real dos totais.
+- [ ] Na Visão mensal, a receita padrão aparece antes dos lançamentos reais do bloco Entradas, com rótulo "Receita padrão" e sem o estilo visual usado para estimativas de despesa.
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual, com entradas, saídas e disponível de cada um.
-- [ ] A tela de Projeção distingue visualmente valores reais de estimados.
+- [ ] A tela de Projeção distingue visualmente valores reais de estimados, com a mesma ressalva: receita padrão não é rotulada nem estilizada como estimativa.
 - [ ] Clicar num mês da lista da Projeção leva à Visão mensal filtrada naquele mês/ano.
 - [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
 - [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.

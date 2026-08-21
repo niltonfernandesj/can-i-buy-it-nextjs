@@ -765,6 +765,7 @@ Pontos que merecem atenção:
 - **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
 - **A mesma função serve as duas telas.** A Visão mensal chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
+- **`entradas.estimado` é a chave, não a semântica.** O nome é compartilhado com `credito.estimado`/`debito.estimado` só por simetria de forma (mesmo shape `{real, estimado, total}`, mesma função que os produz) — o conteúdo é outra coisa: para saídas é uma estimativa de verdade (teto ainda não consumido); para entradas é a receita padrão, um valor garantido que nunca é reduzido (Requisitos 3.5). A camada de exibição (§16.2) trata os dois de forma diferente; a função não foi renomeada porque o nome é interno e já documentado aqui — renomear só a chave sem mudar comportamento não valia o churn em `lib/projecao.js`, seus testes e as duas telas que a consomem.
 
 ### 13.4 Casos de teste obrigatórios (Vitest)
 
@@ -806,7 +807,7 @@ Três faixas, de cima para baixo:
 
 1. **Gráfico de barras do Disponível** — 12 barras, uma por mês, construídas com `div` + CSS (altura proporcional), **sem Recharts**. A seção 1 registra "gráficos removidos do escopo"; esta é uma reabertura deliberada e limitada, que não adiciona dependência. Meses com Disponível negativo descem a partir da linha de base e usam a cor de alerta, tornando o "onde afunda" imediato.
 2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
-3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2). No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
+3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2) — no subtexto de Entradas, a receita padrão lidera (`R$ 400 receita padrão + R$ 800 real`), invertido em relação ao subtexto de Saídas (`R$ 800 real + R$ 400 estimado`), mesma regra de §16.2. No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
 
 Cada card da lista é um **link** para `/visao-mensal?mes=X&ano=Y` (Requisitos 3.6) — a Projeção resume doze meses, o detalhe de cada um continua na Visão mensal. O hover reforça essa affordance de clique (borda, fundo e sombra do card destacados); usa tokens sólidos do tema (`border-ring`, `bg-muted`), não a sintaxe de opacidade `/NN` do Tailwind — `tailwind.config.js` mapeia as cores direto para `var(--token)` em hex, que não suporta modificador de opacidade (achado registrado, correção mais ampla ainda pendente — ver nota em `spec-03`).
 
@@ -918,11 +919,21 @@ A família `-400` substitui a `-600` porque os tons `-600` do Tailwind foram cal
 
 ### 16.2 Distinção visual entre real e estimado
 
-Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão mensal quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins:
+Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão mensal quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins.
 
-- Valores estimados usam `--estimado` **e** um rótulo textual explícito ("estimado").
-- Na Visão mensal, a estimativa entra como uma **linha própria** dentro do bloco, com borda tracejada, separada dos lançamentos reais — nunca somada silenciosamente ao total sem indicação.
-- Nos cards de resumo, a composição fica explícita como subtexto: `R$ 800 real + R$ 400 estimado`.
+`comporMes` (§13.3) devolve a parcela não-real de entradas e de saídas na mesma chave (`estimado`), mas as duas **não têm a mesma natureza** (Requisitos 3.1, 3.5) — o tratamento visual diverge:
+
+**Despesa (Saídas no débito, Saídas no crédito) — é uma estimativa de verdade:**
+- Usa `--estimado` **e** o rótulo textual "Estimado".
+- Na Visão mensal, entra como uma **linha própria depois** dos lançamentos reais do bloco, com **borda tracejada** (`border-t border-dashed`) — o tracejado comunica "provisório".
+- No card de resumo e no card de mês da Projeção, o subtexto segue `R$ 800 real + R$ 400 estimado` (real primeiro).
+
+**Receita padrão (bloco Entradas) — é garantida, não é estimativa (Requisitos 3.5):**
+- **Não** usa `--estimado` nem o rótulo "estimado" — usa o rótulo "Receita padrão" e a cor `--entrada` (a mesma do bloco), pois é dinheiro que efetivamente entra, só que sem uma transação datada por trás.
+- Na Visão mensal, entra como uma **linha própria antes** dos lançamentos reais do bloco, com **borda sólida** (`border-b`, não tracejada) — a receita padrão é a base sobre a qual as entradas pontuais somam, não um adendo incerto ao final.
+- No card de resumo e no card de mês da Projeção, o subtexto inverte a ordem: `R$ 400 receita padrão + R$ 800 real` — a parte garantida lidera.
+
+Ambos os casos continuam nunca somando ao total silenciosamente, sem indicação — a diferença é só entre "isto pode não se confirmar" (estimado, despesa) e "isto é dinheiro real, só que ainda não é um lançamento" (receita padrão, entrada).
 
 ### 16.3 Escopo da revisão de contraste
 

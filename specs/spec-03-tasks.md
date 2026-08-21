@@ -328,6 +328,15 @@ Renomeação de tela e rota, terceira da linhagem depois de `/acompanhamento` �
 
 Specs atualizadas nesta mesma task (spec-01 e spec-02 já refletem "Visão mensal"/`/visao-mensal` em toda referência ao estado atual; tasks já concluídas que citam `/visao-geral` — Task 20 e as que vieram depois dela — permanecem como estão, registro histórico do que era verdade quando foram escritas, mesmo padrão já usado no rename anterior).
 
+**Task 69. Receita padrão não é tratada como estimativa no bloco Entradas**
+`entradas.estimado` (de `comporMes`) carrega a receita padrão — um valor garantido, nunca reduzido pelo real (Requisitos 3.5) — mas hoje é exibido com a mesma linguagem visual de "estimativa" usada nas Saídas, o que sugere uma incerteza que não existe. Design §16.2 revisado com o tratamento diferenciado; aplicar em ambas as telas que consomem o campo (Design §13.3: "a mesma função serve as duas telas"):
+
+- **Visão mensal** (`visao-mensal-client.jsx`): no bloco Entradas expandido, a linha de receita padrão passa a vir **antes** dos lançamentos reais agrupados por dia (não mais depois), com rótulo "Receita padrão", borda sólida (`border-b`, não tracejada) e cor `text-entrada` (não `text-estimado`). O bloco recebe uma prop (ex.: `ehEntradas`) pra `BlocoPorDia` escolher entre esse tratamento e o de "Estimado" já existente (mantido, sem mudança, para Saídas no débito/crédito). No card de resumo "Entradas", o subtexto inverte a ordem: receita padrão primeiro, real depois.
+- **Projeção** (`projecao-client.jsx`): `ValorComposto` recebe uma prop equivalente pra aplicar o mesmo subtexto invertido e a mesma cor só na chamada de Entradas de cada card de mês; a chamada de Saídas mantém o comportamento atual.
+- Nenhuma mudança em `lib/projecao.js` — `comporMes` continua devolvendo `{real, estimado, total}` com a mesma chave para os dois casos (nota já registrada em Design §13.3 sobre por que a chave não foi renomeada); só a camada de exibição muda.
+
+*(Checkpoint sugerido: critérios de aceite revisados de Visão mensal e Projeção — spec-01 §6.)*
+
 ---
 
 ## Resumo de rastreabilidade
