@@ -808,6 +808,8 @@ Três faixas, de cima para baixo:
 2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
 3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2). No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
 
+Cada card da lista é um **link** para `/visao-geral?mes=X&ano=Y` (Requisitos 3.6) — a Projeção resume doze meses, o detalhe de cada um continua na Visão geral. O hover reforça essa affordance de clique (borda, fundo e sombra do card destacados); usa tokens sólidos do tema (`border-ring`, `bg-muted`), não a sintaxe de opacidade `/NN` do Tailwind — `tailwind.config.js` mapeia as cores direto para `var(--token)` em hex, que não suporta modificador de opacidade (achado registrado, correção mais ampla ainda pendente — ver nota em `spec-03`).
+
 ### 14.3 Simulação
 
 Roda **inteiramente no cliente**, sobre os dados já carregados — nenhuma chamada ao servidor, nenhuma Server Action, nenhuma escrita.

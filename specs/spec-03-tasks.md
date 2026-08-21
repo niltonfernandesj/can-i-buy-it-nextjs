@@ -315,6 +315,9 @@ Novo componente cliente `components/navegacao/abas-dados.jsx`, renderizado por `
 
 *(Checkpoint sugerido: critérios de aceite de navegação — spec-01 §6.)*
 
+**Task 67. Card do mês em `/projecao` vira link pra Visão geral**
+Cada card da lista de 12 meses passa a ser um link para `/visao-geral?mes=X&ano=Y` (Requisitos 3.6, Design §14.2), com hover destacando borda/fundo/sombra do card como affordance de clique. Usa tokens sólidos do tema (`border-ring`, `bg-muted`) em vez da sintaxe de opacidade `/NN` do Tailwind, que não gera CSS nos tokens deste projeto (achado registrado em spec-01 §7, correção mais ampla não priorizada).
+
 ---
 
 ## Resumo de rastreabilidade

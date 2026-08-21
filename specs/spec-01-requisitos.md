@@ -183,6 +183,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
   3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
 - A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês.
 - A Visão geral (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
+- Cada mês da lista funciona como **link** para a Visão geral filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão geral.
 
 ### 3.7 Especificação — Simulação de compra ("Can I Buy It?")
 
@@ -317,6 +318,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] A Visão geral distingue visualmente a parcela estimada da parcela real dos totais.
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual, com entradas, saídas e disponível de cada um.
 - [ ] A tela de Projeção distingue visualmente valores reais de estimados.
+- [ ] Clicar num mês da lista da Projeção leva à Visão geral filtrada naquele mês/ano.
 - [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
 - [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.
 - [ ] A simulação não é persistida: ao sair e voltar à tela de Projeção, os números voltam ao estado sem simulação.
@@ -337,3 +339,4 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - Se o histórico de alterações (quem editou o quê) será necessário conforme o uso familiar evoluir.
 - **Atualização do Next.js (14 → 15+)** — resolveria os avisos de segurança da própria maquinaria de RSC/Server Actions (spec-02 §17.6), incluindo um diretamente relevante para esta arquitetura ("Unauthenticated disclosure of internal Server Function endpoints"). Exige trabalho dedicado: no Next 15 `searchParams`/`params` viram assíncronos, o que quebra `visao-geral/page.jsx`, e pede QA completo em todas as rotas — não é um `npm audit fix --force`.
 - **Migração do NextAuth para Auth.js v5 (next-auth 4 → 5)** — resolveria as falhas do `@auth/core` (spec-02 §17.6). A versão em uso (4.24.15) é a última da série 4.x; não há patch mais novo na mesma major esperando. Também exige trabalho dedicado e QA completo do fluxo de autenticação.
+- **Modificador de opacidade do Tailwind (`/NN`) não funciona nos tokens do tema** — `tailwind.config.js` mapeia cada cor direto para `var(--token)` (hex puro), formato que não suporta a sintaxe `<alpha-value>` que o Tailwind precisa pra gerar `hover:bg-primary/90` e afins. Descoberto ao investigar o hover do card em `/projecao` (spec-03, task de hover): a classe simplesmente não gera CSS nenhum. Afeta hoje `Button` (variantes `default`, `destructive`, `secondary`), o pill do seletor de período e o link "Nova transação" — nenhum desses muda de cor no hover, mesmo a classe estando presente no DOM. Correção de raiz exige converter as variáveis de `globals.css` de hex para canais RGB/HSL espaçados e ajustar `tailwind.config.js` pro padrão `rgb(var(--token) / <alpha-value>)`, revalidando contraste depois — não priorizado ainda.
