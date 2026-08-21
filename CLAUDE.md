@@ -82,6 +82,7 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 
 - **Primeira requisição contra um dev server recém-subido** dá timeout enquanto o Next compila a rota. Rode o script de novo.
 - **`.next` corrompido** quando `build` roda com `dev`/`start` vivo. Mate a porta 3000 e `rm -rf .next` antes.
+- **Reload de página aberta antes de reiniciar `next dev`** pode carregar sem estilo — a aba retém referências ao build anterior do webpack. Feche/recarregue a aba (ou dê um hard reload) depois de reiniciar o servidor; não precisa investigar.
 
 ### Armadilhas de scripts de QA
 
