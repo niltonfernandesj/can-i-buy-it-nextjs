@@ -13,10 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 import { MenuUsuario } from "@/components/navegacao/menu-usuario";
 
-// Links temporários (Task 58/62) até a navegação agrupada definitiva do M17
-// (Design §15) substituir esta lista. Ordem já segue a definitiva — Dados
-// (visão geral, transações, projeção) seguido de Ajustes (contas, valores
-// padrão) — para reduzir o diff quando o agrupamento visual chegar.
+// Barra inferior do mobile ainda não foi revisada (Task 65) — continua com a
+// lista temporária das Tasks 58/62.
 const DESTINOS = [
   { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
   { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
@@ -24,6 +22,34 @@ const DESTINOS = [
   { href: "/contas", label: "Contas", Icone: Wallet },
   { href: "/valores-padrao", label: "Valores padrão", Icone: SlidersHorizontal },
 ];
+
+// Design §15.1 — os mesmos cinco destinos, agora em dois grupos semânticos
+// para a barra lateral do desktop.
+const GRUPO_DADOS = [
+  { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
+  { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
+  { href: "/projecao", label: "Projeção", Icone: TrendingUp },
+];
+
+const GRUPO_AJUSTES = [
+  { href: "/contas", label: "Contas", Icone: Wallet },
+  { href: "/valores-padrao", label: "Valores padrão", Icone: SlidersHorizontal },
+];
+
+function LinkSidebar({ href, label, Icone, ativo }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+        ativo ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+      )}
+    >
+      <Icone className="h-4 w-4" />
+      {label}
+    </Link>
+  );
+}
 
 export function NavegacaoPrincipal() {
   const pathname = usePathname();
@@ -38,25 +64,17 @@ export function NavegacaoPrincipal() {
           <Plus className="h-4 w-4" />
           Nova transação
         </Link>
+
+        {/* Design §15.2 — os cinco destinos simultâneos, divisor entre
+            grupos, sem rótulos de grupo (o agrupamento é só visual). */}
         <nav className="flex flex-col gap-1">
-          {DESTINOS.map(({ href, label, Icone }) => {
-            const ativo = pathname.startsWith(href);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
-                  ativo
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icone className="h-4 w-4" />
-                {label}
-              </Link>
-            );
-          })}
+          {GRUPO_DADOS.map((d) => (
+            <LinkSidebar key={d.href} {...d} ativo={pathname.startsWith(d.href)} />
+          ))}
+          <div className="my-2 border-t" aria-hidden="true" />
+          {GRUPO_AJUSTES.map((d) => (
+            <LinkSidebar key={d.href} {...d} ativo={pathname.startsWith(d.href)} />
+          ))}
         </nav>
 
         <div className="mt-auto">
