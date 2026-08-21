@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard, ChevronDown } from "lucide-react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  PiggyBank,
+  CreditCard,
+  ChevronDown,
+} from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SeletorPeriodo, useNavegacaoPeriodo } from "@/components/visao-mensal/seletor-periodo";
+import {
+  SeletorPeriodo,
+  useNavegacaoPeriodo,
+} from "@/components/visao-mensal/seletor-periodo";
 import { DetalheDiario } from "@/components/visao-mensal/detalhe-diario";
 
 const LIMIAR_SWIPE_PX = 50;
@@ -29,7 +38,11 @@ function useSwipeMes(mesAnterior, mesSeguinte) {
     const deltaY = t.clientY - toqueInicial.current.y;
     toqueInicial.current = null;
 
-    if (Math.abs(deltaX) <= Math.abs(deltaY) || Math.abs(deltaX) < LIMIAR_SWIPE_PX) return;
+    if (
+      Math.abs(deltaX) <= Math.abs(deltaY) ||
+      Math.abs(deltaX) < LIMIAR_SWIPE_PX
+    )
+      return;
 
     if (deltaX < 0) mesSeguinte();
     else mesAnterior();
@@ -39,8 +52,10 @@ function useSwipeMes(mesAnterior, mesSeguinte) {
 }
 
 function classeAnimacaoSwipe(direcao) {
-  if (direcao === "proxima") return "animate-in fade-in slide-in-from-right-8 duration-200";
-  if (direcao === "anterior") return "animate-in fade-in slide-in-from-left-8 duration-200";
+  if (direcao === "proxima")
+    return "animate-in fade-in slide-in-from-right-8 duration-200";
+  if (direcao === "anterior")
+    return "animate-in fade-in slide-in-from-left-8 duration-200";
   return "";
 }
 
@@ -63,7 +78,8 @@ function SubtextoComposicao({ real, estimado, ehReceitaPadrao }) {
   }
   return (
     <p className="mt-1 text-xs text-muted-foreground">
-      {formatarReais(real)} + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
+      {formatarReais(real)} +{" "}
+      <span className="text-estimado">{formatarReais(estimado)} estimado</span>
     </p>
   );
 }
@@ -72,11 +88,17 @@ function CardResumo({ titulo, real, estimado, total, ehReceitaPadrao }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-normal text-muted-foreground">{titulo}</CardTitle>
+        <CardTitle className="text-sm font-normal text-muted-foreground">
+          {titulo}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-xl font-semibold">{formatarReais(total)}</p>
-        <SubtextoComposicao real={real} estimado={estimado} ehReceitaPadrao={ehReceitaPadrao} />
+        <SubtextoComposicao
+          real={real}
+          estimado={estimado}
+          ehReceitaPadrao={ehReceitaPadrao}
+        />
       </CardContent>
     </Card>
   );
@@ -92,12 +114,21 @@ function Resumo({ entradas, saidas, disponivel }) {
         total={entradas.total}
         ehReceitaPadrao
       />
-      <CardResumo titulo="Saídas" real={saidas.real} estimado={saidas.estimado} total={saidas.total} />
+      <CardResumo
+        titulo="Saídas"
+        real={saidas.real}
+        estimado={saidas.estimado}
+        total={saidas.total}
+      />
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-normal text-muted-foreground">Disponível</CardTitle>
+          <CardTitle className="text-sm font-normal text-muted-foreground">
+            Disponível
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-xl font-semibold">{formatarReais(disponivel)}</CardContent>
+        <CardContent className="text-xl font-semibold">
+          {formatarReais(disponivel)}
+        </CardContent>
       </Card>
     </div>
   );
@@ -113,14 +144,16 @@ function CabecalhoBloco({ Icone, cor, titulo, total, expandido, onToggle }) {
     >
       <div className="flex items-center gap-2">
         <Icone className={cn("h-4 w-4", cor)} />
-        <h2 className="text-sm font-semibold uppercase tracking-wide">{titulo}</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide">
+          {titulo}
+        </h2>
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm font-semibold">{formatarReais(total)}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform",
-            expandido && "rotate-180"
+            expandido && "rotate-180",
           )}
         />
       </div>
@@ -155,7 +188,17 @@ function LinhaReceitaPadrao({ valor }) {
   );
 }
 
-function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTag, mensagemVazia, ehEntradas = false }) {
+function BlocoPorDia({
+  titulo,
+  Icone,
+  cor,
+  total,
+  estimado = 0,
+  grupos,
+  renderTag,
+  mensagemVazia,
+  ehEntradas = false,
+}) {
   const [expandido, setExpandido] = useState(false);
 
   return (
@@ -214,14 +257,27 @@ function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
       />
       {expandido &&
         (investimentos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nenhum investimento neste mês.</p>
+          <p className="text-sm text-muted-foreground mt-3">
+            Nenhum investimento neste mês.
+          </p>
         ) : (
-          investimentos.map((i) => (
-            <div key={i.contaInvestimentoId} className="flex items-center justify-between text-sm">
-              <span>{i.contaInvestimentoNome}</span>
-              <span>{formatarReais(i.total)}</span>
-            </div>
-          ))
+          investimentos.map((investimento, index) => {
+            let divClasses = "flex items-center justify-between text-sm";
+
+            if (index === 0) {
+              divClasses = divClasses + " mt-3";
+            }
+
+            return (
+              <div
+                key={investimento.contaInvestimentoId}
+                className={divClasses}
+              >
+                <span>{investimento.contaInvestimentoNome}</span>
+                <span>{formatarReais(investimento.total)}</span>
+              </div>
+            );
+          })
         ))}
     </section>
   );
@@ -267,21 +323,35 @@ export function VisaoMensalClient({
     mesSeguinte();
   }
 
-  const { onTouchStart, onTouchEnd } = useSwipeMes(mesAnteriorViaSwipe, mesSeguinteViaSwipe);
+  const { onTouchStart, onTouchEnd } = useSwipeMes(
+    mesAnteriorViaSwipe,
+    mesSeguinteViaSwipe,
+  );
 
   return (
-    <div className="flex flex-col gap-6" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div
+      className="flex flex-col gap-6"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       <div className="flex justify-center">
         <SeletorPeriodo mes={mes} ano={ano} />
       </div>
 
       <div
         key={`${mes}-${ano}`}
-        className={cn("flex flex-col gap-6", classeAnimacaoSwipe(direcaoSwipeRef.current))}
+        className={cn(
+          "flex flex-col gap-6",
+          classeAnimacaoSwipe(direcaoSwipeRef.current),
+        )}
       >
-        <Resumo entradas={composicaoEntradas} saidas={saidasCompostas} disponivel={disponivel} />
+        <Resumo
+          entradas={composicaoEntradas}
+          saidas={saidasCompostas}
+          disponivel={disponivel}
+        />
 
-        <div className="flex flex-col divide-y divide-border">
+        <div className="flex flex-col divide-y divide-border mt-8">
           <BlocoPorDia
             titulo="Entradas"
             Icone={ArrowDownCircle}
