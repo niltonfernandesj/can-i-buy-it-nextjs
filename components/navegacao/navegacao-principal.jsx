@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, Wallet, Plus } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, Wallet, SlidersHorizontal, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuUsuario } from "@/components/navegacao/menu-usuario";
 
+// Links temporários (Task 58/62) até a navegação agrupada definitiva do M17
+// (Design §15) substituir esta lista.
 const DESTINOS = [
   { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
   { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
   { href: "/contas", label: "Contas", Icone: Wallet },
+  { href: "/valores-padrao", label: "Valores padrão", Icone: SlidersHorizontal },
 ];
 
 export function NavegacaoPrincipal() {

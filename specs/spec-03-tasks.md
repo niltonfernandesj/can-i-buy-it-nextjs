@@ -279,7 +279,7 @@ Adiciona o enum `MeioPagamento` e o model `ValorPadrao` ao `schema.prisma` confo
 CRUD em `lib/actions/valores-padrao.js`: criar, editar e apagar. Valida que `meio` é obrigatório quando `tipo = SAIDA` e nulo quando `ENTRADA` (Design §3), e que o valor é positivo. `revalidatePath` para `/valores-padrao`, `/visao-geral` e `/projecao` — omitir alguma reproduz o bug de cache já ocorrido com contas.
 
 **Task 58. Tela `/valores-padrao`**
-Tela única com as duas listas (Receitas padrão e Despesas padrão), cada uma com CRUD inline (Design §15.4). O formulário de despesa tem seletor Crédito/Débito; o de receita, não. Reaproveita `CampoValor`. Adiciona um link temporário na navegação existente para a tela ficar alcançável — a estrutura definitiva vem no M16.
+Tela única com as duas listas (Receitas padrão e Despesas padrão), cada uma com CRUD inline (Design §15.4). O formulário de despesa tem seletor Crédito/Débito; o de receita, não. Reaproveita `CampoValor`. Adiciona um link temporário na navegação existente para a tela ficar alcançável — a estrutura definitiva vem no M17.
 
 **Task 59. `lib/projecao.js` — fronteiras da estimativa**
 Implementa `dataFechamentoDaReferencia`, `creditoAindaEstimavel` e `debitoAindaEstimavel` conforme o Design §13.1 e §13.2 — a inversa de `calcularFatura`. Testes no Vitest cobrindo os casos 6, 7, 8 e 11 da lista do Design §13.4 (fatura fechada, dois cartões com fechamentos distintos, nenhum cartão cadastrado, fechamento dia 31 em mês de 30 dias). Função pura, sem banco.
