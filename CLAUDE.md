@@ -39,12 +39,16 @@ npx playwright install chromium   # só na primeira vez da máquina
 
 O roteiro:
 
-1. **Crie dados de teste isolados** com um script Prisma temporário: um usuário descartável (`qa-taskNN@teste.local` / `senhaQA123`, senha via `bcrypt.hash`) e o mínimo de contas/transações que o cenário exige.
+1. **Crie dados de teste isolados** com um script Prisma temporário: um usuário descartável (`qa-taskNN@teste.local` / `senhaQA123`, senha via `bcrypt.hash`) e o mínimo de contas/transações que o cenário exige. Se o cenário depende de uma soma agregada (teto, total do mês) num banco sem isolamento por usuário, **use valores 10-100x maiores que qualquer coisa plausível já lançada** (ex.: teto de R$1.000.000, não R$1.000) — evita descobrir depois que dado real pré-existente já mascarou o resultado e ter que refazer o setup.
 2. **Suba o servidor** em background e espere ficar de pé (`curl` em loop até responder).
-3. **Escreva um `.mjs` temporário** que exercita a UI real — login, navegação, cliques, asserções. Prefira asserção sobre estado observável (URL, texto renderizado, `getComputedStyle`, linha no banco) a "parece certo".
-4. **Tire screenshots** no diretório de scratchpad da sessão e **olhe** — várias regressões visuais não quebram nenhuma asserção.
+3. **Escreva um `.mjs` temporário** que exercita a UI real — login, navegação, cliques, asserções. **Asserção sobre estado observável é a evidência padrão, não o screenshot**: URL, `textContent()`, `getComputedStyle()`, `boundingBox()`, linha no banco. Rode tudo num único script (todos os passos do roteiro numa execução só) em vez de vários scripts pequenos.
+4. **Screenshots são o último recurso, reservado pro que só um olho humano avalia** — legibilidade, alinhamento, espaçamento, "isso parece quebrado". Quando forem necessários: nunca `fullPage: true` por padrão (custa tokens de visão proporcionais à altura da imagem) — prefira o viewport ou `locator(...).screenshot()` do elemento específico; numa lista longa e repetitiva (ex.: 12 cards de mês), dois ou três já provam o padrão, não precisa fotografar todos; ao revisar, leia só os que cobrem estados visualmente distintos.
 5. **Confirme no banco** quando a task envolve mutação: leia a linha direto via Prisma em vez de confiar só na tela.
 6. **Limpe tudo**: apague as linhas de QA, remova os scripts temporários, mate o servidor, `npm uninstall playwright --no-save`, `rm -rf .next`. Rode `git status` para confirmar que só sobrou o que a task deveria mudar.
+
+**Sem Playwright para tasks sem UI** (schema, migration, Server Action sem tela nova, função pura em `lib/`) — lint + test + build já bastam; instalar o browser é puro custo.
+
+**Seletor `:visible` desde a primeira tentativa** em qualquer tela com variante mobile/desktop simultânea no DOM (a maioria, depois do M17) — é o erro mais repetido nesta sessão: locator ambíguo → timeout → reescrever → rodar de novo. Não espere o timeout pra descobrir.
 
 ### ⚠️ Segurança dos dados durante o QA
 
@@ -70,13 +74,13 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 
 - **Primeira requisição contra um dev server recém-subido** dá timeout enquanto o Next compila a rota. Rode o script de novo.
 - **`.next` corrompido** quando `build` roda com `dev`/`start` vivo. Mate a porta 3000 e `rm -rf .next` antes.
-- **Locator ambíguo entre desktop e mobile**: as duas variantes de navegação coexistem no DOM (alternadas por CSS), então um seletor por texto acha 2 elementos. Restrinja com `:visible`, `.first()` ou um ancestral.
 
 ### Armadilhas de scripts de QA
 
 - Rode os scripts **a partir da raiz do projeto** (`node qa-x.mjs`, com o arquivo lá dentro) — de fora, o Node não resolve `@prisma/client` nem `playwright`.
 - O campo de senha do modelo `Usuario` é **`senhaHash`**, não `senha`.
 - Datas em `new Date("2026-07-20")` são UTC e podem exibir o dia anterior no fuso local. Asserte pelo dado (`numeroParcela`, id) em vez do dia exato quando isso não for o alvo do teste.
+- `npm install`/`uninstall playwright` e `npm audit` imprimem avisos de engine e vulnerabilidades que não mudam de task pra task — `| tail -n 3` ou `| tail -n 5` no comando corta o ruído sem perder o resultado.
 
 ## Stack (ver spec-02-design.md §1 para detalhes/justificativas)
 
