@@ -926,14 +926,14 @@ Exigida pelo Requisitos 3.1 e usada nos blocos e no card de resumo da Visão men
 `comporMes` (§13.3) devolve a parcela não-real de entradas e de saídas na mesma chave (`estimado`), mas as duas **não têm a mesma natureza** (Requisitos 3.1, 3.5) — o tratamento visual diverge:
 
 **Despesa (Saídas no débito, Saídas no crédito) — é uma estimativa de verdade:**
-- Usa `--estimado` **e** o rótulo textual "Estimado".
+- Usa `--estimado` **e** um rótulo textual: "Estimado restante" na linha própria do bloco (revisado pós-implementação — deixa explícito que é o que sobra do teto, não o teto cheio) e "estimado", em minúsculo, inline no subtexto do card de resumo (ver abaixo).
 - Na Visão mensal, entra como uma **linha própria depois** dos lançamentos reais do bloco, com **borda tracejada** (`border-t border-dashed`) — o tracejado comunica "provisório".
-- No card de resumo, o subtexto segue `R$ 800 real + R$ 400 estimado` (real primeiro).
+- No card de resumo, o subtexto segue `R$ 800 + R$ 400 estimado` (valor real primeiro, sem a palavra "real" — revisão pós-implementação: o termo era redundante, já que o segundo valor já é identificado como "estimado").
 
 **Receita padrão (bloco Entradas) — é garantida, não é estimativa (Requisitos 3.5):**
-- **Não** usa `--estimado` nem o rótulo "estimado" — usa o rótulo "Receita padrão" e a cor `--entrada` (a mesma do bloco), pois é dinheiro que efetivamente entra, só que sem uma transação datada por trás.
+- **Não** usa `--estimado` nem o rótulo "estimado" — usa o rótulo "Receita padrão", **sem cor de destaque**: rótulo em `text-muted-foreground` e valor na cor padrão do texto, o mesmo tratamento neutro de uma linha de lançamento comum. (Revisão pós-implementação, a pedido do usuário: a primeira versão usava a cor `--entrada` do bloco, mas isso dava mais destaque do que o dado pedia — é dinheiro garantido, não precisa chamar mais atenção que um lançamento real.)
 - Na Visão mensal, entra como uma **linha própria antes** dos lançamentos reais do bloco, com **borda sólida** (`border-b`, não tracejada) — a receita padrão é a base sobre a qual as entradas pontuais somam, não um adendo incerto ao final.
-- No card de resumo, o subtexto inverte a ordem: `R$ 400 receita padrão + R$ 800 real` — a parte garantida lidera.
+- No card de resumo, o subtexto inverte a ordem: `R$ 400 receita padrão + R$ 800` — a parte garantida lidera, sem a palavra "real" no valor restante (mesma revisão da despesa, acima).
 
 Ambos os casos continuam nunca somando ao total silenciosamente, sem indicação — a diferença é só entre "isto pode não se confirmar" (estimado, despesa) e "isto é dinheiro real, só que ainda não é um lançamento" (receita padrão, entrada).
 

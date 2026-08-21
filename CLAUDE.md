@@ -13,6 +13,7 @@ Este projeto segue **Spec Driven Development**. A pasta `specs/` é a fonte da v
 - Se perceber que a spec está errada, incompleta ou ambígua: **pare e avise antes de codar** — sugira a correção na spec. A spec manda no código, não o contrário.
 - Ao terminar uma task, rode o pipeline de QA da seção abaixo antes de considerar concluída.
 - Não crie arquivos ou funcionalidades fora do que a task pede "por via das dúvidas".
+- **Exceção — bypass explícito do ciclo de specs:** o usuário pode autorizar pular o ciclo (sem entrada em `spec-03-tasks.md`, sem atualização de Requisitos/Design antes de codar) pra uma mudança pontual, com uma instrução explícita nesse sentido (ex.: "sem SDD", "implemente direto", "pode seguir, sem passar pelas specs"). Essa autorização vale **só pra aquele pedido** — nunca presuma que ela se estende ao próximo pedido, mesmo que pareça pequeno ou similar; peça de novo se não houver instrução explícita. Bypass gera drift proposital entre spec e código (a spec documenta o que existia antes da mudança); se o usuário pedir uma limpeza geral das specs depois, reconcilie esses pontos com o código real nesse momento.
 
 ## Quality Assurance
 
