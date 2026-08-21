@@ -159,7 +159,7 @@ function LinhaMes({ mes }) {
 
   return (
     <Link href={`/visao-geral?mes=${mes.mesReferencia}&ano=${mes.anoReferencia}`}>
-      <Card className="transition-colors hover:bg-muted/50">
+      <Card className="transition-all hover:border-ring hover:bg-muted hover:shadow-md">
         <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between md:gap-6">
           <p className="font-semibold md:w-32">
             {MESES[mes.mesReferencia - 1]} {mes.anoReferencia}
