@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { formatarReais } from "@/lib/moeda";
 import { MESES } from "@/lib/datas";
 import { gerarParcelas } from "@/lib/parcelamento";
@@ -157,31 +158,33 @@ function LinhaMes({ mes }) {
   };
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between md:gap-6">
-        <p className="font-semibold md:w-32">
-          {MESES[mes.mesReferencia - 1]} {mes.anoReferencia}
-        </p>
-        <div className="grid grid-cols-1 gap-3 text-sm md:flex-1 md:grid-cols-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Entradas</p>
-            <ValorComposto {...mes.entradas} />
+    <Link href={`/visao-geral?mes=${mes.mesReferencia}&ano=${mes.anoReferencia}`}>
+      <Card className="transition-colors hover:bg-muted/50">
+        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between md:gap-6">
+          <p className="font-semibold md:w-32">
+            {MESES[mes.mesReferencia - 1]} {mes.anoReferencia}
+          </p>
+          <div className="grid grid-cols-1 gap-3 text-sm md:flex-1 md:grid-cols-3">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Entradas</p>
+              <ValorComposto {...mes.entradas} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Saídas</p>
+              <ValorComposto {...saidas} />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Disponível</p>
+              <DisponivelComDelta
+                disponivel={mes.disponivel}
+                disponivelSimulado={mes.disponivelSimulado}
+                simulado={mes.simulado}
+              />
+            </div>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Saídas</p>
-            <ValorComposto {...saidas} />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Disponível</p>
-            <DisponivelComDelta
-              disponivel={mes.disponivel}
-              disponivelSimulado={mes.disponivelSimulado}
-              simulado={mes.simulado}
-            />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 
