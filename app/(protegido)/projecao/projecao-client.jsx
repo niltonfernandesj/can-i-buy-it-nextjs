@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowDownCircle, ArrowUpCircle, PiggyBank } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { MESES } from "@/lib/datas";
 import { gerarParcelas } from "@/lib/parcelamento";
@@ -112,25 +113,14 @@ function GraficoDisponivel({ meses }) {
   );
 }
 
-// Reutiliza a mesma linguagem visual da Visão mensal (Design §16.2): valor
-// composto em destaque, subtexto quando há parte não-real. Despesa: "R$X +
-// R$Y estimado". Receita padrão: "R$Y receita padrão + R$X" — garantida,
-// lidera o subtexto, mesma cor dos lançamentos comuns.
-function ValorComposto({ real, estimado, total, ehReceitaPadrao }) {
+// Card enxuto de mês (Design §14.2): sem composição real/estimado — só o
+// total de cada indicador, ícone identifica no lugar do rótulo em texto.
+function Indicador({ Icone, cor, valor, titulo }) {
   return (
-    <div>
-      <p className="font-medium">{formatarReais(total)}</p>
-      {estimado > 0 &&
-        (ehReceitaPadrao ? (
-          <p className="text-xs text-muted-foreground">
-            {formatarReais(estimado)} receita padrão + {formatarReais(real)}
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {formatarReais(real)} + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
-          </p>
-        ))}
-    </div>
+    <span className="flex items-center gap-1.5 text-sm text-muted-foreground" title={titulo}>
+      <Icone className={cn("h-4 w-4 shrink-0", cor)} />
+      <span className="tabular-nums">{formatarReais(valor)}</span>
+    </span>
   );
 }
 
@@ -139,14 +129,14 @@ function ValorComposto({ real, estimado, total, ehReceitaPadrao }) {
 function DisponivelComDelta({ disponivel, disponivelSimulado, simulado }) {
   if (!simulado) {
     return (
-      <p className={cn("font-medium", disponivel < 0 && "text-destructive")}>
+      <p className={cn("text-xl font-semibold tabular-nums", disponivel < 0 && "text-destructive")}>
         {formatarReais(disponivel)}
       </p>
     );
   }
 
   return (
-    <p className="font-medium">
+    <p className="text-xl font-semibold tabular-nums">
       <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
       {" → "}
       <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
@@ -157,36 +147,30 @@ function DisponivelComDelta({ disponivel, disponivelSimulado, simulado }) {
 }
 
 function LinhaMes({ mes }) {
-  const saidas = {
-    real: mes.debito.real + mes.credito.real,
-    estimado: mes.debito.estimado + mes.credito.estimado,
-    total: mes.debito.total + mes.credito.total,
-  };
+  const saidasTotal = mes.debito.total + mes.credito.total;
 
   return (
     <Link href={`/visao-mensal?mes=${mes.mesReferencia}&ano=${mes.anoReferencia}`}>
       <Card className="transition-all hover:border-ring hover:bg-muted hover:shadow-md">
-        <CardContent className="flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between md:gap-6">
-          <p className="font-semibold md:w-32">
-            {MESES[mes.mesReferencia - 1]} {mes.anoReferencia}
-          </p>
-          <div className="grid grid-cols-1 gap-3 text-sm md:flex-1 md:grid-cols-3">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Entradas</p>
-              <ValorComposto {...mes.entradas} ehReceitaPadrao />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Saídas</p>
-              <ValorComposto {...saidas} />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Disponível</p>
-              <DisponivelComDelta
-                disponivel={mes.disponivel}
-                disponivelSimulado={mes.disponivelSimulado}
-                simulado={mes.simulado}
-              />
-            </div>
+        <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:gap-6">
+          <div className="flex items-baseline gap-1.5 md:w-28 md:flex-col md:items-start md:gap-0">
+            <p className="font-semibold">{MESES[mes.mesReferencia - 1]}</p>
+            <span className="text-xs text-muted-foreground md:hidden" aria-hidden="true">
+              ·
+            </span>
+            <p className="text-xs text-muted-foreground">{mes.anoReferencia}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 md:flex-1">
+            <Indicador Icone={ArrowDownCircle} cor="text-entrada" valor={mes.entradas.total} titulo="Entradas" />
+            <Indicador Icone={ArrowUpCircle} cor="text-muted-foreground" valor={saidasTotal} titulo="Saídas" />
+            <Indicador Icone={PiggyBank} cor="text-investimento" valor={mes.investimentos} titulo="Investimentos" />
+          </div>
+          <div className="md:ml-auto md:text-right">
+            <DisponivelComDelta
+              disponivel={mes.disponivel}
+              disponivelSimulado={mes.disponivelSimulado}
+              simulado={mes.simulado}
+            />
           </div>
         </CardContent>
       </Card>

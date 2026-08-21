@@ -807,7 +807,9 @@ Três faixas, de cima para baixo:
 
 1. **Gráfico de barras do Disponível** — 12 barras, uma por mês, construídas com `div` + CSS (altura proporcional), **sem Recharts**. A seção 1 registra "gráficos removidos do escopo"; esta é uma reabertura deliberada e limitada, que não adiciona dependência. Meses com Disponível negativo descem a partir da linha de base e usam a cor de alerta, tornando o "onde afunda" imediato.
 2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
-3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2) — no subtexto de Entradas, a receita padrão lidera (`R$ 400 receita padrão + R$ 800 real`), invertido em relação ao subtexto de Saídas (`R$ 800 real + R$ 400 estimado`), mesma regra de §16.2. No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
+3. **Lista dos 12 meses** — um card por mês. Mês à esquerda — nome do mês em destaque (`font-semibold`) e ano em tom neutro (`text-xs text-muted-foreground`), mesmas cores e tamanhos nos dois breakpoints, só a disposição muda: no desktop, empilhados em duas linhas, com largura fixa (`md:w-28`) pros cards ficarem com altura/alinhamento padronizados ao rolar a lista; no mobile, lado a lado numa linha só, separados por um ponto (`Agosto · 2026`) — empilhado ficava alto demais numa tela estreita, onde a largura fixa de duas linhas também não se justifica. Ao centro, três indicadores compactos ícone + valor, sem rótulo em texto (a cor+ícone identifica, reforçado por `title` no elemento para acessibilidade) — **Entradas** (círculo com seta pra baixo, `text-entrada`), **Saídas** (círculo com seta pra cima, `text-muted-foreground`), **Investimentos** (cofrinho, `text-investimento`); à direita, o **Disponível** em destaque (`text-xl font-semibold`, `text-destructive` só quando negativo — mesma regra da Visão mensal), com o delta de simulação (§14.3) quando houver. Nenhum indicador mostra a composição real/estimado — só o total consolidado; essa distinção deixou de existir neste nível de resumo e passou a viver só na Visão mensal (Requisitos 3.6, revisado — ver §16.2). Investimentos exibe "R$ 0" quando o mês não teve aporte, mantendo os três indicadores alinhados ao rolar a lista. No mobile o card mantém a mesma estrutura, quebrando em duas linhas quando a largura não comporta tudo numa só (mesma lição da seção 8.3.2).
+
+   **Cor do indicador de Saídas:** não existe um token de cor único para "saída" — o card soma débito e crédito num total só, e nem `--saida-debito` nem `--saida-credito` representam esse total sozinhos. O ícone usa `text-muted-foreground` (o mesmo tom neutro já usado em elementos de apoio) em vez de escolher um dos dois tokens de meio de pagamento, e também em vez de `--estimado` — que já carrega um significado específico (incerteza) que não se aplica aqui.
 
 Cada card da lista é um **link** para `/visao-mensal?mes=X&ano=Y` (Requisitos 3.6) — a Projeção resume doze meses, o detalhe de cada um continua na Visão mensal. O hover reforça essa affordance de clique (borda, fundo e sombra do card destacados); usa tokens sólidos do tema (`border-ring`, `bg-muted`), não a sintaxe de opacidade `/NN` do Tailwind — `tailwind.config.js` mapeia as cores direto para `var(--token)` em hex, que não suporta modificador de opacidade (achado registrado, correção mais ampla ainda pendente — ver nota em `spec-03`).
 
@@ -919,19 +921,19 @@ A família `-400` substitui a `-600` porque os tons `-600` do Tailwind foram cal
 
 ### 16.2 Distinção visual entre real e estimado
 
-Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão mensal quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins.
+Exigida pelo Requisitos 3.1 e usada nos blocos e no card de resumo da Visão mensal. **Não se aplica à Projeção** — seus cards de mês mostram só o total consolidado de cada indicador, sem separar real de estimado (Requisitos 3.6, revisado; ver §14.2). A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins.
 
 `comporMes` (§13.3) devolve a parcela não-real de entradas e de saídas na mesma chave (`estimado`), mas as duas **não têm a mesma natureza** (Requisitos 3.1, 3.5) — o tratamento visual diverge:
 
 **Despesa (Saídas no débito, Saídas no crédito) — é uma estimativa de verdade:**
 - Usa `--estimado` **e** o rótulo textual "Estimado".
 - Na Visão mensal, entra como uma **linha própria depois** dos lançamentos reais do bloco, com **borda tracejada** (`border-t border-dashed`) — o tracejado comunica "provisório".
-- No card de resumo e no card de mês da Projeção, o subtexto segue `R$ 800 real + R$ 400 estimado` (real primeiro).
+- No card de resumo, o subtexto segue `R$ 800 real + R$ 400 estimado` (real primeiro).
 
 **Receita padrão (bloco Entradas) — é garantida, não é estimativa (Requisitos 3.5):**
 - **Não** usa `--estimado` nem o rótulo "estimado" — usa o rótulo "Receita padrão" e a cor `--entrada` (a mesma do bloco), pois é dinheiro que efetivamente entra, só que sem uma transação datada por trás.
 - Na Visão mensal, entra como uma **linha própria antes** dos lançamentos reais do bloco, com **borda sólida** (`border-b`, não tracejada) — a receita padrão é a base sobre a qual as entradas pontuais somam, não um adendo incerto ao final.
-- No card de resumo e no card de mês da Projeção, o subtexto inverte a ordem: `R$ 400 receita padrão + R$ 800 real` — a parte garantida lidera.
+- No card de resumo, o subtexto inverte a ordem: `R$ 400 receita padrão + R$ 800 real` — a parte garantida lidera.
 
 Ambos os casos continuam nunca somando ao total silenciosamente, sem indicação — a diferença é só entre "isto pode não se confirmar" (estimado, despesa) e "isto é dinheiro real, só que ainda não é um lançamento" (receita padrão, entrada).
 

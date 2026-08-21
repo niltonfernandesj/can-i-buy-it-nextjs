@@ -337,6 +337,16 @@ Specs atualizadas nesta mesma task (spec-01 e spec-02 já refletem "Visão mensa
 
 *(Checkpoint sugerido: critérios de aceite revisados de Visão mensal e Projeção — spec-01 §6.)*
 
+**Task 70. Cards de mês da Projeção — layout enxuto**
+Os cards da lista de 12 meses (`projecao-client.jsx`) estavam poluídos: cada mês repetia o mesmo nível de detalhe (composição real/estimado) que já existe na Visão mensal, destino do clique. Requisitos 3.6 e Design §14.2/§16.2 revisados (validados com o usuário via mock em HTML antes desta task, decisão registrada aqui):
+
+- Remove `ValorComposto` (subtexto de composição real/estimado) e `LinhaMes`'s grid de 3 colunas iguais. Cada card passa a ter: mês à esquerda (nome em destaque, ano em `text-muted-foreground`) — no desktop empilhado em duas linhas com largura fixa pra padronizar o card, no mobile lado a lado numa linha só separado por ponto (`Agosto · 2026`), mesmas cores/tamanhos nos dois casos; três indicadores compactos ícone + valor ao centro — Entradas (`ArrowDownCircle`, `text-entrada`), Saídas (`ArrowUpCircle`, `text-muted-foreground` — sem token de cor único pra "saída" combinada de débito+crédito, ver justificativa em Design §14.2), Investimentos (`PiggyBank`, `text-investimento`), mostrando `R$ 0` quando o mês não teve nenhum; Disponível em destaque à direita (`text-xl font-semibold`, mantendo `DisponivelComDelta` — cor `text-destructive` só quando negativo, seta de simulação quando houver).
+- Cada indicador usa `title` no elemento (nome do indicador) como alternativa textual ao ícone, já que o rótulo em texto sai do layout.
+- `mes.investimentos` (já devolvido por `comporMes`, Design §13.3) passa a ser consumido nesta tela pela primeira vez — nenhuma mudança em `lib/projecao.js`.
+- Sem mudança na tela "Antes" (Visão mensal) nem na simulação (§14.3) — só o card de mês da Projeção muda.
+
+*(Checkpoint sugerido: critérios de aceite revisados da Projeção — spec-01 §6.)*
+
 ---
 
 ## Resumo de rastreabilidade

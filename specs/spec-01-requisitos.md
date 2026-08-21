@@ -179,11 +179,11 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 ### 3.6 Especificação — Projeção de 12 meses
 
 - Tela dedicada, **separada da Visão mensal**, que consolida os **12 meses seguintes** a partir do mês atual (janela deslizante).
-- Para cada mês projetado, exibe o consolidado de entradas, saídas e disponível, calculado a partir de três fontes somadas:
+- Para cada mês projetado, exibe o consolidado de entradas, saídas, investimentos e disponível, calculado a partir de três fontes somadas:
   1. **Lançamentos reais** já existentes naquele mês de referência.
   2. **Compromissos já assumidos** — parcelas e ocorrências de recorrência que caem naquele mês.
   3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
-- A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês — com a mesma ressalva da seção 3.1: a parcela de entradas vinda de receita padrão não é uma estimativa (é garantida) e não deve ser rotulada nem estilizada como tal.
+- Cada card de mês resume **Entradas**, **Saídas** e **Investimentos** como ícone colorido + valor consolidado (sem rótulo em texto) e destaca o **Disponível** do mês — a Projeção é um resumo rápido de doze meses, não o lugar do detalhe. A distinção entre real e estimado, exigida na Visão mensal (3.1), **não aparece neste nível de resumo**; o grau de confiança de cada valor é visto ao entrar no mês (clique leva à Visão mensal, que mantém a distinção completa).
 - A Visão mensal (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
 - Cada mês da lista funciona como **link** para a Visão mensal filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão mensal.
 
@@ -319,8 +319,8 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
 - [ ] A Visão mensal distingue visualmente a parcela estimada (despesa) da parcela real dos totais.
 - [ ] Na Visão mensal, a receita padrão aparece antes dos lançamentos reais do bloco Entradas, com rótulo "Receita padrão" e sem o estilo visual usado para estimativas de despesa.
-- [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual, com entradas, saídas e disponível de cada um.
-- [ ] A tela de Projeção distingue visualmente valores reais de estimados, com a mesma ressalva: receita padrão não é rotulada nem estilizada como estimativa.
+- [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual; cada card resume Entradas, Saídas e Investimentos por ícone e valor consolidado, com o Disponível em destaque.
+- [ ] Os cards da Projeção não distinguem real de estimado (diferente da Visão mensal) — esse detalhe fica a um clique, na Visão mensal do mês.
 - [ ] Clicar num mês da lista da Projeção leva à Visão mensal filtrada naquele mês/ano.
 - [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
 - [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.
