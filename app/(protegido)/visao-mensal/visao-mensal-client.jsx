@@ -135,7 +135,7 @@ function LinhaEstimado({ estimado }) {
   if (estimado <= 0) return null;
   return (
     <div className="flex items-center justify-between border-t border-dashed pt-2 text-sm text-estimado">
-      <span>Estimado</span>
+      <span>Estimado restante</span>
       <span className="font-medium">{formatarReais(estimado)}</span>
     </div>
   );
