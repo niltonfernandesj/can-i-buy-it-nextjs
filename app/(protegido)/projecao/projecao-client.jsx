@@ -1,14 +1,50 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { formatarReais } from "@/lib/moeda";
 import { MESES } from "@/lib/datas";
+import { gerarParcelas } from "@/lib/parcelamento";
 import { cn } from "@/lib/utils";
+import { CampoValor } from "@/components/campo-valor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ALTURA_BARRA_PX = 80;
 
+function hojeISO() {
+  const hoje = new Date();
+  const ano = hoje.getFullYear();
+  const mes = String(hoje.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoje.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+// "YYYY-MM-DD" (formato de <input type="date">) precisa virar data local —
+// new Date(string) trataria como UTC meia-noite e "voltaria" um dia em fusos
+// atrás de UTC, corrompendo o cálculo de fatura (mesmo cuidado de
+// lib/actions/transacoes.js, aqui reimplementado porque roda no cliente).
+function dataLocalDoInput(valor) {
+  const partes = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!partes) return null;
+  const [, ano, mes, dia] = partes;
+  return new Date(Number(ano), Number(mes) - 1, Number(dia));
+}
+
+function mesmoMes(a, b) {
+  return a.mesReferencia === b.mesReferencia && a.anoReferencia === b.anoReferencia;
+}
+
 function GraficoDisponivel({ meses }) {
-  const maiorAbsoluto = Math.max(1, ...meses.map((m) => Math.abs(m.disponivel)));
+  const maiorAbsoluto = Math.max(1, ...meses.map((m) => Math.abs(m.disponivelExibido)));
 
   function alturaPx(valor) {
     return Math.max(2, Math.round((Math.abs(valor) / maiorAbsoluto) * ALTURA_BARRA_PX));
@@ -22,12 +58,15 @@ function GraficoDisponivel({ meses }) {
             <div
               key={`${m.mesReferencia}-${m.anoReferencia}`}
               className="flex flex-1 items-end justify-center"
-              title={`${MESES[m.mesReferencia - 1]}/${m.anoReferencia}: ${formatarReais(m.disponivel)}`}
+              title={`${MESES[m.mesReferencia - 1]}/${m.anoReferencia}: ${formatarReais(m.disponivelExibido)}`}
             >
-              {m.disponivel >= 0 && (
+              {m.disponivelExibido >= 0 && (
                 <div
-                  className="w-full rounded-t bg-entrada"
-                  style={{ height: alturaPx(m.disponivel) }}
+                  className={cn(
+                    "w-full rounded-t bg-entrada",
+                    m.simulado && "ring-2 ring-inset ring-primary"
+                  )}
+                  style={{ height: alturaPx(m.disponivelExibido) }}
                 />
               )}
             </div>
@@ -40,10 +79,13 @@ function GraficoDisponivel({ meses }) {
               key={`${m.mesReferencia}-${m.anoReferencia}`}
               className="flex flex-1 items-start justify-center"
             >
-              {m.disponivel < 0 && (
+              {m.disponivelExibido < 0 && (
                 <div
-                  className="w-full rounded-b bg-destructive"
-                  style={{ height: alturaPx(m.disponivel) }}
+                  className={cn(
+                    "w-full rounded-b bg-destructive",
+                    m.simulado && "ring-2 ring-inset ring-primary"
+                  )}
+                  style={{ height: alturaPx(m.disponivelExibido) }}
                 />
               )}
             </div>
@@ -59,6 +101,11 @@ function GraficoDisponivel({ meses }) {
             </span>
           ))}
         </div>
+        {meses.some((m) => m.simulado) && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Disponível por mês — barras com contorno foram recalculadas pela simulação.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -77,6 +124,28 @@ function ValorComposto({ real, estimado, total }) {
         </p>
       )}
     </div>
+  );
+}
+
+// Design §14.3: o resultado simulado precisa ser distinguível do valor base —
+// delta ao lado do número (ex.: "R$ 1.140 → R$ 840") em vez de só o novo total.
+function DisponivelComDelta({ disponivel, disponivelSimulado, simulado }) {
+  if (!simulado) {
+    return (
+      <p className={cn("font-medium", disponivel < 0 && "text-destructive")}>
+        {formatarReais(disponivel)}
+      </p>
+    );
+  }
+
+  return (
+    <p className="font-medium">
+      <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
+      {" → "}
+      <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
+        {formatarReais(disponivelSimulado)}
+      </span>
+    </p>
   );
 }
 
@@ -104,9 +173,11 @@ function LinhaMes({ mes }) {
           </div>
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Disponível</p>
-            <p className={cn("font-medium", mes.disponivel < 0 && "text-destructive")}>
-              {formatarReais(mes.disponivel)}
-            </p>
+            <DisponivelComDelta
+              disponivel={mes.disponivel}
+              disponivelSimulado={mes.disponivelSimulado}
+              simulado={mes.simulado}
+            />
           </div>
         </div>
       </CardContent>
@@ -114,13 +185,158 @@ function LinhaMes({ mes }) {
   );
 }
 
-export function ProjecaoClient({ meses }) {
+const FORM_INICIAL = { cartaoId: "", data: hojeISO(), valorCentavos: 0, numeroParcelas: "2" };
+
+function FormularioSimulacao({ cartoes, onSimular, onLimpar, ativo }) {
+  const [form, setForm] = useState(FORM_INICIAL);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    onSimular({
+      cartaoId: form.cartaoId,
+      data: dataLocalDoInput(form.data),
+      valorTotal: form.valorCentavos / 100,
+      numeroParcelas: Number(form.numeroParcelas),
+    });
+  }
+
+  function limpar() {
+    setForm(FORM_INICIAL);
+    onLimpar();
+  }
+
+  if (cartoes.length === 0) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-muted-foreground">
+          Cadastre um cartão de crédito em Contas para simular uma compra.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 md:flex-row md:items-end md:gap-3">
+          <div className="flex flex-1 flex-col gap-2">
+            <Label htmlFor="simCartao">Cartão</Label>
+            <Select
+              value={form.cartaoId}
+              onValueChange={(cartaoId) => setForm({ ...form, cartaoId })}
+            >
+              <SelectTrigger id="simCartao">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {cartoes.map((cartao) => (
+                  <SelectItem key={cartao.id} value={cartao.id}>
+                    {cartao.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="simData">Data da compra</Label>
+            <Input
+              id="simData"
+              type="date"
+              required
+              value={form.data}
+              onChange={(e) => setForm({ ...form, data: e.target.value })}
+            />
+          </div>
+
+          <CampoValor
+            id="simValor"
+            label="Valor total"
+            valorCentavos={form.valorCentavos}
+            onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
+          />
+
+          <div className="flex flex-col gap-2 md:w-28">
+            <Label htmlFor="simParcelas">Nº de parcelas</Label>
+            <Input
+              id="simParcelas"
+              type="number"
+              min={1}
+              required
+              value={form.numeroParcelas}
+              onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <Button type="submit" disabled={!form.cartaoId || form.valorCentavos === 0}>
+              Simular
+            </Button>
+            {ativo && (
+              <Button type="button" variant="outline" onClick={limpar}>
+                Limpar
+              </Button>
+            )}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function ProjecaoClient({ meses, cartoes }) {
+  const [simulacao, setSimulacao] = useState(null);
+
+  const parcelas = useMemo(() => {
+    if (!simulacao) return [];
+    const cartao = cartoes.find((c) => c.id === simulacao.cartaoId);
+    if (!cartao || !simulacao.data) return [];
+
+    const valorParcela = Math.round((simulacao.valorTotal / simulacao.numeroParcelas) * 100) / 100;
+    return gerarParcelas(simulacao.data, valorParcela, simulacao.numeroParcelas, cartao);
+  }, [simulacao, cartoes]);
+
+  const mesesComSimulacao = useMemo(
+    () =>
+      meses.map((mes) => {
+        const impacto = parcelas
+          .filter((p) => mesmoMes(p, mes))
+          .reduce((soma, p) => soma + p.valor, 0);
+
+        const disponivelSimulado = mes.disponivel - impacto;
+
+        return {
+          ...mes,
+          simulado: impacto > 0,
+          disponivelSimulado,
+          disponivelExibido: impacto > 0 ? disponivelSimulado : mes.disponivel,
+        };
+      }),
+    [meses, parcelas]
+  );
+
+  const parcelasNaJanela = parcelas.filter((p) => meses.some((mes) => mesmoMes(p, mes))).length;
+
   return (
     <div className="flex flex-col gap-6">
-      <GraficoDisponivel meses={meses} />
+      <GraficoDisponivel meses={mesesComSimulacao} />
+
+      <FormularioSimulacao
+        cartoes={cartoes}
+        ativo={simulacao !== null}
+        onSimular={setSimulacao}
+        onLimpar={() => setSimulacao(null)}
+      />
+
+      {simulacao && (
+        <p className="text-sm text-muted-foreground">
+          Simulação: {parcelasNaJanela} de {simulacao.numeroParcelas} parcelas dentro da janela de 12
+          meses.
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
-        {meses.map((mes) => (
+        {mesesComSimulacao.map((mes) => (
           <LinhaMes key={`${mes.mesReferencia}-${mes.anoReferencia}`} mes={mes} />
         ))}
       </div>
