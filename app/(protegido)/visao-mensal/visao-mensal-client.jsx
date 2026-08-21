@@ -360,7 +360,7 @@ export function VisaoMensalClient({
             estimado={composicaoEntradas.estimado}
             grupos={entradas}
             renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
-            mensagemVazia="Nenhuma entrada neste mês."
+            mensagemVazia="Nenhuma entrada adicional neste mês."
             ehEntradas
           />
           <BlocoInvestimentos
