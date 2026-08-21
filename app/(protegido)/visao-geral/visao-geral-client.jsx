@@ -48,21 +48,36 @@ function somarGrupo(grupo) {
   return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
 }
 
-function Resumo({ totalEntradas, totalSaidas, disponivel }) {
+// Composição em subtexto (Design §16.2: "R$ 800 real + R$ 400 estimado") —
+// só aparece quando há de fato uma parte estimada a distinguir.
+function SubtextoComposicao({ real, estimado }) {
+  if (estimado <= 0) return null;
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
+    </p>
+  );
+}
+
+function CardResumo({ titulo, real, estimado, total }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-normal text-muted-foreground">{titulo}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-xl font-semibold">{formatarReais(total)}</p>
+        <SubtextoComposicao real={real} estimado={estimado} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function Resumo({ entradas, saidas, disponivel }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-normal text-muted-foreground">Entradas</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xl font-semibold">{formatarReais(totalEntradas)}</CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-normal text-muted-foreground">Saídas</CardTitle>
-        </CardHeader>
-        <CardContent className="text-xl font-semibold">{formatarReais(totalSaidas)}</CardContent>
-      </Card>
+      <CardResumo titulo="Entradas" real={entradas.real} estimado={entradas.estimado} total={entradas.total} />
+      <CardResumo titulo="Saídas" real={saidas.real} estimado={saidas.estimado} total={saidas.total} />
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-normal text-muted-foreground">Disponível</CardTitle>
@@ -98,7 +113,19 @@ function CabecalhoBloco({ Icone, cor, titulo, total, expandido, onToggle }) {
   );
 }
 
-function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag, mensagemVazia }) {
+// Linha própria do valor estimado (Design §16.2): borda tracejada, separada
+// dos lançamentos reais, nunca somada silenciosamente ao total sem indicação.
+function LinhaEstimado({ estimado }) {
+  if (estimado <= 0) return null;
+  return (
+    <div className="flex items-center justify-between border-t border-dashed pt-2 text-sm text-estimado">
+      <span>Estimado</span>
+      <span className="font-medium">{formatarReais(estimado)}</span>
+    </div>
+  );
+}
+
+function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTag, mensagemVazia }) {
   const [expandido, setExpandido] = useState(false);
 
   return (
@@ -111,20 +138,24 @@ function BlocoPorDia({ titulo, Icone, cor, total, grupos, renderTag, mensagemVaz
         expandido={expandido}
         onToggle={() => setExpandido((valor) => !valor)}
       />
-      {expandido &&
-        (grupos.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
-        ) : (
-          grupos.map((grupo) => (
-            <DetalheDiario
-              key={grupo.dia}
-              dia={grupo.dia}
-              transacoes={grupo.transacoes}
-              total={somarGrupo(grupo)}
-              renderTag={renderTag}
-            />
-          ))
-        ))}
+      {expandido && (
+        <>
+          {grupos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
+          ) : (
+            grupos.map((grupo) => (
+              <DetalheDiario
+                key={grupo.dia}
+                dia={grupo.dia}
+                transacoes={grupo.transacoes}
+                total={somarGrupo(grupo)}
+                renderTag={renderTag}
+              />
+            ))
+          )}
+          <LinhaEstimado estimado={estimado} />
+        </>
+      )}
     </section>
   );
 }
@@ -172,13 +203,18 @@ export function VisaoGeralClient({
   saidasDebito,
   saidasCredito,
   investimentos,
-  totalEntradas,
-  totalSaidas,
-  totalSaidasDebito,
-  totalSaidasCredito,
+  composicaoEntradas,
+  composicaoDebito,
+  composicaoCredito,
   totalInvestimentos,
   disponivel,
 }) {
+  const saidasCompostas = {
+    real: composicaoDebito.real + composicaoCredito.real,
+    estimado: composicaoDebito.estimado + composicaoCredito.estimado,
+    total: composicaoDebito.total + composicaoCredito.total,
+  };
+
   const { mesAnterior, mesSeguinte } = useNavegacaoPeriodo(mes, ano);
 
   // VisaoGeralClient não desmonta entre navegações de mês (confirmado: a rota tem
@@ -212,14 +248,15 @@ export function VisaoGeralClient({
         key={`${mes}-${ano}`}
         className={cn("flex flex-col gap-6", classeAnimacaoSwipe(direcaoSwipeRef.current))}
       >
-        <Resumo totalEntradas={totalEntradas} totalSaidas={totalSaidas} disponivel={disponivel} />
+        <Resumo entradas={composicaoEntradas} saidas={saidasCompostas} disponivel={disponivel} />
 
         <div className="flex flex-col divide-y divide-border">
           <BlocoPorDia
             titulo="Entradas"
             Icone={ArrowDownCircle}
             cor="text-entrada"
-            total={totalEntradas}
+            total={composicaoEntradas.total}
+            estimado={composicaoEntradas.estimado}
             grupos={entradas}
             renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
             mensagemVazia="Nenhuma entrada neste mês."
@@ -234,7 +271,8 @@ export function VisaoGeralClient({
             titulo="Saídas no débito"
             Icone={ArrowUpCircle}
             cor="text-saida-debito"
-            total={totalSaidasDebito}
+            total={composicaoDebito.total}
+            estimado={composicaoDebito.estimado}
             grupos={saidasDebito}
             mensagemVazia="Nenhuma saída no débito neste mês."
           />
@@ -242,7 +280,8 @@ export function VisaoGeralClient({
             titulo="Saídas no crédito"
             Icone={CreditCard}
             cor="text-saida-credito"
-            total={totalSaidasCredito}
+            total={composicaoCredito.total}
+            estimado={composicaoCredito.estimado}
             grupos={saidasCredito}
             mensagemVazia="Nenhuma saída no crédito neste mês."
           />

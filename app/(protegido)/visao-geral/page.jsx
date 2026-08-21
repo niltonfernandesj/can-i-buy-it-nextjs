@@ -4,18 +4,13 @@ import {
   buscarSaidasCredito,
   buscarInvestimentos,
 } from "@/lib/consolidacao";
+import { comporMes } from "@/lib/projecao";
+import { db } from "@/lib/db";
 import { VisaoGeralClient } from "./visao-geral-client";
 
 function mesAnoAtual() {
   const agora = new Date();
   return { mes: agora.getMonth() + 1, ano: agora.getFullYear() };
-}
-
-function somarBloco(grupos) {
-  return grupos.reduce(
-    (soma, grupo) => soma + grupo.transacoes.reduce((s, t) => s + Number(t.valor), 0),
-    0
-  );
 }
 
 function somarInvestimentos(investimentos) {
@@ -38,19 +33,33 @@ export default async function VisaoGeralPage({ searchParams }) {
   const mes = Number.isInteger(mesParam) && mesParam >= 1 && mesParam <= 12 ? mesParam : atual.mes;
   const ano = Number.isInteger(anoParam) && anoParam >= 2000 && anoParam <= 2100 ? anoParam : atual.ano;
 
-  const [entradas, saidasDebito, saidasCredito, investimentos] = await Promise.all([
-    buscarEntradas(mes, ano),
-    buscarSaidasDebito(mes, ano),
-    buscarSaidasCredito(mes, ano),
-    buscarInvestimentos(mes, ano),
-  ]);
+  const [entradas, saidasDebito, saidasCredito, investimentos, transacoesDoMes, valoresPadrao, cartoes] =
+    await Promise.all([
+      buscarEntradas(mes, ano),
+      buscarSaidasDebito(mes, ano),
+      buscarSaidasCredito(mes, ano),
+      buscarInvestimentos(mes, ano),
+      db.transacao.findMany({
+        where: { mesReferencia: mes, anoReferencia: ano },
+        include: { conta: true },
+      }),
+      db.valorPadrao.findMany(),
+      db.conta.findMany({ where: { tipo: "CARTAO_CREDITO" } }),
+    ]);
 
-  const totalEntradas = somarBloco(entradas);
-  const totalSaidasDebito = somarBloco(saidasDebito);
-  const totalSaidasCredito = somarBloco(saidasCredito);
-  const totalSaidas = totalSaidasDebito + totalSaidasCredito;
+  // comporMes (lib/projecao.js) é a fonte de verdade para real + estimado —
+  // as buscas acima continuam servindo só o detalhamento por dia dentro de
+  // cada bloco (Design §13.3).
+  const composicao = comporMes({
+    mesReferencia: mes,
+    anoReferencia: ano,
+    transacoes: transacoesDoMes,
+    valoresPadrao,
+    cartoes,
+    hoje: new Date(),
+  });
+
   const totalInvestimentos = somarInvestimentos(investimentos);
-  const disponivel = totalEntradas - totalSaidas - totalInvestimentos;
 
   return (
     <main className="mx-auto max-w-4xl p-8">
@@ -62,12 +71,11 @@ export default async function VisaoGeralPage({ searchParams }) {
         saidasDebito={paraNumero(saidasDebito)}
         saidasCredito={paraNumero(saidasCredito)}
         investimentos={investimentos.map((i) => ({ ...i, total: Number(i.total) }))}
-        totalEntradas={totalEntradas}
-        totalSaidas={totalSaidas}
-        totalSaidasDebito={totalSaidasDebito}
-        totalSaidasCredito={totalSaidasCredito}
+        composicaoEntradas={composicao.entradas}
+        composicaoDebito={composicao.debito}
+        composicaoCredito={composicao.credito}
         totalInvestimentos={totalInvestimentos}
-        disponivel={disponivel}
+        disponivel={composicao.disponivel}
       />
     </main>
   );
