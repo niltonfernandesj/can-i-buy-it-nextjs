@@ -5,8 +5,8 @@ import { ArrowDownCircle, ArrowUpCircle, PiggyBank, CreditCard, ChevronDown } fr
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { SeletorPeriodo, useNavegacaoPeriodo } from "@/components/visao-geral/seletor-periodo";
-import { DetalheDiario } from "@/components/visao-geral/detalhe-diario";
+import { SeletorPeriodo, useNavegacaoPeriodo } from "@/components/visao-mensal/seletor-periodo";
+import { DetalheDiario } from "@/components/visao-mensal/detalhe-diario";
 
 const LIMIAR_SWIPE_PX = 50;
 const BREAKPOINT_MD_PX = 768;
@@ -196,7 +196,7 @@ function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
   );
 }
 
-export function VisaoGeralClient({
+export function VisaoMensalClient({
   mes,
   ano,
   entradas,
@@ -217,7 +217,7 @@ export function VisaoGeralClient({
 
   const { mesAnterior, mesSeguinte } = useNavegacaoPeriodo(mes, ano);
 
-  // VisaoGeralClient não desmonta entre navegações de mês (confirmado: a rota tem
+  // VisaoMensalClient não desmonta entre navegações de mês (confirmado: a rota tem
   // loading.jsx, mas a troca de searchParams não remonta a árvore de componentes —
   // só atualiza as props). Por isso um ref comum sobrevive até o próximo render.
   const direcaoSwipeRef = useRef(null);

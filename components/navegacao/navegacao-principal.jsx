@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 
 // Design §15.1 — dois grupos semânticos, cinco destinos.
 const GRUPO_DADOS = [
-  { href: "/visao-geral", label: "Visão geral", Icone: LayoutDashboard },
+  { href: "/visao-mensal", label: "Visão mensal", Icone: LayoutDashboard },
   { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
   { href: "/projecao", label: "Projeção", Icone: TrendingUp },
 ];
@@ -85,7 +85,7 @@ function BarraInferiorMobile({ pathname }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t bg-background md:hidden">
       <Link
-        href="/visao-geral"
+        href="/visao-mensal"
         className={cn(
           "flex flex-1 flex-col items-center gap-1 py-2 text-xs font-medium",
           ativoDados ? "text-primary" : "text-muted-foreground"

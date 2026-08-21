@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 // Mesmas três rotas do grupo Dados (Design §15.1), na mesma ordem da barra
 // lateral do desktop.
 const ABAS = [
-  { href: "/visao-geral", label: "Visão geral" },
+  { href: "/visao-mensal", label: "Visão mensal" },
   { href: "/transacoes", label: "Transações" },
   { href: "/projecao", label: "Projeção" },
 ];

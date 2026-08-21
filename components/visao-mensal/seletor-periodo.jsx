@@ -13,7 +13,7 @@ export function useNavegacaoPeriodo(mes, ano) {
   const router = useRouter();
 
   function irPara(novoMes, novoAno) {
-    router.push(`/visao-geral?mes=${novoMes}&ano=${novoAno}`);
+    router.push(`/visao-mensal?mes=${novoMes}&ano=${novoAno}`);
   }
 
   function mesAnterior() {

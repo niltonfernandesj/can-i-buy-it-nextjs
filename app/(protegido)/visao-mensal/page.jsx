@@ -6,7 +6,7 @@ import {
 } from "@/lib/consolidacao";
 import { comporMes } from "@/lib/projecao";
 import { db } from "@/lib/db";
-import { VisaoGeralClient } from "./visao-geral-client";
+import { VisaoMensalClient } from "./visao-mensal-client";
 
 function mesAnoAtual() {
   const agora = new Date();
@@ -25,7 +25,7 @@ function paraNumero(grupos) {
   }));
 }
 
-export default async function VisaoGeralPage({ searchParams }) {
+export default async function VisaoMensalPage({ searchParams }) {
   const atual = mesAnoAtual();
   const mesParam = Number(searchParams?.mes);
   const anoParam = Number(searchParams?.ano);
@@ -63,8 +63,8 @@ export default async function VisaoGeralPage({ searchParams }) {
 
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Visão geral</h1>
-      <VisaoGeralClient
+      <h1 className="mb-6 text-2xl font-semibold">Visão mensal</h1>
+      <VisaoMensalClient
         mes={mes}
         ano={ano}
         entradas={paraNumero(entradas)}

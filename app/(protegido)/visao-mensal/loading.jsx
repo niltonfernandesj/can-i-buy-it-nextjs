@@ -29,10 +29,10 @@ function BlocoSkeleton() {
   );
 }
 
-export default function VisaoGeralLoading() {
+export default function VisaoMensalLoading() {
   return (
     <main className="mx-auto max-w-4xl p-8">
-      <h1 className="mb-6 text-2xl font-semibold">Visão geral</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Visão mensal</h1>
 
       <div className="flex flex-col gap-6">
         <div className="flex justify-center">

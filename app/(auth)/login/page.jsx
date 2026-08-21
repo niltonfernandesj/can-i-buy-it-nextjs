@@ -39,7 +39,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/visao-geral");
+    router.push("/visao-mensal");
     router.refresh();
   }
 

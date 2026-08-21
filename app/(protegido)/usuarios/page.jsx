@@ -10,7 +10,7 @@ export default async function UsuariosPage() {
   // existem para dar a resposta certa ao usuário e reduzir superfície.
   const session = await getServerSession(authOptions);
   if (!session?.user?.ehAdmin) {
-    redirect("/visao-geral");
+    redirect("/visao-mensal");
   }
 
   const usuarios = await db.usuario.findMany({
