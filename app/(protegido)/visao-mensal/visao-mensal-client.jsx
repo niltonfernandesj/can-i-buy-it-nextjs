@@ -48,10 +48,20 @@ function somarGrupo(grupo) {
   return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
 }
 
-// Composição em subtexto (Design §16.2: "R$ 800 real + R$ 400 estimado") —
-// só aparece quando há de fato uma parte estimada a distinguir.
-function SubtextoComposicao({ real, estimado }) {
+// Composição em subtexto (Design §16.2). Despesa: "R$ 800 real + R$ 400
+// estimado" (real primeiro, é uma estimativa de verdade). Receita padrão:
+// "R$ 400 receita padrão + R$ 800 real" (garantida, lidera o subtexto,
+// sem o token --estimado — não é uma incerteza a comunicar).
+function SubtextoComposicao({ real, estimado, ehReceitaPadrao }) {
   if (estimado <= 0) return null;
+  if (ehReceitaPadrao) {
+    return (
+      <p className="mt-1 text-xs text-muted-foreground">
+        <span className="text-entrada">{formatarReais(estimado)} receita padrão</span> +{" "}
+        {formatarReais(real)} real
+      </p>
+    );
+  }
   return (
     <p className="mt-1 text-xs text-muted-foreground">
       {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
@@ -59,7 +69,7 @@ function SubtextoComposicao({ real, estimado }) {
   );
 }
 
-function CardResumo({ titulo, real, estimado, total }) {
+function CardResumo({ titulo, real, estimado, total, ehReceitaPadrao }) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -67,7 +77,7 @@ function CardResumo({ titulo, real, estimado, total }) {
       </CardHeader>
       <CardContent>
         <p className="text-xl font-semibold">{formatarReais(total)}</p>
-        <SubtextoComposicao real={real} estimado={estimado} />
+        <SubtextoComposicao real={real} estimado={estimado} ehReceitaPadrao={ehReceitaPadrao} />
       </CardContent>
     </Card>
   );
@@ -76,7 +86,13 @@ function CardResumo({ titulo, real, estimado, total }) {
 function Resumo({ entradas, saidas, disponivel }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      <CardResumo titulo="Entradas" real={entradas.real} estimado={entradas.estimado} total={entradas.total} />
+      <CardResumo
+        titulo="Entradas"
+        real={entradas.real}
+        estimado={entradas.estimado}
+        total={entradas.total}
+        ehReceitaPadrao
+      />
       <CardResumo titulo="Saídas" real={saidas.real} estimado={saidas.estimado} total={saidas.total} />
       <Card>
         <CardHeader className="pb-2">
@@ -113,8 +129,9 @@ function CabecalhoBloco({ Icone, cor, titulo, total, expandido, onToggle }) {
   );
 }
 
-// Linha própria do valor estimado (Design §16.2): borda tracejada, separada
-// dos lançamentos reais, nunca somada silenciosamente ao total sem indicação.
+// Linha própria do valor estimado de despesa (Design §16.2): borda tracejada,
+// depois dos lançamentos reais — é uma estimativa de verdade, pode não se
+// confirmar, nunca somada silenciosamente ao total sem indicação.
 function LinhaEstimado({ estimado }) {
   if (estimado <= 0) return null;
   return (
@@ -125,7 +142,21 @@ function LinhaEstimado({ estimado }) {
   );
 }
 
-function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTag, mensagemVazia }) {
+// Linha própria da receita padrão (Design §16.2): borda sólida, antes dos
+// lançamentos reais — é dinheiro garantido (Requisitos 3.5), não uma
+// estimativa, só ainda não é um lançamento datado. A base sobre a qual as
+// entradas pontuais do mês somam.
+function LinhaReceitaPadrao({ valor }) {
+  if (valor <= 0) return null;
+  return (
+    <div className="flex items-center justify-between border-b pb-2 text-sm text-entrada">
+      <span>Receita padrão</span>
+      <span className="font-medium">{formatarReais(valor)}</span>
+    </div>
+  );
+}
+
+function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTag, mensagemVazia, ehEntradas = false }) {
   const [expandido, setExpandido] = useState(false);
 
   return (
@@ -140,6 +171,7 @@ function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTa
       />
       {expandido && (
         <>
+          {ehEntradas && <LinhaReceitaPadrao valor={estimado} />}
           {grupos.length === 0 ? (
             <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
           ) : (
@@ -153,7 +185,7 @@ function BlocoPorDia({ titulo, Icone, cor, total, estimado = 0, grupos, renderTa
               />
             ))
           )}
-          <LinhaEstimado estimado={estimado} />
+          {!ehEntradas && <LinhaEstimado estimado={estimado} />}
         </>
       )}
     </section>
@@ -260,6 +292,7 @@ export function VisaoMensalClient({
             grupos={entradas}
             renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
             mensagemVazia="Nenhuma entrada neste mês."
+            ehEntradas
           />
           <BlocoInvestimentos
             Icone={PiggyBank}

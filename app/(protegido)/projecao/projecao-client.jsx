@@ -113,17 +113,24 @@ function GraficoDisponivel({ meses }) {
 }
 
 // Reutiliza a mesma linguagem visual da Visão mensal (Design §16.2): valor
-// composto em destaque, subtexto "R$X real + R$Y estimado" quando há parte
-// estimada.
-function ValorComposto({ real, estimado, total }) {
+// composto em destaque, subtexto quando há parte não-real. Despesa: "R$X
+// real + R$Y estimado". Receita padrão: "R$Y receita padrão + R$X real" —
+// garantida, lidera o subtexto, sem o token --estimado.
+function ValorComposto({ real, estimado, total, ehReceitaPadrao }) {
   return (
     <div>
       <p className="font-medium">{formatarReais(total)}</p>
-      {estimado > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
-        </p>
-      )}
+      {estimado > 0 &&
+        (ehReceitaPadrao ? (
+          <p className="text-xs text-muted-foreground">
+            <span className="text-entrada">{formatarReais(estimado)} receita padrão</span> +{" "}
+            {formatarReais(real)} real
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
+          </p>
+        ))}
     </div>
   );
 }
@@ -167,7 +174,7 @@ function LinhaMes({ mes }) {
           <div className="grid grid-cols-1 gap-3 text-sm md:flex-1 md:grid-cols-3">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Entradas</p>
-              <ValorComposto {...mes.entradas} />
+              <ValorComposto {...mes.entradas} ehReceitaPadrao />
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Saídas</p>
