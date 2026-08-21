@@ -347,6 +347,16 @@ Os cards da lista de 12 meses (`projecao-client.jsx`) estavam poluídos: cada m�
 
 *(Checkpoint sugerido: critérios de aceite revisados da Projeção — spec-01 §6.)*
 
+**Task 71. Simetria dos indicadores no mobile e rótulo do Disponível — card de mês da Projeção**
+Achado do usuário em uso real: no mobile, os três indicadores (Entradas/Saídas/Investimentos) do card de mês quebravam em duas linhas assimétricas (2 numa linha, 1 sozinho embaixo), e o valor de Disponível não tinha nenhuma indicação textual do que representava. Design §14.2 revisado com as duas correções, validadas com o usuário via mock em HTML (comparação de alternativas + validação em escala real no pior caso) antes desta task:
+
+- **`Indicador` (`projecao-client.jsx`):** fonte e ícone ganham valores menores só no mobile, mantendo o desktop inalterado — `text-[11px] md:text-sm`, `h-3.5 w-3.5 md:h-4 md:w-4`, `gap-1 md:gap-1.5`. O valor mantém `tabular-nums`.
+- **Container dos indicadores em `LinhaMes`:** troca `flex-wrap gap-x-5 gap-y-1.5` por `flex-nowrap gap-x-2 md:gap-x-5` — nunca mais quebra entre os três, em nenhum breakpoint. `gap-y-1.5` sai (não há mais wrap, não há mais segunda linha).
+- **`DisponivelComDelta`:** ganha uma legenda `text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground mb-0.5` com o texto "Disponível", numa linha própria acima do valor (`text-xl font-semibold`, mantendo a regra de `text-destructive` quando negativo e o delta de simulação quando houver). Alinhamento herdado do container pai (`md:ml-auto md:text-right` em `LinhaMes`, já existente) — sem classe nova de alinhamento na legenda.
+- Sem mudança em `lib/projecao.js` nem nos outros cards/telas — só o `LinhaMes` da Projeção.
+
+*(Checkpoint sugerido: critérios de aceite revisados da Projeção — spec-01 §6. QA de interface obrigatório — mudança de UI — cobrindo especificamente o viewport 393px com um mês de valores de 5 dígitos, pra confirmar visualmente o que já foi validado por medição.)*
+
 ---
 
 ## Resumo de rastreabilidade

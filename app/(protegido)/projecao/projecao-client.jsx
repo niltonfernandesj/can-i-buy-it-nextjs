@@ -117,8 +117,11 @@ function GraficoDisponivel({ meses }) {
 // total de cada indicador, ícone identifica no lugar do rótulo em texto.
 function Indicador({ Icone, cor, valor, titulo }) {
   return (
-    <span className="flex items-center gap-1.5 text-sm text-muted-foreground" title={titulo}>
-      <Icone className={cn("h-4 w-4 shrink-0", cor)} />
+    <span
+      className="flex items-center gap-1 text-[11px] text-muted-foreground md:gap-1.5 md:text-sm"
+      title={titulo}
+    >
+      <Icone className={cn("h-3.5 w-3.5 shrink-0 md:h-4 md:w-4", cor)} />
       <span className="tabular-nums">{formatarReais(valor)}</span>
     </span>
   );
@@ -127,22 +130,25 @@ function Indicador({ Icone, cor, valor, titulo }) {
 // Design §14.3: o resultado simulado precisa ser distinguível do valor base —
 // delta ao lado do número (ex.: "R$ 1.140 → R$ 840") em vez de só o novo total.
 function DisponivelComDelta({ disponivel, disponivelSimulado, simulado }) {
-  if (!simulado) {
-    return (
-      <p className={cn("text-xl font-semibold tabular-nums", disponivel < 0 && "text-destructive")}>
-        {formatarReais(disponivel)}
-      </p>
-    );
-  }
-
   return (
-    <p className="text-xl font-semibold tabular-nums">
-      <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
-      {" → "}
-      <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
-        {formatarReais(disponivelSimulado)}
-      </span>
-    </p>
+    <div>
+      <p className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
+        Disponível
+      </p>
+      {!simulado ? (
+        <p className={cn("text-xl font-semibold tabular-nums", disponivel < 0 && "text-destructive")}>
+          {formatarReais(disponivel)}
+        </p>
+      ) : (
+        <p className="text-xl font-semibold tabular-nums">
+          <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
+          {" → "}
+          <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
+            {formatarReais(disponivelSimulado)}
+          </span>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -160,7 +166,7 @@ function LinhaMes({ mes }) {
             </span>
             <p className="text-xs text-muted-foreground">{mes.anoReferencia}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 md:flex-1">
+          <div className="flex flex-nowrap items-center gap-x-2 md:flex-1 md:gap-x-5">
             <Indicador Icone={ArrowDownCircle} cor="text-entrada" valor={mes.entradas.total} titulo="Entradas" />
             <Indicador Icone={ArrowUpCircle} cor="text-muted-foreground" valor={saidasTotal} titulo="Saídas" />
             <Indicador Icone={PiggyBank} cor="text-investimento" valor={mes.investimentos} titulo="Investimentos" />
