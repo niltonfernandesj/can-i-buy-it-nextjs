@@ -1,8 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowDownCircle, ArrowUpCircle, PiggyBank } from "lucide-react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { formatarReais } from "@/lib/moeda";
 import { MESES } from "@/lib/datas";
 import { gerarParcelas } from "@/lib/parcelamento";
@@ -20,7 +30,90 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const ALTURA_BARRA_PX = 80;
+const BREAKPOINT_MD_PX = 768;
+
+// Detecção reativa de breakpoint em runtime — Recharts não lê classes `md:`
+// do Tailwind, então eixo/grid só aparecem no desktop via JS (mesmo limiar
+// de BREAKPOINT_MD_PX já usado em useSwipeMes, visao-mensal-client.jsx).
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${BREAKPOINT_MD_PX}px)`);
+    setIsDesktop(mq.matches);
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  return isDesktop;
+}
+
+function formatarEixoY(valor) {
+  return valor.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  });
+}
+
+// Cor por barra (Design §14.2): simulado sempre em --periodo-fg, independente
+// do sinal — resolve o cruzamento do zero sem precisar empilhar, já que a
+// altura/direção da barra já vem de disponivelExibido normalmente.
+function corDaBarra(mes) {
+  if (mes.simulado) return "var(--periodo-fg)";
+  return mes.disponivelExibido >= 0 ? "var(--entrada)" : "var(--destructive)";
+}
+
+// Shape customizado em vez de <Cell>: além da cor por barra, dá acesso ao
+// <rect> pra anexar aria-label — o Tooltip do Recharts não é acessível via
+// teclado/leitor de tela, mesmo fallback leve já usado nos indicadores dos
+// cards (title/aria-label). Evita <title> nativo de propósito: sobreporia o
+// tooltip customizado com o tooltip nativo do navegador no hover.
+function BarraDisponivel({ x, y, width, height, payload }) {
+  const rotulo = payload.simulado
+    ? `${payload.mesAbrev}/${payload.anoReferencia}: ${formatarReais(payload.disponivel)} → ${formatarReais(payload.disponivelSimulado)}`
+    : `${payload.mesAbrev}/${payload.anoReferencia}: ${formatarReais(payload.disponivelExibido)}`;
+
+  // Barras de valor negativo chegam com height negativo (Recharts calcula a
+  // partir da baseline em zero) — <rect> do SVG não aceita altura negativa e
+  // simplesmente não renderiza. Normaliza altura/posição antes de desenhar.
+  const alturaFinal = Math.abs(height);
+  const yFinal = height < 0 ? y + height : y;
+
+  return (
+    <rect
+      x={x}
+      y={yFinal}
+      width={width}
+      height={alturaFinal}
+      fill={corDaBarra(payload)}
+      rx={2}
+      role="img"
+      aria-label={rotulo}
+    />
+  );
+}
+
+function TooltipDisponivel({ active, payload }) {
+  if (!active || !payload || payload.length === 0) return null;
+  const mes = payload[0].payload;
+
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2 text-xs shadow-lg">
+      <p className="mb-0.5 font-semibold">
+        {MESES[mes.mesReferencia - 1]}/{mes.anoReferencia}
+      </p>
+      {mes.simulado ? (
+        <p className="tabular-nums text-muted-foreground">
+          {formatarReais(mes.disponivel)} → {formatarReais(mes.disponivelSimulado)}
+        </p>
+      ) : (
+        <p className="tabular-nums text-muted-foreground">{formatarReais(mes.disponivelExibido)}</p>
+      )}
+    </div>
+  );
+}
 
 function hojeISO() {
   const hoje = new Date();
@@ -46,68 +139,46 @@ function mesmoMes(a, b) {
 }
 
 function GraficoDisponivel({ meses }) {
-  const maiorAbsoluto = Math.max(1, ...meses.map((m) => Math.abs(m.disponivelExibido)));
+  const isDesktop = useIsDesktop();
+  const temSimulacao = meses.some((m) => m.simulado);
 
-  function alturaPx(valor) {
-    return Math.max(2, Math.round((Math.abs(valor) / maiorAbsoluto) * ALTURA_BARRA_PX));
-  }
+  const dados = meses.map((m) => ({ ...m, mesAbrev: MESES[m.mesReferencia - 1].slice(0, 3) }));
 
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex items-end gap-1" style={{ height: ALTURA_BARRA_PX }}>
-          {meses.map((m) => (
-            <div
-              key={`${m.mesReferencia}-${m.anoReferencia}`}
-              className="flex flex-1 items-end justify-center"
-              title={`${MESES[m.mesReferencia - 1]}/${m.anoReferencia}: ${formatarReais(m.disponivelExibido)}`}
-            >
-              {m.disponivelExibido >= 0 && (
-                <div
-                  className={cn(
-                    "w-full rounded-t bg-entrada",
-                    m.simulado && "ring-2 ring-inset ring-primary"
-                  )}
-                  style={{ height: alturaPx(m.disponivelExibido) }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="border-t" />
-        <div className="flex items-start gap-1" style={{ height: ALTURA_BARRA_PX }}>
-          {meses.map((m) => (
-            <div
-              key={`${m.mesReferencia}-${m.anoReferencia}`}
-              className="flex flex-1 items-start justify-center"
-            >
-              {m.disponivelExibido < 0 && (
-                <div
-                  className={cn(
-                    "w-full rounded-b bg-destructive",
-                    m.simulado && "ring-2 ring-inset ring-primary"
-                  )}
-                  style={{ height: alturaPx(m.disponivelExibido) }}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="mt-1 flex gap-1">
-          {meses.map((m) => (
+        {temSimulacao && (
+          <div className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
             <span
-              key={`${m.mesReferencia}-${m.anoReferencia}`}
-              className="flex-1 text-center text-[10px] text-muted-foreground"
-            >
-              {MESES[m.mesReferencia - 1].slice(0, 3)}
-            </span>
-          ))}
-        </div>
-        {meses.some((m) => m.simulado) && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Disponível por mês — barras com contorno foram recalculadas pela simulação.
-          </p>
+              className="h-2.5 w-2.5 shrink-0 rounded-sm"
+              style={{ backgroundColor: "var(--periodo-fg)" }}
+            />
+            Simulado
+          </div>
         )}
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={dados} margin={{ top: 4, right: 4, left: 4, bottom: 0 }}>
+            {isDesktop && <CartesianGrid vertical={false} stroke="var(--border)" />}
+            <ReferenceLine y={0} stroke="var(--border)" />
+            {isDesktop && (
+              <YAxis
+                tickFormatter={formatarEixoY}
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={72}
+              />
+            )}
+            <XAxis
+              dataKey="mesAbrev"
+              tick={{ fill: "var(--muted-foreground)", fontSize: isDesktop ? 11 : 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<TooltipDisponivel />} cursor={{ fill: "var(--border)", opacity: 0.4 }} />
+            <Bar dataKey="disponivelExibido" isAnimationActive={false} shape={<BarraDisponivel />} />
+          </BarChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );

@@ -17,6 +17,7 @@
 | Autenticação | **NextAuth.js** (Credentials provider) + bcrypt para hash de senha | Sessão via JWT ou banco; e-mail + senha, conforme requisito. |
 | UI | Tailwind CSS + shadcn/ui | Componentes prontos (tabelas, formulários, selects) reduzem código a escrever. |
 | Testes | **Vitest** | Ver justificativa abaixo. |
+| Gráficos | **Recharts** | Reintroduzida na Task 72, escopada só ao gráfico de Disponível da Projeção (§14.2) — ver nota abaixo. |
 | Hospedagem | Vercel (hobby) | Conforme requisito. |
 
 ### Banco de dados: por que Postgres, e não SQLite local
@@ -40,11 +41,11 @@ Sugestão de cobertura prioritária (a virar tarefas concretas na fase de Tasks)
 - `gerarParcelas`: número correto de parcelas geradas, progressão de 1 mês por parcela, e o caso de borda de fechamento dia 31 caindo em fevereiro.
 - Testes de componente/E2E (ex: Playwright) ficam **fora do MVP** — dado o porte do projeto (uso familiar, poucos usuários), o retorno não compensa o esforço nesta fase. Pode ser revisitado depois.
 
-### Gráficos: removidos do escopo
+### Gráficos: removidos do escopo, depois reintroduzidos de forma escopada
 
-A Task 17 implementou um gráfico de gastos por categoria com **Recharts** (`GraficoGastosPorCategoria`, em `acompanhamento-client.jsx`). O spec-01 revisado (seção 3, item 7) remove o requisito de gráficos/análises visuais da Visão mensal — o foco passa a ser acompanhamento operacional e consulta das movimentações consolidadas.
+A Task 17 implementou um gráfico de gastos por categoria com **Recharts** (`GraficoGastosPorCategoria`, em `acompanhamento-client.jsx`). O spec-01 revisado (seção 3, item 7) removeu o requisito de gráficos/análises visuais da **Visão mensal** — o foco passou a ser acompanhamento operacional e consulta das movimentações consolidadas. Consequência técnica: a dependência `recharts` e o componente `GraficoGastosPorCategoria` ficaram órfãos e foram removidos na Task 21.
 
-Consequência técnica: a dependência `recharts` e o componente `GraficoGastosPorCategoria` ficam **órfãos** e devem ser removidos do código em uma task de limpeza (ver seção 8.5). Não há mais linha de "Gráficos" na stack.
+Essa remoção **não se estendeu à Projeção** — a Task 62 (M16) abriu uma exceção limitada e deliberada com um gráfico de barras do Disponível em `div` + CSS puro, justamente pra não reintroduzir a dependência por algo simples. A Task 72 reverte essa escolha específica: o gráfico da Projeção evolui pra Recharts (rótulos, eixo, tooltip — ver §14.2), e a dependência volta ao `package.json`. **Ainda não há gráficos na Visão mensal** — o requisito removido no spec-01 item 7 continua valendo lá; a reintrodução é só pro gráfico já existente na Projeção.
 
 ## 2. Arquitetura geral
 
@@ -805,7 +806,26 @@ Chama `comporMes` doze vezes no servidor e passa o array pronto para o Client Co
 
 Três faixas, de cima para baixo:
 
-1. **Gráfico de barras do Disponível** — 12 barras, uma por mês, construídas com `div` + CSS (altura proporcional), **sem Recharts**. A seção 1 registra "gráficos removidos do escopo"; esta é uma reabertura deliberada e limitada, que não adiciona dependência. Meses com Disponível negativo descem a partir da linha de base e usam a cor de alerta, tornando o "onde afunda" imediato.
+1. **Gráfico de barras do Disponível (revisado na Task 72 — migrado pra Recharts)** — 12 barras, uma por mês, uma série só (`disponivelExibido`: `disponivelSimulado` quando o mês está simulado, senão `disponivel` — o mesmo valor já exibido hoje), divergindo de uma linha de base em zero. Sem quebra por categoria — Entradas/Saídas/Investimentos continuam só nos indicadores de cada card da lista, abaixo; o gráfico é a visão panorâmica de uma métrica só.
+
+   **Cor de cada barra** (via `fill="var(--token)"` direto no elemento SVG — o `fill` do Recharts não aceita classe do Tailwind, só um valor de cor; a variável CSS resolve porque `fill` como atributo de apresentação participa da cascata, mesmo raciocínio já registrado abaixo sobre a sintaxe de opacidade do Tailwind não funcionar com os tokens hex deste projeto):
+   - Não simulado, `disponivelExibido >= 0`: `var(--entrada)`.
+   - Não simulado, `disponivelExibido < 0`: `var(--destructive)`.
+   - **Simulado** (`mes.simulado === true`), **qualquer sinal**: `var(--periodo-fg)` (reaproveitado — já é o tom usado no seletor de período pra destaque de estado de UI, não uma cor de categoria financeira, o que evita ler "simulado" como uma quarta categoria de dinheiro). Cobre inclusive o caso de um mês virar negativo por causa da simulação (ex.: R$ 500 → -R$ 1.000): como a altura/direção da barra já vem de `disponivelExibido` normalmente, a barra atravessa o zero sem precisar de tratamento especial — só a cor muda. Alternativa descartada na entrevista com o usuário: empilhar um segmento "diferença" sobre a barra — funciona quando os dois valores têm o mesmo sinal, mas não tem suporte nativo do Recharts pra cruzar a linha do zero quando o sinal muda.
+
+   **Legenda:** sem legenda permanente pra positivo/negativo — a posição da barra acima/abaixo do zero já comunica isso sozinha. Um indicador único (chip de cor + texto "Simulado"), **idêntico no desktop e no mobile**, aparece só quando pelo menos um mês da janela tem `simulado === true` — mesma condição que hoje aciona a frase de rodapé condicional, que sai (substituída por esse indicador). Sem essa condição, nenhum indicador aparece.
+
+   **Eixo e grid — só no desktop:** `YAxis` (valores em R$, formatados sem centavos por um formatador próprio do componente — não `formatarReais`, que sempre mostra centavos) e as linhas de grade aparecem só a partir do breakpoint `md`, detectado em runtime (`window.innerWidth`/`matchMedia`, mesmo padrão de `BREAKPOINT_MD_PX` já usado em `useSwipeMes`, `visao-mensal-client.jsx`) — não dá pra resolver isso só com classes Tailwind porque o Recharts não renderiza os eixos condicionalmente via CSS. O eixo X (abreviação de 3 letras do mês) continua em ambos os breakpoints, como já era. No mobile, sem eixo Y nem grid, evita reabrir o aperto de espaço já resolvido na Task 71 — a barra some sozinha, só com a cor e a posição.
+
+   **Tooltip** (hover no desktop, toque no mobile — comportamento nativo do Recharts): mostra `Mês/Ano` e, quando não simulado, `formatarReais(disponivel)` sozinho; quando simulado, `formatarReais(disponivel)} → ${formatarReais(disponivelSimulado)}` — mesmo formato "antes → depois" já usado em `DisponivelComDelta` nos cards de mês (§14.2, ponto 3), pra não inventar uma segunda notação pra dizer a mesma coisa.
+
+   **Barra não navega** — sem `onClick`; a navegação pra Visão mensal continua exclusiva dos cards da lista abaixo (Requisitos 3.6). Achado da entrevista: hover/toque pra ver valor e navegação por clique são affordances diferentes vivendo a poucos cm de distância — misturar as duas no mesmo gesto confunde mais do que ajuda.
+
+   **Acessibilidade:** cada barra ganha um `<title>` SVG (ou `aria-label` equivalente) com o mesmo texto do tooltip — o Tooltip do Recharts não é nativamente acessível via teclado/leitor de tela, e o app já usa esse tipo de fallback leve nos indicadores dos cards (`title`, Design §14.2 ponto 3, "reforçado por `title` no elemento para acessibilidade").
+
+   **Sem animação** (`isAnimationActive={false}`) — recalcular a simulação atualiza as barras instantaneamente, mesmo comportamento de hoje; Recharts anima por padrão, e isso precisa ser desligado explicitamente.
+
+   Sai o contorno (`ring-2 ring-inset ring-primary`) que hoje marca barra simulada, e sai o cálculo manual de `ALTURA_BARRA_PX`/`maiorAbsoluto`/`alturaPx` — o domínio do eixo escala automaticamente a partir dos dados.
 2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
 3. **Lista dos 12 meses** — um card por mês. Mês à esquerda — nome do mês em destaque (`font-semibold`) e ano em tom neutro (`text-xs text-muted-foreground`), mesmas cores e tamanhos nos dois breakpoints, só a disposição muda: no desktop, empilhados em duas linhas, com largura fixa (`md:w-28`) pros cards ficarem com altura/alinhamento padronizados ao rolar a lista; no mobile, lado a lado numa linha só, separados por um ponto (`Agosto · 2026`) — empilhado ficava alto demais numa tela estreita, onde a largura fixa de duas linhas também não se justifica. Ao centro, três indicadores compactos ícone + valor, sem rótulo em texto (a cor+ícone identifica, reforçado por `title` no elemento para acessibilidade) — **Entradas** (círculo com seta pra baixo, `text-entrada`), **Saídas** (círculo com seta pra cima, `text-muted-foreground`), **Investimentos** (cofrinho, `text-investimento`); à direita, o **Disponível** em destaque, rotulado com uma legenda pequena "Disponível" (`text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground`, `mb-0.5` até o valor) acima do valor (`text-xl font-semibold`, `text-destructive` só quando negativo — mesma regra da Visão mensal), com o delta de simulação (§14.3) quando houver — mesmo padrão de rótulo já usado no card de resumo da Visão mensal (§8, `CardTitle` "Disponível"), só que compacto o bastante pra não empurrar o card em altura. Nenhum indicador mostra a composição real/estimado — só o total consolidado; essa distinção deixou de existir neste nível de resumo e passou a viver só na Visão mensal (Requisitos 3.6, revisado — ver §16.2). Investimentos exibe "R$ 0" quando o mês não teve aporte, mantendo os três indicadores alinhados ao rolar a lista.
 

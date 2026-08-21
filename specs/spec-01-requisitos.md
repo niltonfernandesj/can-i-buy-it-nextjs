@@ -322,6 +322,8 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual; cada card resume Entradas, Saídas e Investimentos por ícone e valor consolidado, com o Disponível em destaque, rotulado "Disponível".
 - [ ] No mobile, os três indicadores (Entradas, Saídas, Investimentos) do card de mês da Projeção cabem numa única linha, sem quebra, para valores de até 5 dígitos (R$ XX.XXX,XX); valores maiores podem cortar o texto.
 - [ ] Os cards da Projeção não distinguem real de estimado (diferente da Visão mensal) — esse detalhe fica a um clique, na Visão mensal do mês.
+- [ ] O gráfico de barras do Disponível, no topo da Projeção, mostra eixo Y e grade no desktop; no mobile, mostra só as barras (sem eixo Y). Em ambos, passar o mouse ou tocar numa barra mostra um tooltip com o valor do mês — a barra em si não navega para a Visão mensal.
+- [ ] Meses recalculados pela simulação aparecem no gráfico com uma cor própria (nem a de positivo, nem a de negativo), e um indicador dessa cor só aparece quando há pelo menos um mês simulado — sem legenda permanente para positivo/negativo.
 - [ ] Clicar num mês da lista da Projeção leva à Visão mensal filtrada naquele mês/ano.
 - [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
 - [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.

@@ -357,6 +357,21 @@ Achado do usuário em uso real: no mobile, os três indicadores (Entradas/Saída
 
 *(Checkpoint sugerido: critérios de aceite revisados da Projeção — spec-01 §6. QA de interface obrigatório — mudança de UI — cobrindo especificamente o viewport 393px com um mês de valores de 5 dígitos, pra confirmar visualmente o que já foi validado por medição.)*
 
+**Task 72. Gráfico de Disponível da Projeção migra pra Recharts**
+O gráfico de barras do topo da Projeção era `div` + CSS puro (Task 62), deliberadamente simples pra não reintroduzir a dependência `recharts` (órfã desde a Task 21). A pedido do usuário, evolui pra algo mais robusto — eixo, tooltip, indicador de estado — o que muda esse cálculo. Design §1 e §14.2 revisados (entrevista de requisitos + mock em HTML validados com o usuário antes desta task):
+
+- **Dependência:** `npm install recharts` — reintroduzida, escopada só a este gráfico (Design §1). A Visão mensal continua sem gráficos (Requisitos, item 7, inalterado).
+- **`GraficoDisponivel` (`projecao-client.jsx`):** substitui a implementação em `div`+CSS por `ResponsiveContainer` + `BarChart`/`Bar`/`XAxis`/`Tooltip` do Recharts. Uma série só, `disponivelExibido` (o mesmo valor já calculado hoje) — sem quebra por categoria. `ALTURA_BARRA_PX` e o cálculo manual de `maiorAbsoluto`/`alturaPx` saem — o domínio escala automaticamente.
+- **Cor por `Cell`:** `fill="var(--entrada)"` (`disponivelExibido >= 0`, não simulado), `fill="var(--destructive)"` (`< 0`, não simulado), `fill="var(--periodo-fg)"` (`mes.simulado`, qualquer sinal — resolve o cruzamento do zero sem precisar empilhar, ver Design §14.2). Usa a variável CSS direto no `fill`, não classe Tailwind (Recharts não aceita classe ali).
+- **Indicador "Simulado":** chip de cor (`var(--periodo-fg)`) + texto "Simulado", **igual no desktop e no mobile**, renderizado condicionalmente (`meses.some(m => m.simulado)`) acima do gráfico. Substitui o contorno `ring-2 ring-inset ring-primary` e a frase de rodapé condicional atuais — ambos saem. Sem legenda pra positivo/negativo.
+- **Eixo Y — só desktop:** `YAxis` com formatador próprio sem centavos (função local, não `formatarReais`) e `CartesianGrid`, renderizados condicionalmente via detecção de largura em runtime — reaproveita o padrão de `BREAKPOINT_MD_PX`/`window.innerWidth` já usado em `useSwipeMes` (`visao-mensal-client.jsx`), já que Tailwind não consegue condicionar isso (Recharts não lê classes `md:`). Eixo X (mês abreviado) continua em ambos.
+- **Tooltip customizado** (`content={<TooltipDisponivel />}` ou equivalente): `Mês/Ano` + `formatarReais(disponivel)` quando não simulado; `formatarReais(disponivel)} → ${formatarReais(disponivelSimulado)}` quando simulado — mesmo formato "antes → depois" de `DisponivelComDelta`. Sem `onClick` nas barras — não navega.
+- **Acessibilidade:** `<title>` SVG (ou `aria-label`) em cada barra, com o mesmo texto do tooltip — fallback pro Tooltip do Recharts não ser acessível via teclado/leitor de tela, mesmo padrão já usado nos indicadores dos cards.
+- **Sem animação:** `isAnimationActive={false}` nas barras — recalcular a simulação deve continuar instantâneo.
+- Sem mudança em `lib/projecao.js`, no formulário de simulação, nem na lista de cards de mês — só o `GraficoDisponivel`.
+
+*(Checkpoint sugerido: critérios de aceite revisados da Projeção — spec-01 §6. QA de interface obrigatório — mudança de UI — cobrindo desktop [eixo, tooltip, indicador] e mobile [sem eixo, tooltip no toque], com e sem simulação ativa, incluindo um mês que a simulação empurra de positivo pra negativo.)*
+
 ---
 
 ## Resumo de rastreabilidade
