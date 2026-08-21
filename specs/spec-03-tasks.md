@@ -318,6 +318,16 @@ Novo componente cliente `components/navegacao/abas-dados.jsx`, renderizado por `
 **Task 67. Card do mês em `/projecao` vira link pra Visão geral**
 Cada card da lista de 12 meses passa a ser um link para `/visao-geral?mes=X&ano=Y` (Requisitos 3.6, Design §14.2), com hover destacando borda/fundo/sombra do card como affordance de clique. Usa tokens sólidos do tema (`border-ring`, `bg-muted`) em vez da sintaxe de opacidade `/NN` do Tailwind, que não gera CSS nos tokens deste projeto (achado registrado em spec-01 §7, correção mais ampla não priorizada).
 
+**Task 68. Renomear "Visão geral" → "Visão mensal" (rota `/visao-geral` → `/visao-mensal`)**
+Renomeação de tela e rota, terceira da linhagem depois de `/acompanhamento` → `/visao-geral` (Task 20) — ver spec-02 §8.5 e a linha da tabela de rotas em §8.2. Nenhuma mudança de comportamento, só identidade:
+
+- **Pastas/arquivos**: `app/(protegido)/visao-geral/` → `app/(protegido)/visao-mensal/` (`page.jsx`, `visao-geral-client.jsx` → `visao-mensal-client.jsx`, `loading.jsx`, `error.jsx`); `components/visao-geral/` → `components/visao-mensal/` (`seletor-periodo.jsx`, `detalhe-diario.jsx`).
+- **Componentes/funções**: `VisaoGeralClient` → `VisaoMensalClient`, `VisaoGeralPage` → `VisaoMensalPage`, `VisaoGeralLoading` → `VisaoMensalLoading`, `VisaoGeralError` → `VisaoMensalError`, e os imports que os referenciam (inclui os imports de `seletor-periodo`/`detalhe-diario` a partir do novo caminho `@/components/visao-mensal/...`).
+- **String de rota `/visao-geral` → `/visao-mensal`** em: `navegacao-principal.jsx` (entrada do grupo Dados no sidebar + link "Dados" da barra inferior), `abas-dados.jsx` (aba "Visão geral"), redirect pós-login (`app/(auth)/login/page.jsx`), redirect de fallback em `app/(protegido)/usuarios/page.jsx`, `revalidatePath` em `lib/actions/transacoes.js` (5 Server Actions) e `lib/actions/valores-padrao.js`, `router.push` do `useNavegacaoPeriodo` em `seletor-periodo.jsx`, link dos cards em `projecao-client.jsx` (Task 67).
+- **Texto "Visão geral" → "Visão mensal"**: label de navegação (sidebar + abas) e os três H1 (`page.jsx`, `loading.jsx`, `error.jsx`).
+
+Specs atualizadas nesta mesma task (spec-01 e spec-02 já refletem "Visão mensal"/`/visao-mensal` em toda referência ao estado atual; tasks já concluídas que citam `/visao-geral` — Task 20 e as que vieram depois dela — permanecem como estão, registro histórico do que era verdade quando foram escritas, mesmo padrão já usado no rename anterior).
+
 ---
 
 ## Resumo de rastreabilidade

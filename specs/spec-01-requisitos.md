@@ -26,7 +26,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 1. **Autenticação e gestão de usuários**
    - Login por email + senha. **Sem rota de cadastro público** — ver seção 2.
    - Sessão autenticada obrigatória para acessar qualquer dado.
-   - Após um login bem-sucedido, o usuário é redirecionado para a Visão geral (`/visao-geral`).
+   - Após um login bem-sucedido, o usuário é redirecionado para a Visão mensal (`/visao-mensal`).
    - Tentativas de login são limitadas por taxa, para inviabilizar força bruta e uso de credenciais vazadas.
    - Uma tela de **gestão de usuários**, acessível apenas ao administrador, permite criar novos usuários e editar os existentes (nome e senha). A tela deve deixar explícito que qualquer usuário criado ali passa a enxergar e editar todos os dados financeiros da família.
    - O administrador não pode retirar a própria condição de administrador nem alterar o próprio e-mail por essa tela — do contrário perderia o acesso sem caminho de volta pela aplicação.
@@ -51,7 +51,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte ou resgate, e não um gasto/renda comum.
    - Aporte: saída vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de destino.
    - Resgate: entrada vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de origem.
-7. **Visão geral (tela de acompanhamento financeiro mensal)**
+7. **Visão mensal (tela de acompanhamento financeiro mensal)**
    - Resumo mensal (total de entradas, total de saídas, disponível).
    - Sem gráficos ou análises visuais no MVP — foco em acompanhamento operacional e consulta das movimentações consolidadas do período.
    - Ver especificação detalhada na seção 3.1 abaixo.
@@ -63,9 +63,9 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Ver especificação detalhada na seção 3.3 abaixo.
 10. **Navegação principal**
     - A aplicação possui cinco áreas, organizadas em **dois grupos semânticos**:
-      - **Dados** — Visão geral, Transações e Projeção.
+      - **Dados** — Visão mensal, Transações e Projeção.
       - **Ajustes** — Contas e Valores padrão.
-    - Não há área independente para Investimentos (tratado como bloco dentro da Visão geral).
+    - Não há área independente para Investimentos (tratado como bloco dentro da Visão mensal).
     - **No mobile**, o menu inferior tem três alvos: o grupo Dados, a ação "Nova transação" em destaque no centro, e o grupo Ajustes. Dentro do grupo Dados, as três telas são alternadas por **abas fixas no topo do conteúdo**, a um único toque de distância uma da outra. O grupo Ajustes abre uma folha inferior com seus dois destinos.
     - **No desktop**, a barra lateral exibe os cinco destinos simultaneamente, com os dois grupos separados apenas por um **divisor** (sem rótulos de grupo).
     - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
@@ -83,7 +83,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
     - Na tela de Projeção, o usuário simula uma compra parcelada no crédito e vê o impacto imediato nos 12 meses.
     - Ver especificação detalhada na seção 3.7 abaixo.
 
-### 3.1 Especificação — Visão geral
+### 3.1 Especificação — Visão mensal
 
 - A tela deve permitir **filtrar por mês/ano de referência**.
 - **No mobile**, além dos botões de seta e do seletor de mês/ano, o usuário pode trocar de mês arrastando horizontalmente (swipe) em qualquer ponto da tela: deslizar para a esquerda avança para o próximo mês, para a direita volta ao mês anterior.
@@ -111,7 +111,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - **Parcelas 2 a N:** data efetiva = primeiro dia do range da fatura seguinte à fatura da parcela anterior (ou seja, o dia de abertura da próxima fatura do cartão — dia de fechamento + 1). Na prática, cada parcela subsequente "cai" no mês de referência imediatamente seguinte ao da parcela anterior.
   - O **mês de referência** de cada parcela é calculado normalmente a partir da sua data efetiva, usando a mesma regra de fechamento/vencimento da conta (cartão) descrita na seção 3.1 — ou seja, não há uma regra de cálculo separada, a data efetiva é que "direciona" a parcela para a fatura correta.
 - Cada parcela deve registrar sua posição no parcelamento (ex: "2/6") e todas as parcelas de uma mesma compra compartilham um identificador de grupo, para permitir localizá-las e operar sobre o conjunto.
-- Na Visão geral (3.1), cada parcela aparece no bloco "Saídas no crédito" do seu respectivo mês de referência, agrupada pelo **dia da compra original** (não pelo dia de abertura da fatura usado no cálculo).
+- Na Visão mensal (3.1), cada parcela aparece no bloco "Saídas no crédito" do seu respectivo mês de referência, agrupada pelo **dia da compra original** (não pelo dia de abertura da fatura usado no cálculo).
 - **Edição e exclusão de parcelas:**
   - Por padrão, editar ou apagar uma parcela afeta **apenas aquela parcela** isoladamente.
   - Tanto na edição quanto na exclusão, o usuário deve ter a opção adicional de propagar a ação para **todas as parcelas restantes** (as de data efetiva futura em relação à parcela selecionada) — ex: apagar as restantes ao cancelar uma compra, ou editar o valor das restantes se o valor da parcela mudou.
@@ -176,14 +176,14 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 
 ### 3.6 Especificação — Projeção de 12 meses
 
-- Tela dedicada, **separada da Visão geral**, que consolida os **12 meses seguintes** a partir do mês atual (janela deslizante).
+- Tela dedicada, **separada da Visão mensal**, que consolida os **12 meses seguintes** a partir do mês atual (janela deslizante).
 - Para cada mês projetado, exibe o consolidado de entradas, saídas e disponível, calculado a partir de três fontes somadas:
   1. **Lançamentos reais** já existentes naquele mês de referência.
   2. **Compromissos já assumidos** — parcelas e ocorrências de recorrência que caem naquele mês.
   3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
 - A tela deve deixar visualmente distinto o que é **real** e o que é **estimado**, para que o usuário perceba o grau de confiança de cada mês.
-- A Visão geral (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
-- Cada mês da lista funciona como **link** para a Visão geral filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão geral.
+- A Visão mensal (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
+- Cada mês da lista funciona como **link** para a Visão mensal filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão mensal.
 
 ### 3.7 Especificação — Simulação de compra ("Can I Buy It?")
 
@@ -271,7 +271,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Um usuário comum que acesse a URL da tela de gestão diretamente é bloqueado, e uma chamada direta às ações de criar/editar usuário também é rejeitada.
 - [ ] O administrador não consegue remover a própria condição de administrador nem alterar o próprio e-mail.
 - [ ] Após um número definido de tentativas de login malsucedidas, novas tentativas são bloqueadas temporariamente.
-- [ ] Após um login bem-sucedido, o usuário é redirecionado para a Visão geral.
+- [ ] Após um login bem-sucedido, o usuário é redirecionado para a Visão mensal.
 - [ ] Um usuário logado consegue lançar uma transação de entrada e uma de saída, com categoria e conta vinculada.
 - [ ] Um usuário consegue cadastrar, editar e apagar contas dos três tipos (Conta corrente, Cartão de crédito, Conta de investimento), com os campos específicos de cada tipo.
 - [ ] Ao lançar uma saída, o débito/crédito é deduzido automaticamente da conta escolhida (Conta corrente = débito, Cartão de crédito = crédito), sem exigir escolha manual separada.
@@ -279,8 +279,8 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Um usuário consegue marcar uma entrada como resgate (investimento), referenciando a conta de investimento de origem.
 - [ ] Um usuário consegue editar e apagar qualquer transação, independente de quem a criou.
 - [ ] Todos os usuários da família veem as mesmas transações e contas ao logar.
-- [ ] A Visão geral permite filtrar por mês/ano de referência.
-- [ ] A Visão geral exibe quatro blocos separados, nesta ordem: Entradas, Investimentos, Saídas no débito e Saídas no crédito.
+- [ ] A Visão mensal permite filtrar por mês/ano de referência.
+- [ ] A Visão mensal exibe quatro blocos separados, nesta ordem: Entradas, Investimentos, Saídas no débito e Saídas no crédito.
 - [ ] Um aporte não aparece no bloco "Saídas no débito", aparecendo apenas no bloco "Investimentos", separado por conta de investimento.
 - [ ] Um resgate aparece no bloco "Entradas", rotulado distintamente de uma entrada regular.
 - [ ] Uma saída no crédito lançada em um mês, mas cuja fatura vence no mês seguinte (por causa do dia de fechamento do cartão), aparece corretamente no bloco de crédito do mês de referência correto.
@@ -297,11 +297,11 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] É possível apagar uma ocorrência recorrente isolada sem afetar as demais, ou apagar e propagar para as ocorrências futuras.
 - [ ] É possível editar uma ocorrência recorrente isolada sem afetar as demais, ou editar e propagar para as ocorrências futuras.
 - [ ] Não é possível marcar uma mesma saída como Parcelada e Recorrente simultaneamente.
-- [ ] A Visão geral mostra corretamente entradas, saídas e disponível do mês corrente.
+- [ ] A Visão mensal mostra corretamente entradas, saídas e disponível do mês corrente.
 - [ ] A tela de listagem em tabela exibe as colunas Data efetiva, Descrição, Categoria, Conta e Valor, com indicadores visuais compactos para tipo/parcela/recorrência/investimento.
 - [ ] Clicar em qualquer linha da tabela abre um modal com o detalhe completo do registro (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) e as ações de editar/apagar.
 - [ ] A tela permite buscar por descrição e filtrar por Conta, Categoria e Mês/Ano de referência.
-- [ ] A navegação principal apresenta cinco áreas em dois grupos — Dados (Visão geral, Transações, Projeção) e Ajustes (Contas, Valores padrão) — e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
+- [ ] A navegação principal apresenta cinco áreas em dois grupos — Dados (Visão mensal, Transações, Projeção) e Ajustes (Contas, Valores padrão) — e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
 - [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
 - [ ] Um usuário logado consegue abrir o menu do usuário e fazer logoff, sendo redirecionado para a tela de login.
 - [ ] O usuário consegue cadastrar, editar e apagar itens nas listas de receitas padrão e despesas padrão, informando descrição e valor.
@@ -315,16 +315,16 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Ocorrências de recorrência de despesa consomem a despesa padrão; parcelas não a consomem e somam por cima.
 - [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
-- [ ] A Visão geral distingue visualmente a parcela estimada da parcela real dos totais.
+- [ ] A Visão mensal distingue visualmente a parcela estimada da parcela real dos totais.
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual, com entradas, saídas e disponível de cada um.
 - [ ] A tela de Projeção distingue visualmente valores reais de estimados.
-- [ ] Clicar num mês da lista da Projeção leva à Visão geral filtrada naquele mês/ano.
+- [ ] Clicar num mês da lista da Projeção leva à Visão mensal filtrada naquele mês/ano.
 - [ ] Na tela de Projeção, o usuário consegue simular uma compra informando cartão, data, valor e quantidade de parcelas, e vê os 12 meses recalculados.
 - [ ] A simulação distribui as parcelas pelos meses de referência corretos, respeitando o dia de fechamento do cartão escolhido.
 - [ ] A simulação não é persistida: ao sair e voltar à tela de Projeção, os números voltam ao estado sem simulação.
 - [ ] A simulação não cria transações reais.
 - [ ] No mobile, o menu inferior apresenta três alvos: grupo Dados, ação "Nova transação" ao centro e grupo Ajustes.
-- [ ] Dentro do grupo Dados no mobile, alternar entre Visão geral, Transações e Projeção custa um único toque.
+- [ ] Dentro do grupo Dados no mobile, alternar entre Visão mensal, Transações e Projeção custa um único toque.
 - [ ] No desktop, a barra lateral exibe os cinco destinos, com os dois grupos separados por um divisor.
 - [ ] A aplicação é exibida em tema escuro, com todos os elementos legíveis sobre o novo fundo.
 - [ ] A aplicação está publicada e acessível via Vercel.
@@ -337,6 +337,6 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - Formato exato do CSV de fatura de cartão (a definir quando essa fase for priorizada).
 - Se e como implementar categorização automática (regras vs. IA) numa fase 2.
 - Se o histórico de alterações (quem editou o quê) será necessário conforme o uso familiar evoluir.
-- **Atualização do Next.js (14 → 15+)** — resolveria os avisos de segurança da própria maquinaria de RSC/Server Actions (spec-02 §17.6), incluindo um diretamente relevante para esta arquitetura ("Unauthenticated disclosure of internal Server Function endpoints"). Exige trabalho dedicado: no Next 15 `searchParams`/`params` viram assíncronos, o que quebra `visao-geral/page.jsx`, e pede QA completo em todas as rotas — não é um `npm audit fix --force`.
+- **Atualização do Next.js (14 → 15+)** — resolveria os avisos de segurança da própria maquinaria de RSC/Server Actions (spec-02 §17.6), incluindo um diretamente relevante para esta arquitetura ("Unauthenticated disclosure of internal Server Function endpoints"). Exige trabalho dedicado: no Next 15 `searchParams`/`params` viram assíncronos, o que quebra `visao-mensal/page.jsx`, e pede QA completo em todas as rotas — não é um `npm audit fix --force`.
 - **Migração do NextAuth para Auth.js v5 (next-auth 4 → 5)** — resolveria as falhas do `@auth/core` (spec-02 §17.6). A versão em uso (4.24.15) é a última da série 4.x; não há patch mais novo na mesma major esperando. Também exige trabalho dedicado e QA completo do fluxo de autenticação.
 - **Modificador de opacidade do Tailwind (`/NN`) não funciona nos tokens do tema** — `tailwind.config.js` mapeia cada cor direto para `var(--token)` (hex puro), formato que não suporta a sintaxe `<alpha-value>` que o Tailwind precisa pra gerar `hover:bg-primary/90` e afins. Descoberto ao investigar o hover do card em `/projecao` (spec-03, task de hover): a classe simplesmente não gera CSS nenhum. Afeta hoje `Button` (variantes `default`, `destructive`, `secondary`), o pill do seletor de período e o link "Nova transação" — nenhum desses muda de cor no hover, mesmo a classe estando presente no DOM. Correção de raiz exige converter as variáveis de `globals.css` de hex para canais RGB/HSL espaçados e ajustar `tailwind.config.js` pro padrão `rgb(var(--token) / <alpha-value>)`, revalidando contraste depois — não priorizado ainda.

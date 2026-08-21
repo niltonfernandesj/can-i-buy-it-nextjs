@@ -27,7 +27,7 @@ Na fase de Requisitos, a sugestão inicial foi "SQLite via Prisma/Drizzle". Isso
 - Integração nativa com Vercel: banco criado direto pelo dashboard, variáveis de ambiente auto-configuradas.
 - Usa driver HTTP-friendly para serverless — não sofre do problema clássico de esgotamento de conexões que Postgres "tradicional" teria nesse ambiente.
 - É a combinação Next.js + Prisma + Postgres, a mais documentada do ecossistema — menos chance de tropeçar em peculiaridades pouco documentadas durante a implementação, alinhado com o pedido de manter a implementação simples/leve em tokens.
-- Tipos mais robustos para valores monetários (`Decimal` nativo) e melhor suporte a agregações (usadas nos blocos da Visão geral).
+- Tipos mais robustos para valores monetários (`Decimal` nativo) e melhor suporte a agregações (usadas nos blocos da Visão mensal).
 
 ### Testes: por que Vitest, e onde focar no MVP
 
@@ -42,7 +42,7 @@ Sugestão de cobertura prioritária (a virar tarefas concretas na fase de Tasks)
 
 ### Gráficos: removidos do escopo
 
-A Task 17 implementou um gráfico de gastos por categoria com **Recharts** (`GraficoGastosPorCategoria`, em `acompanhamento-client.jsx`). O spec-01 revisado (seção 3, item 7) remove o requisito de gráficos/análises visuais da Visão geral — o foco passa a ser acompanhamento operacional e consulta das movimentações consolidadas.
+A Task 17 implementou um gráfico de gastos por categoria com **Recharts** (`GraficoGastosPorCategoria`, em `acompanhamento-client.jsx`). O spec-01 revisado (seção 3, item 7) remove o requisito de gráficos/análises visuais da Visão mensal — o foco passa a ser acompanhamento operacional e consulta das movimentações consolidadas.
 
 Consequência técnica: a dependência `recharts` e o componente `GraficoGastosPorCategoria` ficam **órfãos** e devem ser removidos do código em uma task de limpeza (ver seção 8.5). Não há mais linha de "Gráficos" na stack.
 
@@ -60,7 +60,7 @@ app/
 │   ├── lancamento/page.jsx         ← 2. Lançamento de transações (+ parcelamento);
 │   │                                  também o destino da ação "+ Nova transação"
 │   ├── contas/page.jsx             ← 3. CRUD de Contas (criação em 2 etapas — seção 8.2.3)
-│   ├── visao-geral/page.jsx        ← 4. Visão geral (resumo + 4 blocos) — seção 8.3
+│   ├── visao-mensal/page.jsx        ← 4. Visão mensal (resumo + 4 blocos) — seção 8.3
 │   │                                  [renomeado de acompanhamento/, ver seção 8.5]
 │   └── transacoes/page.jsx         ← 5. Tabela com filtros
 ├── api/
@@ -71,7 +71,7 @@ components/
 │   └── NavegacaoPrincipal.jsx       ← menu lateral + barra inferior + ação global,
 │                                       variantes alternadas via breakpoints do Tailwind
 │                                       (não por detecção de media query em JS)
-└── visao-geral/
+└── visao-mensal/
     ├── SeletorPeriodo.jsx           ← navegação de mês/ano (seção 8.3.1)
     ├── ResumoMensal.jsx             ← 3 indicadores (seção 8.3.2)
     ├── BlocoConsolidado.jsx         ← estrutura comum dos blocos Entradas/Saídas (seção 8.3.4/8.3.7)
@@ -220,7 +220,7 @@ model ValorPadrao {
 
 **Notas sobre `ValorPadrao`:**
 - **Não tem data, conta nem categoria** — é uma declaração atemporal, não um lançamento. Nunca vira `Transacao` e nunca aparece em `/transacoes`.
-- **`meio` só se aplica a despesas.** Receitas são sempre creditadas em Conta corrente conceitualmente, e a Visão geral não separa receitas por meio — por isso o campo é nulo para `ENTRADA`. A obrigatoriedade quando `tipo = SAIDA` é validada na Server Action, não no banco (o Prisma não expressa `CHECK` condicional de forma portátil).
+- **`meio` só se aplica a despesas.** Receitas são sempre creditadas em Conta corrente conceitualmente, e a Visão mensal não separa receitas por meio — por isso o campo é nulo para `ENTRADA`. A obrigatoriedade quando `tipo = SAIDA` é validada na Server Action, não no banco (o Prisma não expressa `CHECK` condicional de forma portátil).
 - **`usuarioId` é apenas autoria**, como em `Conta` e `Transacao`: os valores padrão são compartilhados entre os membros da família, coerente com o modelo de dados único da spec-01 §2.
 
 **Nota sobre `Categoria` como enum:** como a spec define lista fixa definida no código, um `enum` do Prisma é mais simples que uma tabela — não precisa de seed nem de FK. Se no futuro categorias passarem a ser editáveis pelo usuário (fora do MVP), migra-se para uma tabela própria.
@@ -417,7 +417,7 @@ function gerarOcorrenciasRecorrencia(dataCompra, valor, n, conta) {
 - `tipo = SAIDA`: `conta.tipo` deve ser `CONTA_CORRENTE` ou `CARTAO_CREDITO` (regra já existente).
 - `tipo = ENTRADA`: `conta.tipo` deve ser **apenas** `CONTA_CORRENTE`; rejeita se `ehInvestimento = true` (resgate recorrente fora do escopo).
 
-## 6. Regras de consolidação (Visão geral)
+## 6. Regras de consolidação (Visão mensal)
 
 Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já reflete a ordem de exibição definida na seção 8.3.3 (Entradas → Investimentos → Saídas no débito → Saídas no crédito):
 
@@ -426,7 +426,7 @@ Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já r
 - **Saídas no débito:** `WHERE tipo = SAIDA AND conta.tipo = CONTA_CORRENTE AND ehInvestimento = false AND mesReferencia = X AND anoReferencia = Y`.
 - **Saídas no crédito:** `WHERE tipo = SAIDA AND conta.tipo = CARTAO_CREDITO AND mesReferencia = X AND anoReferencia = Y`, agrupado por `dataCompra`.
 
-Essas quatro queries alimentam os quatro blocos da Visão geral (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
+Essas quatro queries alimentam os quatro blocos da Visão mensal (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
 
 Ocorrências de transação recorrente (entrada ou saída) são transações comuns (mesma `mesReferencia`/`anoReferencia` de qualquer outra) — nenhuma query de consolidação precisa mudar.
 
@@ -439,16 +439,16 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 | `/login`, `/cadastro` | Autenticação | Form + NextAuth |
 | `/contas` | CRUD de Contas | Criação em **duas etapas** (seção 8.2.3): 1) seleção do tipo; 2) formulário específico do tipo. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
 | `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). Checkbox "Recorrente" (+ nº de meses): disponível para saída em Conta corrente ou Cartão de crédito, **e também para entrada em Conta corrente** (não para entrada em Cartão de crédito); mutuamente exclusivo com "Parcelado" (só existe p/ saída no crédito). Quando "Recorrente" + tipo Entrada, o checkbox "É investimento" fica indisponível (resgate recorrente fora do escopo — seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
-| `/visao-geral` | Visão geral (renomeada de `/acompanhamento`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
+| `/visao-mensal` | Visão mensal (renomeada de `/acompanhamento` → `/visao-geral`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
 | `/transacoes` | Tabela | Tabela enxuta (5 colunas) com indicadores visuais compactos, barra de filtros acima (busca + Conta/Categoria/Mês-Ano), linha inteira clicável abrindo modal único de detalhe/edição/exclusão (seção 12) |
 
 ## 8. Arquitetura de UX/UI — Navegação e Interação
 
-Esta seção consolida as decisões de UX/UI da navegação principal e da Visão geral. Em caso de conflito com a seção 7 ou com qualquer descrição anterior de navegação, organização visual ou interação, **as definições desta seção prevalecem**.
+Esta seção consolida as decisões de UX/UI da navegação principal e da Visão mensal. Em caso de conflito com a seção 7 ou com qualquer descrição anterior de navegação, organização visual ou interação, **as definições desta seção prevalecem**.
 
 ### 8.1 Navegação principal
 
-A navegação autenticada tem três áreas: **Visão geral**, **Transações**, **Contas**. Não existe área principal própria para "Investimentos" no MVP — investimentos são um tipo de movimentação e um bloco dentro da Visão geral (seção 8.3.14). Uma ação global **"+ Nova transação"** fica acessível a partir de qualquer área e **navega direto para `/lancamento`** (rota já implementada na Task 15), sem etapa intermediária de escolha de tipo de transação.
+A navegação autenticada tem três áreas: **Visão mensal**, **Transações**, **Contas**. Não existe área principal própria para "Investimentos" no MVP — investimentos são um tipo de movimentação e um bloco dentro da Visão mensal (seção 8.3.14). Uma ação global **"+ Nova transação"** fica acessível a partir de qualquer área e **navega direto para `/lancamento`** (rota já implementada na Task 15), sem etapa intermediária de escolha de tipo de transação.
 
 Implementação sugerida: um único componente `components/navegacao/NavegacaoPrincipal.jsx`, renderizado pelo `layout.jsx` do grupo `(protegido)`, com as duas variantes (lateral/inferior) marcadas via classes responsivas do Tailwind (`hidden md:flex` / `flex md:hidden`) — evita detecção de breakpoint em JavaScript e funciona bem com Server Components.
 
@@ -472,7 +472,7 @@ Componente novo: `Button` (gatilho) + `DropdownMenu` do shadcn/ui (ainda não in
 
 ### 8.2 Estrutura das áreas principais
 
-#### 8.2.1 Visão geral (`/visao-geral`)
+#### 8.2.1 Visão mensal (`/visao-mensal`)
 Tela principal de acompanhamento financeiro mensal. Ver detalhamento completo na seção 8.3.
 
 #### 8.2.2 Transações (`/transacoes`)
@@ -487,16 +487,16 @@ Tela única mostrando todas as contas simultaneamente, agrupadas visualmente por
 
 > **Nota de impacto**: o `contas-client.jsx` atual (Tasks 9–10) implementa um formulário único, com `Select` de tipo e campos condicionais (`ehCartao`) — não o wizard de 2 etapas, e a listagem é uma tabela única (coluna "Tipo"), não agrupada visualmente. Essa tela precisa ser refeita; ver seção 8.5.
 
-### 8.3 Detalhamento da Visão geral
+### 8.3 Detalhamento da Visão mensal
 
-Estrutura do topo: 1ª linha = título "Visão geral" + ação "+ Nova transação" (desktop: mesma linha, título à esquerda, ação em destaque). 2ª linha = navegação do período. Abaixo: os três indicadores do resumo mensal.
+Estrutura do topo: 1ª linha = título "Visão mensal" + ação "+ Nova transação" (desktop: mesma linha, título à esquerda, ação em destaque). 2ª linha = navegação do período. Abaixo: os três indicadores do resumo mensal.
 
 #### 8.3.1 Navegação do período
-Ir para mês anterior/próximo; clicar no período exibido abre um seletor dedicado (ano atual, 12 meses em grade, mês selecionado destacado, navegação entre anos, atualiza a Visão geral ao selecionar). Desktop: `Popover` do shadcn/ui a partir do período. Mobile: `Sheet` com `side="bottom"` (bottom sheet) — ambos já disponíveis na stack, sem nova dependência.
+Ir para mês anterior/próximo; clicar no período exibido abre um seletor dedicado (ano atual, 12 meses em grade, mês selecionado destacado, navegação entre anos, atualiza a Visão mensal ao selecionar). Desktop: `Popover` do shadcn/ui a partir do período. Mobile: `Sheet` com `side="bottom"` (bottom sheet) — ambos já disponíveis na stack, sem nova dependência.
 
-**Swipe no mobile:** a navegação de mês (`mesAnterior`/`mesSeguinte`, que fazem `router.push("/visao-geral?mes=X&ano=Y")`) é extraída de `SeletorPeriodo` para um hook compartilhado `useNavegacaoPeriodo(mes, ano)` em `seletor-periodo.jsx`. Esse hook passa a ser reaproveitado tanto pelos botões de seta quanto por um listener de toque (`touchstart`/`touchend`) no container raiz de `VisaoGeralClient`: um arrasto horizontal maior que o deslocamento vertical e acima de 50px dispara `mesSeguinte()` (deslizar para a esquerda) ou `mesAnterior()` (deslizar para a direita). O gesto só é avaliado quando `window.innerWidth < 768` no momento do toque, preservando o desktop inalterado — sem necessidade de nenhuma biblioteca nova de gestos.
+**Swipe no mobile:** a navegação de mês (`mesAnterior`/`mesSeguinte`, que fazem `router.push("/visao-mensal?mes=X&ano=Y")`) é extraída de `SeletorPeriodo` para um hook compartilhado `useNavegacaoPeriodo(mes, ano)` em `seletor-periodo.jsx`. Esse hook passa a ser reaproveitado tanto pelos botões de seta quanto por um listener de toque (`touchstart`/`touchend`) no container raiz de `VisaoMensalClient`: um arrasto horizontal maior que o deslocamento vertical e acima de 50px dispara `mesSeguinte()` (deslizar para a esquerda) ou `mesAnterior()` (deslizar para a direita). O gesto só é avaliado quando `window.innerWidth < 768` no momento do toque, preservando o desktop inalterado — sem necessidade de nenhuma biblioteca nova de gestos.
 
-**Transição visual do swipe:** ao trocar de mês via swipe, o conteúdo abaixo do seletor de período (cards de resumo + os quatro blocos) é remontado com `key={`${mes}-${ano}`}`, disparando uma animação de entrada via `tailwindcss-animate` — a mesma biblioteca já usada em `Dialog`/`Sheet`, sem nova dependência: `animate-in fade-in slide-in-from-right-8 duration-200` para o próximo mês (swipe à esquerda), ou `slide-in-from-left-8` para o mês anterior (swipe à direita). A direção é guardada num `ref` interno a `VisaoGeralClient`, setado no handler de swipe antes de navegar. Como a troca de `searchParams` não desmonta `VisaoGeralClient` (mesmo a rota tendo `loading.jsx`, só as props são atualizadas), o `ref` sobrevive até o próximo render — sua leitura acontece diretamente durante a renderização, para computar a classe do `key` recém-trocado, e um `useEffect` dependente de `mes`/`ano` só limpa o `ref` depois, por higiene. Sem animação no carregamento inicial da página nem nas trocas de mês pelas setas ou pelo seletor de mês/ano — escopo restrito ao gesto de swipe. **Efeito colateral aceito:** como a remontagem reinicia o estado local de cada componente filho, as seções expandidas (Entradas/Investimentos/Saídas no débito/Saídas no crédito) voltam a ficar colapsadas a cada troca de mês via swipe.
+**Transição visual do swipe:** ao trocar de mês via swipe, o conteúdo abaixo do seletor de período (cards de resumo + os quatro blocos) é remontado com `key={`${mes}-${ano}`}`, disparando uma animação de entrada via `tailwindcss-animate` — a mesma biblioteca já usada em `Dialog`/`Sheet`, sem nova dependência: `animate-in fade-in slide-in-from-right-8 duration-200` para o próximo mês (swipe à esquerda), ou `slide-in-from-left-8` para o mês anterior (swipe à direita). A direção é guardada num `ref` interno a `VisaoMensalClient`, setado no handler de swipe antes de navegar. Como a troca de `searchParams` não desmonta `VisaoMensalClient` (mesmo a rota tendo `loading.jsx`, só as props são atualizadas), o `ref` sobrevive até o próximo render — sua leitura acontece diretamente durante a renderização, para computar a classe do `key` recém-trocado, e um `useEffect` dependente de `mes`/`ano` só limpa o `ref` depois, por higiene. Sem animação no carregamento inicial da página nem nas trocas de mês pelas setas ou pelo seletor de mês/ano — escopo restrito ao gesto de swipe. **Efeito colateral aceito:** como a remontagem reinicia o estado local de cada componente filho, as seções expandidas (Entradas/Investimentos/Saídas no débito/Saídas no crédito) voltam a ficar colapsadas a cada troca de mês via swipe.
 
 #### 8.3.2 Resumo financeiro do mês
 Três indicadores: **Entradas** (soma de todas as entradas do mês, incluindo resgates); **Saídas** (soma das Saídas no débito e das Saídas no crédito do mês de referência); **Disponível** (Entradas − Saídas no débito − Saídas no crédito − Investimentos). O bloco Investimentos entra na conta porque representa dinheiro comprometido (aportado) no mês, ainda que não seja um gasto por categoria — resgates não são subtraídos de novo aqui, pois já estão embutidos em Entradas. Cards apenas informativos no MVP (não são atalhos/links/expansores). No mobile: os três cards empilham em uma única coluna (uma card por linha, largura total) — evita corte de valores grandes ou negativos, já que nenhum card divide a largura com outro. A partir do breakpoint `md`, volta ao grid de 3 colunas lado a lado. Sem rolagem horizontal.
@@ -511,7 +511,7 @@ Nos blocos Entradas, Saídas no débito e Saídas no crédito, as transações s
 
 Detalhamento por interação:
 - **Desktop**: hover sobre o agrupamento abre um `Popover` rico próximo à linha (sem alterar layout), com descrição, categoria, valor de cada transação e total do dia.
-- **Mobile**: toque abre uma `Sheet` (bottom sheet) equivalente, preservando a Visão geral em segundo plano.
+- **Mobile**: toque abre uma `Sheet` (bottom sheet) equivalente, preservando a Visão mensal em segundo plano.
 
 Sem informações de conta/cartão no detalhamento diário no MVP. Sem limite arbitrário de itens nem "Ver mais" — conteúdo excedente usa altura máxima + rolagem interna (`overflow-y-auto`) dentro do `Popover`/`Sheet`.
 
@@ -525,12 +525,12 @@ Mesma estrutura/padrão de leitura nos quatro blocos, diferenciados por ícone p
 Os quatro blocos são seções abertas da página (não cards independentes), separadas por espaçamento vertical e divisores sutis — como um extrato contínuo. Cabeçalho de cada bloco: ícone + nome + valor total consolidado na mesma linha (ex.: "▪ ENTRADAS R$ 8.500,00"). No mobile: ícone+título à esquerda, valor total à direita, mesma linha.
 
 #### 8.3.8 Estado de erro no carregamento
-Erro contextual quando a Visão geral não conseguir carregar/atualizar: informa a falha claramente (sem confundir com "sem movimentações"), disponibiliza "Tentar novamente", mantém a estrutura identificável, e **permanece visível** enquanto os dados não estiverem disponíveis (não é uma notificação temporária isolada).
+Erro contextual quando a Visão mensal não conseguir carregar/atualizar: informa a falha claramente (sem confundir com "sem movimentações"), disponibiliza "Tentar novamente", mantém a estrutura identificável, e **permanece visível** enquanto os dados não estiverem disponíveis (não é uma notificação temporária isolada).
 
 #### 8.3.9 Estado de carregamento
-Skeleton loading (acesso inicial, troca de período, retorno à tela). A estrutura geral fica visível com placeholders neutros para período, indicadores, valores/conteúdo dos blocos e agrupamentos, preservando as dimensões do conteúdo definitivo. Sem spinner central como representação principal; dados do período anterior não devem parecer pertencer ao novo período. Realização sugerida: `<Skeleton>` do shadcn/ui combinado com `loading.jsx`/`Suspense` do App Router na rota `/visao-geral`.
+Skeleton loading (acesso inicial, troca de período, retorno à tela). A estrutura geral fica visível com placeholders neutros para período, indicadores, valores/conteúdo dos blocos e agrupamentos, preservando as dimensões do conteúdo definitivo. Sem spinner central como representação principal; dados do período anterior não devem parecer pertencer ao novo período. Realização sugerida: `<Skeleton>` do shadcn/ui combinado com `loading.jsx`/`Suspense` do App Router na rota `/visao-mensal`.
 
-#### 8.3.10 Formatação de datas (específica da Visão geral)
+#### 8.3.10 Formatação de datas (específica da Visão mensal)
 Formato compacto `DD MMM` (ex.: "05 AGO", "28 JUL"): dia sempre 2 dígitos, mês abreviado em 3 letras maiúsculas, sem ano. Aplicado aos agrupamentos diários e ao cabeçalho do detalhamento — **só nesta tela**; não altera `formatarDataCurta` (`lib/datas.js`), usada em `/transacoes`.
 
 Nova função em `lib/datas.js` (adicionada, não substitui a existente):
@@ -545,10 +545,10 @@ export function formatarDataAgrupamento(data) {
 ```
 
 #### 8.3.11 Formatação de valores monetários
-Sempre 2 casas decimais (ex.: "R$ 8.500,00", "R$ 42,50"), centavos nunca ocultados mesmo quando zero. **Sem mudança necessária em `lib/moeda.js`**: `formatarReais`/`formatarCentavosParaReais` já usam `toLocaleString` com `style: "currency", currency: "BRL"`, que já formata com 2 casas decimais fixas por padrão — basta reaproveitá-las nos componentes da Visão geral.
+Sempre 2 casas decimais (ex.: "R$ 8.500,00", "R$ 42,50"), centavos nunca ocultados mesmo quando zero. **Sem mudança necessária em `lib/moeda.js`**: `formatarReais`/`formatarCentavosParaReais` já usam `toLocaleString` com `style: "currency", currency: "BRL"`, que já formata com 2 casas decimais fixas por padrão — basta reaproveitá-las nos componentes da Visão mensal.
 
 #### 8.3.12 Mês sem movimentações / estados vazios dos blocos
-Quando o período não tiver nenhuma movimentação em nenhum dos 4 blocos, a Visão geral mantém sua estrutura padrão (sem estado vazio geral adicional). Cada bloco permanece visível, mostrando R$ 0,00 e uma mensagem contextual (ex.: "Nenhuma entrada neste mês.", "Nenhuma saída no débito neste mês.", "Nenhuma saída no crédito neste mês.", "Nenhum investimento neste mês."). Blocos vazios não são ocultados.
+Quando o período não tiver nenhuma movimentação em nenhum dos 4 blocos, a Visão mensal mantém sua estrutura padrão (sem estado vazio geral adicional). Cada bloco permanece visível, mostrando R$ 0,00 e uma mensagem contextual (ex.: "Nenhuma entrada neste mês.", "Nenhuma saída no débito neste mês.", "Nenhuma saída no crédito neste mês.", "Nenhum investimento neste mês."). Blocos vazios não são ocultados.
 
 #### 8.3.13 Destaque do dia atual
 Quando o período visualizado é o mês atual e existe agrupamento na data atual, esse dia recebe destaque visual sutil (indicador pequeno ou ajuste discreto de tipografia) — sem virar card nem fundo dominante. Não exibido para outros períodos.
@@ -564,16 +564,16 @@ Descrições no detalhamento diário ocupam uma única linha, truncadas com reti
 | Componente | Local sugerido | Responsabilidade |
 |---|---|---|
 | `NavegacaoPrincipal` | `components/navegacao/NavegacaoPrincipal.jsx` | Menu lateral + barra inferior + ação "+ Nova transação" (seção 8.1) |
-| `SeletorPeriodo` | `components/visao-geral/SeletorPeriodo.jsx` | Navegação de mês/ano + `Popover`/`Sheet` de seleção (8.3.1) |
-| `ResumoMensal` | `components/visao-geral/ResumoMensal.jsx` | Os 3 indicadores (8.3.2) |
-| `BlocoConsolidado` | `components/visao-geral/BlocoConsolidado.jsx` | Estrutura comum de Entradas/Saídas débito/Saídas crédito: cabeçalho + agrupamento diário (8.3.4, 8.3.6, 8.3.7), reaproveitado com props de ícone/cor/dados por tipo |
-| `BlocoInvestimentos` | `components/visao-geral/BlocoInvestimentos.jsx` | Variante agrupada por conta de investimento, não por dia (8.3.14) |
-| `DetalheDiario` | `components/visao-geral/DetalheDiario.jsx` | `Popover` (desktop) / `Sheet` bottom (mobile) de detalhamento (8.3.4) |
+| `SeletorPeriodo` | `components/visao-mensal/SeletorPeriodo.jsx` | Navegação de mês/ano + `Popover`/`Sheet` de seleção (8.3.1) |
+| `ResumoMensal` | `components/visao-mensal/ResumoMensal.jsx` | Os 3 indicadores (8.3.2) |
+| `BlocoConsolidado` | `components/visao-mensal/BlocoConsolidado.jsx` | Estrutura comum de Entradas/Saídas débito/Saídas crédito: cabeçalho + agrupamento diário (8.3.4, 8.3.6, 8.3.7), reaproveitado com props de ícone/cor/dados por tipo |
+| `BlocoInvestimentos` | `components/visao-mensal/BlocoInvestimentos.jsx` | Variante agrupada por conta de investimento, não por dia (8.3.14) |
+| `DetalheDiario` | `components/visao-mensal/DetalheDiario.jsx` | `Popover` (desktop) / `Sheet` bottom (mobile) de detalhamento (8.3.4) |
 | `MenuUsuario` | `components/navegacao/menu-usuario.jsx` | Nome do usuário + ação "Sair" (`DropdownMenu`), usado dentro de `NavegacaoPrincipal` (8.1.3) |
 
 ### 8.5 Impacto em código já implementado (não coberto por este documento — gera novas tasks em spec-03)
 
-- **Rename de rota**: `app/(protegido)/acompanhamento/` → `app/(protegido)/visao-geral/` (arquivos `page.jsx` e `acompanhamento-client.jsx`), incluindo qualquer link interno existente.
+- **Rename de rota**: `app/(protegido)/acompanhamento/` → `app/(protegido)/visao-geral/` (arquivos `page.jsx` e `acompanhamento-client.jsx`), incluindo qualquer link interno existente. Renomeada novamente para `app/(protegido)/visao-mensal/` em spec-03 Task 68 — linhagem completa: `/acompanhamento` → `/visao-geral` → `/visao-mensal`.
 - **Remoção de código órfão**: dependência `recharts` (`package.json`) e o componente `GraficoGastosPorCategoria` (hoje em `acompanhamento-client.jsx`) — sem uso após a remoção do requisito de gráfico do spec-01.
 - **Reescrita do fluxo de `/contas`**: `contas-client.jsx` (Tasks 9–10) precisa passar do formulário único com campos condicionais para o wizard de 2 etapas + listagem agrupada por tipo (seção 8.2.3).
 - **Criação do `layout.jsx`** do grupo `(protegido)` — hoje inexistente — para hospedar a navegação persistente (seção 8.1).
@@ -606,7 +606,7 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 - Se `Conta de investimento` ganhará atributos próprios em fases futuras.
 - Formato do CSV de fatura (fase futura).
 - Categorização automática (fase futura).
-- Formatação de data `DD MMM` da Visão geral (§8.3.10, ex.: "05 AGO"): removida do escopo da Task 26 a pedido do usuário; a Visão geral continua usando `formatarDataCurta` (`DD/MM/AAAA`). Revisitar se/quando decidido.
+- Formatação de data `DD MMM` da Visão mensal (§8.3.10, ex.: "05 AGO"): removida do escopo da Task 26 a pedido do usuário; a Visão mensal continua usando `formatarDataCurta` (`DD/MM/AAAA`). Revisitar se/quando decidido.
 
 ## 12. Arquitetura de UX/UI — Transações
 
@@ -614,11 +614,11 @@ Resolve a seção 3.3 dos Requisitos. Em caso de conflito com a seção 7 ou qua
 
 ### 12.1 Tabela enxuta
 
-5 colunas visíveis: Data efetiva, Descrição, Categoria, Conta, Valor. A coluna de data usa `dataEfetiva` (não `dataCompra`) e a tabela é ordenada por ela — é o campo que já determina `mesReferencia`/`anoReferencia` em toda a aplicação (cálculo de fatura, consolidação da Visão geral, filtro de Mês/Ano da seção 12.3); numa compra parcelada, `dataCompra` é idêntica em todas as parcelas, então não serve para distinguir quando cada uma ocorre. As demais informações hoje em colunas (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2). O rótulo "Data do lançamento" (não "Data da compra") é usado no modal por ser neutro para entrada, saída e investimento — o campo continua sendo `dataCompra` no schema.
+5 colunas visíveis: Data efetiva, Descrição, Categoria, Conta, Valor. A coluna de data usa `dataEfetiva` (não `dataCompra`) e a tabela é ordenada por ela — é o campo que já determina `mesReferencia`/`anoReferencia` em toda a aplicação (cálculo de fatura, consolidação da Visão mensal, filtro de Mês/Ano da seção 12.3); numa compra parcelada, `dataCompra` é idêntica em todas as parcelas, então não serve para distinguir quando cada uma ocorre. As demais informações hoje em colunas (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2). O rótulo "Data do lançamento" (não "Data da compra") é usado no modal por ser neutro para entrada, saída e investimento — o campo continua sendo `dataCompra` no schema.
 
 **Indicadores visuais compactos** (sem coluna própria), junto à Descrição ou ao Valor:
-- **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão geral), Saída na cor padrão do texto.
-- **Parcela**: badge "X de Y" (mesmo estilo de tag usado para "Resgate de investimento" na Visão geral — `rounded-full bg-muted px-2 py-0.5 text-xs`).
+- **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão mensal), Saída na cor padrão do texto.
+- **Parcela**: badge "X de Y" (mesmo estilo de tag usado para "Resgate de investimento" na Visão mensal — `rounded-full bg-muted px-2 py-0.5 text-xs`).
 - **Recorrência**: badge "X de Y ↻", mesmo estilo.
 - **Investimento**: badge "Aporte" (saída) ou "Resgate" (entrada).
 
@@ -764,7 +764,7 @@ Pontos que merecem atenção:
 - **Investimentos nunca são estimados.** Não há valor padrão de aporte; o bloco reflete apenas o que foi lançado.
 - **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
-- **A mesma função serve as duas telas.** A Visão geral chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
+- **A mesma função serve as duas telas.** A Visão mensal chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
 
 ### 13.4 Casos de teste obrigatórios (Vitest)
 
@@ -796,7 +796,7 @@ Rota `/projecao`, dentro do grupo `(protegido)`. O Server Component (`page.jsx`)
 
 Chama `comporMes` doze vezes no servidor e passa o array pronto para o Client Component, junto com os cartões (necessários para a simulação recalcular no cliente).
 
-**Cuidado já conhecido:** `Decimal` do Prisma não é serializável de Server para Client Component — converter com `Number(...)` antes de passar, como já é feito em `visao-geral/page.jsx` e `transacoes/page.jsx`.
+**Cuidado já conhecido:** `Decimal` do Prisma não é serializável de Server para Client Component — converter com `Number(...)` antes de passar, como já é feito em `visao-mensal/page.jsx` e `transacoes/page.jsx`.
 
 **Cache:** a rota depende de "hoje" para calcular as fronteiras, então não pode ser estática. Como a janela é derivada da data atual e não de `searchParams`, é preciso forçar renderização dinâmica com `export const dynamic = "force-dynamic"` — do contrário o Next prerenderiza no build e a projeção congela na data da publicação. Este é o mesmo tipo de armadilha do Full Route Cache que já causou o bug da conta nova não aparecer em `/lancamento`.
 
@@ -808,7 +808,7 @@ Três faixas, de cima para baixo:
 2. **Formulário de simulação** — compacto, numa linha no desktop: cartão, data, valor, parcelas, e um botão para limpar.
 3. **Lista dos 12 meses** — uma linha por mês com Entradas, Saídas e Disponível. Valores estimados aparecem visualmente distintos dos reais (seção 16.2). No mobile a lista vira cards empilhados, seguindo a lição da seção 8.3.2: nada de dividir a largura entre três números.
 
-Cada card da lista é um **link** para `/visao-geral?mes=X&ano=Y` (Requisitos 3.6) — a Projeção resume doze meses, o detalhe de cada um continua na Visão geral. O hover reforça essa affordance de clique (borda, fundo e sombra do card destacados); usa tokens sólidos do tema (`border-ring`, `bg-muted`), não a sintaxe de opacidade `/NN` do Tailwind — `tailwind.config.js` mapeia as cores direto para `var(--token)` em hex, que não suporta modificador de opacidade (achado registrado, correção mais ampla ainda pendente — ver nota em `spec-03`).
+Cada card da lista é um **link** para `/visao-mensal?mes=X&ano=Y` (Requisitos 3.6) — a Projeção resume doze meses, o detalhe de cada um continua na Visão mensal. O hover reforça essa affordance de clique (borda, fundo e sombra do card destacados); usa tokens sólidos do tema (`border-ring`, `bg-muted`), não a sintaxe de opacidade `/NN` do Tailwind — `tailwind.config.js` mapeia as cores direto para `var(--token)` em hex, que não suporta modificador de opacidade (achado registrado, correção mais ampla ainda pendente — ver nota em `spec-03`).
 
 ### 14.3 Simulação
 
@@ -844,7 +844,7 @@ Cinco destinos em dois grupos semânticos:
 
 | Grupo | Destinos |
 |---|---|
-| **Dados** | `/visao-geral`, `/transacoes`, `/projecao` |
+| **Dados** | `/visao-mensal`, `/transacoes`, `/projecao` |
 | **Ajustes** | `/contas`, `/valores-padrao` |
 
 ### 15.2 Desktop
@@ -859,7 +859,7 @@ A barra inferior passa de quatro alvos para **três**:
 
 | Posição | Alvo | Comportamento |
 |---|---|---|
-| Esquerda | **Dados** | Navega para `/visao-geral` |
+| Esquerda | **Dados** | Navega para `/visao-mensal` |
 | Centro | **Nova** | Botão circular em destaque → `/lancamento` |
 | Direita | **Ajustes** | Abre um `Sheet` inferior com os dois destinos de configuração |
 
@@ -875,7 +875,7 @@ Rota `/valores-padrao`, dentro do grupo Ajustes. Tela única com **duas listas**
 
 O formulário de despesa tem um seletor **Crédito/Débito**; o de receita não (seção 3 do schema). Reaproveita `CampoValor` (máscara monetária) já usado em `/lancamento` e no modal de `/transacoes`.
 
-Mutações via Server Actions em `lib/actions/valores-padrao.js`, com `revalidatePath` para `/valores-padrao`, `/visao-geral` e `/projecao` — as três telas que consomem esses dados. Omitir alguma delas reproduz o bug de cache que já ocorreu com contas (seção 8.5).
+Mutações via Server Actions em `lib/actions/valores-padrao.js`, com `revalidatePath` para `/valores-padrao`, `/visao-mensal` e `/projecao` — as três telas que consomem esses dados. Omitir alguma delas reproduz o bug de cache que já ocorreu com contas (seção 8.5).
 
 ## 16. Tema escuro
 
@@ -918,15 +918,15 @@ A família `-400` substitui a `-600` porque os tons `-600` do Tailwind foram cal
 
 ### 16.2 Distinção visual entre real e estimado
 
-Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão geral quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins:
+Exigida pelos Requisitos 3.1 e 3.6, e usada tanto na Visão mensal quanto na Projeção. A distinção **não pode depender só de cor** — precisa sobreviver a impressão, daltonismo e telas ruins:
 
 - Valores estimados usam `--estimado` **e** um rótulo textual explícito ("estimado").
-- Na Visão geral, a estimativa entra como uma **linha própria** dentro do bloco, com borda tracejada, separada dos lançamentos reais — nunca somada silenciosamente ao total sem indicação.
+- Na Visão mensal, a estimativa entra como uma **linha própria** dentro do bloco, com borda tracejada, separada dos lançamentos reais — nunca somada silenciosamente ao total sem indicação.
 - Nos cards de resumo, a composição fica explícita como subtexto: `R$ 800 real + R$ 400 estimado`.
 
 ### 16.3 Escopo da revisão de contraste
 
-Trocar os tokens não basta: cada elemento precisa ser verificado sobre o novo fundo. A varredura mínima cobre `Button` (todas as variantes), `Input`, `Select`, `Checkbox`, `Dialog`, `Sheet`, `Popover`, `DropdownMenu`, `Table`, `Card`, `Skeleton`, os quatro blocos da Visão geral, a pílula do seletor de período e os badges de parcela/recorrência/investimento.
+Trocar os tokens não basta: cada elemento precisa ser verificado sobre o novo fundo. A varredura mínima cobre `Button` (todas as variantes), `Input`, `Select`, `Checkbox`, `Dialog`, `Sheet`, `Popover`, `DropdownMenu`, `Table`, `Card`, `Skeleton`, os quatro blocos da Visão mensal, a pílula do seletor de período e os badges de parcela/recorrência/investimento.
 
 Alvo: **WCAG AA** (4.5:1 para texto normal, 3:1 para texto grande e elementos de interface). O `Skeleton` merece atenção específica — no claro ele é um cinza sutil sobre branco, e a transposição ingênua tende a sumir no fundo escuro.
 
@@ -996,7 +996,7 @@ Parâmetros sugeridos: **5 tentativas** por e-mail, janela de **15 minutos**. A 
 
 ### 17.4 Integridade de contas com transações vinculadas
 
-`editarConta` hoje permite alterar `tipo`, `diaFechamento` e `diaVencimento` livremente. Como `mesReferencia` das transações já foi calculado a partir desses valores (seção 4), alterá-los **invalida silenciosamente** dados já gravados: uma transação classificada como saída no crédito passa a apontar para uma conta corrente, e a Visão geral passa a somar errado sem nenhum sinal de erro.
+`editarConta` hoje permite alterar `tipo`, `diaFechamento` e `diaVencimento` livremente. Como `mesReferencia` das transações já foi calculado a partir desses valores (seção 4), alterá-los **invalida silenciosamente** dados já gravados: uma transação classificada como saída no crédito passa a apontar para uma conta corrente, e a Visão mensal passa a somar errado sem nenhum sinal de erro.
 
 Regra: quando a conta **possui transações vinculadas**, `tipo`, `diaFechamento` e `diaVencimento` ficam **imutáveis**. O nome continua editável. A UI reflete a regra desabilitando os campos e explicando o motivo, em vez de deixar o usuário tentar e receber erro.
 
@@ -1013,7 +1013,7 @@ Recalcular `mesReferencia` de todas as transações afetadas seria a alternativa
 `npm audit` acusa 2 falhas críticas e 5 altas. Elas **não se resolvem com `npm audit fix --force`**, e há duas armadilhas concretas:
 
 - A correção sugerida para `next-auth` é instalar a **4.24.7 — uma versão anterior** à 4.24.15 em uso. Um downgrade não é correção; a linha corrigida está no Auth.js v5, cuja migração é de porte considerável.
-- A correção sugerida para `next` é subir da **14.2.35 para a 15.5.23**, salto de major. O Next 15 torna `searchParams` e `params` assíncronos, o que **quebra `visao-geral/page.jsx`**, que os lê de forma síncrona. A atualização exige alteração de código, não só de versão.
+- A correção sugerida para `next` é subir da **14.2.35 para a 15.5.23**, salto de major. O Next 15 torna `searchParams` e `params` assíncronos, o que **quebra `visao-mensal/page.jsx`**, que os lê de forma síncrona. A atualização exige alteração de código, não só de versão.
 
 Entre os avisos do Next há um diretamente relevante para esta arquitetura: *"Unauthenticated disclosure of internal Server Function endpoints"* — o app é inteiramente construído sobre Server Actions.
 
