@@ -215,7 +215,27 @@ model ValorPadrao {
 
   criadoEm   DateTime       @default(now())
 
+  consolidacoes ConsolidacaoValorPadrao[]
+
   @@index([usuarioId])
+}
+
+// Ajuste pontual de um item de receita padrão pra um mês específico
+// (Requisitos 3.8, Design §13.5) — substitui o valor genérico do item
+// SÓ naquele mês, sem tocar em ValorPadrao nem nos demais meses.
+model ConsolidacaoValorPadrao {
+  id            String      @id @default(cuid())
+  valorPadraoId String
+  valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
+
+  mesReferencia Int         // 1-12
+  anoReferencia Int
+  valor         Decimal     // substitui ValorPadrao.valor só nesse mês
+
+  criadoEm      DateTime    @default(now())
+
+  @@unique([valorPadraoId, mesReferencia, anoReferencia])
+  @@index([mesReferencia, anoReferencia])
 }
 ```
 
@@ -223,6 +243,13 @@ model ValorPadrao {
 - **Não tem data, conta nem categoria** — é uma declaração atemporal, não um lançamento. Nunca vira `Transacao` e nunca aparece em `/transacoes`.
 - **`meio` só se aplica a despesas.** Receitas são sempre creditadas em Conta corrente conceitualmente, e a Visão mensal não separa receitas por meio — por isso o campo é nulo para `ENTRADA`. A obrigatoriedade quando `tipo = SAIDA` é validada na Server Action, não no banco (o Prisma não expressa `CHECK` condicional de forma portátil).
 - **`usuarioId` é apenas autoria**, como em `Conta` e `Transacao`: os valores padrão são compartilhados entre os membros da família, coerente com o modelo de dados único da spec-01 §2.
+
+**Notas sobre `ConsolidacaoValorPadrao`:**
+- **Não é uma `Transacao`.** Cogitado e descartado — reaproveitar `Transacao` obrigaria preencher `contaId`/`categoria`/`dataCompra`/`dataEfetiva`, nenhum dos quais tem correspondência conceitual real aqui (a mesma razão pela qual `ValorPadrao` já não é uma `Transacao`), e ainda exigiria filtrar essas linhas fora de toda consulta que hoje soma/lista `Transacao` (a tela `/transacoes`, `entradaReal` em `comporMes`) pra não aparecerem misturadas aos lançamentos comuns.
+- **Vínculo por `valorPadraoId` (FK), não por texto/descrição** — sobrevive a uma renomeação do item em Valores padrão; não há ambiguidade entre itens com a mesma descrição.
+- **Sem `usuarioId` próprio** — herda a autoria de `ValorPadrao` via `valorPadraoId`, mesmo raciocínio de dado compartilhado entre a família.
+- **Escopo restrito a `tipo = ENTRADA`** validado na Server Action (não há `CHECK` no schema, mesmo padrão de `ValorPadrao.meio`) — despesa padrão não ganha esse mecanismo (Requisitos, "Fora do escopo").
+- **`@@unique([valorPadraoId, mesReferencia, anoReferencia])`** garante no máximo uma consolidação por item por mês — criar uma nova consolidação pro mesmo item/mês é um `upsert`, não uma segunda linha.
 
 **Nota sobre `Categoria` como enum:** como a spec define lista fixa definida no código, um `enum` do Prisma é mais simples que uma tabela — não precisa de seed nem de FK. Se no futuro categorias passarem a ser editáveis pelo usuário (fora do MVP), migra-se para uma tabela própria.
 
@@ -711,15 +738,24 @@ Usar `.some()` é equivalente a comparar com o fechamento mais tardio, e evita c
  * Compõe os totais de um mês a partir das três fontes:
  * lançamentos reais, compromissos já assumidos e valores padrão.
  */
-function comporMes({ mesReferencia, anoReferencia, transacoes, valoresPadrao, cartoes, hoje }) {
+function comporMes({ mesReferencia, anoReferencia, transacoes, valoresPadrao, consolidacoes, cartoes, hoje }) {
   const doMes = transacoes.filter(
     (t) => t.mesReferencia === mesReferencia && t.anoReferencia === anoReferencia
   );
   const ehParcela = (t) => t.parcelamentoId !== null;
 
-  // --- Entradas: real + receita padrão integral, sem consumo de parte a parte ---
-  const entradaReal   = somar(doMes.filter((t) => t.tipo === "ENTRADA"));
-  const entradaPadrao = somar(valoresPadrao.filter((v) => v.tipo === "ENTRADA"));
+  // --- Entradas: real + receita padrão (por item, com consolidação do mês
+  // substituindo o valor genérico quando existir — Requisitos 3.8, §13.5) ---
+  const entradaReal = somar(doMes.filter((t) => t.tipo === "ENTRADA"));
+  const consolidacoesDoMes = consolidacoes.filter(
+    (c) => c.mesReferencia === mesReferencia && c.anoReferencia === anoReferencia
+  );
+  const entradaPadrao = valoresPadrao
+    .filter((v) => v.tipo === "ENTRADA")
+    .reduce((soma, item) => {
+      const consolidacao = consolidacoesDoMes.find((c) => c.valorPadraoId === item.id);
+      return soma + Number(consolidacao ? consolidacao.valor : item.valor);
+    }, 0);
 
   // --- Saídas: teto por meio, consumido pelo real ---
   function comporSaidas(meio) {
@@ -767,6 +803,7 @@ Pontos que merecem atenção:
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
 - **A mesma função serve as duas telas.** A Visão mensal chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
 - **`entradas.estimado` é a chave, não a semântica.** O nome é compartilhado com `credito.estimado`/`debito.estimado` só por simetria de forma (mesmo shape `{real, estimado, total}`, mesma função que os produz) — o conteúdo é outra coisa: para saídas é uma estimativa de verdade (teto ainda não consumido); para entradas é a receita padrão, um valor garantido que nunca é reduzido (Requisitos 3.5). A camada de exibição (§16.2) trata os dois de forma diferente; a função não foi renomeada porque o nome é interno e já documentado aqui — renomear só a chave sem mudar comportamento não valia o churn em `lib/projecao.js`, seus testes e as duas telas que a consomem.
+- **`consolidacoes` segue o mesmo padrão de `transacoes`**: o chamador passa a lista relevante (um mês na Visão mensal, a janela de 12 meses na Projeção) e `comporMes` filtra internamente por `mesReferencia`/`anoReferencia` — nenhuma das duas telas pré-filtra antes de chamar. Detalhe da resolução em §13.5.
 
 ### 13.4 Casos de teste obrigatórios (Vitest)
 
@@ -783,6 +820,29 @@ Como a regra tem várias bordas, `lib/projecao.test.js` deve cobrir no mínimo:
 9. Mês passado → estimativa de despesa zero, mas receita padrão presente.
 10. Entrada real pontual → soma à receita padrão, sem descontá-la.
 11. Cartão com fechamento dia 31 em mês de 30 dias → fronteira no último dia do mês.
+12. Item de receita padrão com consolidação no mês composto → usa o valor da consolidação, não o valor genérico do item.
+13. Item de receita padrão com consolidação num **outro** mês (fora do mês composto) → usa o valor genérico, a consolidação de outro mês não vaza.
+14. Dois itens de receita padrão, só um consolidado no mês → o consolidado usa seu valor de consolidação, o outro usa o valor genérico, somados corretamente.
+15. Entrada real pontual num mês com item consolidado → soma por cima do valor consolidado, sem descontá-lo (mesma regra do caso 10, agora sobre um valor consolidado).
+
+### 13.5 Consolidação mensal de receita padrão
+
+Resolve Requisitos 3.8. `ConsolidacaoValorPadrao` (§3) é uma tabela separada de `ValorPadrao` — não um campo nele, nem uma linha "especial" dentro dela — porque a lista de Valores padrão representa "vale todo mês, sempre"; misturar exceções pontuais na mesma tabela obrigaria toda leitura a discriminar "isso é regra geral ou exceção de um mês?". `comporMes` (§13.3) resolve por item: existe uma `ConsolidacaoValorPadrao` para `(valorPadraoId, mesReferencia, anoReferencia)`? Usa o valor dela; senão, usa `ValorPadrao.valor`.
+
+**Por que não virou `Transacao`:** cogitado durante o design (a ideia original do usuário), descartado por três atritos concretos — `Transacao.contaId`/`categoria`/`dataCompra`/`dataEfetiva` são obrigatórios e nenhum tem correspondência conceitual aqui (mesma razão pela qual `ValorPadrao` em si nunca foi uma `Transacao`); identificar as linhas de consolidação por texto (`descricao`) pra excluí-las de `entradaReal` e da tela `/transacoes` seria frágil (quebra numa renomeação, ambíguo com descrições duplicadas); e mesmo contornando isso com um campo novo de vínculo, o resultado seria estruturalmente a mesma tabela nova proposta aqui, só que pendurada em `Transacao` de um jeito mais confuso.
+
+**Onde se edita:** só na Visão mensal, no bloco Entradas — não existe UI de consolidação na tela Valores padrão, nem um seletor de mês dedicado (a Visão mensal já sabe qual mês/ano está sendo visto via `SeletorPeriodo`, o contexto vem de onde o usuário está).
+
+**Exibição — bloco Entradas (`visao-mensal-client.jsx`):** `LinhaReceitaPadrao` (linha única agregada) é substituída por uma lista, um item de receita padrão por linha, sempre visível quando o bloco está expandido (não só quando há consolidação) — mesmo com um único item cadastrado, o comportamento já é "por item", só que com uma linha. Cada linha mostra a **descrição do item** (não um rótulo genérico "Receita padrão") e o **valor resolvido** daquele mês (consolidado ou genérico — visualmente idênticos, sem marcação, por decisão consciente: uma vez consolidado, esse é o valor normal do mês, não uma incerteza a sinalizar). **Um único divider** (borda inferior) fecha o bloco de itens como um todo, separando-o dos lançamentos reais agrupados por dia abaixo — não há divider entre os itens de receita padrão entre si. O bloco de lançamentos reais (`DetalheDiario`, agrupamento por dia) **não muda em nada** nesta task.
+
+**Edição inline — ícone de lápis:** cada linha ganha um botão-ícone (`Pencil`, `lucide-react`, ~12px, `text-muted-foreground`, hover destaca) antes do valor — não um botão "Editar" como na tela Valores padrão, que ali é a tela inteira dedicada a isso; aqui é uma ação secundária dentro de uma tela de consulta, e precisa ficar discreta. Clicar troca **só aquela linha** por um formulário compacto: um campo de valor (reaproveitando a lógica de `CampoValor` — acumulação estilo calculadora — mas **sem o `<Label>` visível**, que não cabe no espaço inline; `CampoValor` ganha um prop `label` opcional, quando omitido não renderiza o elemento, usando `aria-label` no input em vez disso) e dois botões-ícone compactos (`Check`/`X`, Salvar/Cancelar) — mesmo espírito do formulário inline já usado em Valores padrão (`FormularioInline`), só que reduzido ao mínimo (sem campo de descrição, que não muda). Quando o item **já tem** consolidação ativa nesse mês, o formulário ganha um link pequeno "usar padrão (R$ X)" que remove a consolidação **imediatamente** (sem precisar de Salvar) e volta o item ao valor genérico.
+
+**Server Actions** (`lib/actions/valores-padrao.js` ou arquivo novo dedicado):
+- `consolidarValorPadrao({ valorPadraoId, mesReferencia, anoReferencia, valor })` — `upsert` por `(valorPadraoId, mesReferencia, anoReferencia)` (a constraint `@@unique` do schema garante no máximo uma linha). Valida sessão (padrão do projeto) e que `valorPadrao.tipo === "ENTRADA"` antes de gravar.
+- `removerConsolidacaoValorPadrao({ valorPadraoId, mesReferencia, anoReferencia })` — apaga a linha, se existir.
+- Ambas seguidas de `router.refresh()` no cliente, mesmo padrão já usado em `ValoresPadraoClient`.
+
+**`page.jsx` (Visão mensal e Projeção):** ambos passam a buscar `db.consolidacaoValorPadrao.findMany(...)` — Visão mensal filtrando pelo mês em exibição, Projeção pela janela de 12 meses (mesmo padrão de `OR` já usado para `transacoes`) — e repassam para `comporMes`. Só a Visão mensal precisa **também** montar a lista bruta de itens de receita padrão + valor resolvido do mês (uma pequena composição própria em `page.jsx`, fora de `comporMes`, já que a Projeção nunca precisa do detalhe por item — só do agregado que `comporMes` já devolve). A Projeção não muda em nenhum outro ponto: já consome só `entradas.total`, que passa a vir correto automaticamente.
 
 ## 14. Tela de Projeção e simulação
 

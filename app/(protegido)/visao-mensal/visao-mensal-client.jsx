@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   PiggyBank,
   CreditCard,
   ChevronDown,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
@@ -16,6 +20,11 @@ import {
   useNavegacaoPeriodo,
 } from "@/components/visao-mensal/seletor-periodo";
 import { DetalheDiario } from "@/components/visao-mensal/detalhe-diario";
+import { CampoValor } from "@/components/campo-valor";
+import {
+  consolidarValorPadrao,
+  removerConsolidacaoValorPadrao,
+} from "@/lib/actions/valores-padrao";
 
 const LIMIAR_SWIPE_PX = 50;
 const BREAKPOINT_MD_PX = 768;
@@ -174,16 +183,135 @@ function LinhaEstimado({ estimado }) {
   );
 }
 
-// Linha própria da receita padrão (Design §16.2): borda sólida, antes dos
-// lançamentos reais — é dinheiro garantido (Requisitos 3.5), não uma
-// estimativa, só ainda não é um lançamento datado. A base sobre a qual as
-// entradas pontuais do mês somam.
-function LinhaReceitaPadrao({ valor }) {
-  if (valor <= 0) return null;
+// Linha de um item de receita padrão (Design §13.5, revisado — antes uma
+// linha única agregada, agora por item, cada um consolidável pra este mês
+// via o lápis). Sem borda própria — o divider que separa do bloco de
+// lançamentos reais é só um, no container da lista (ListaReceitaPadrao).
+function LinhaItemReceitaPadrao({ item, mes, ano, editando, onEditar, onFechar, router }) {
+  // Começa vazio, não pré-preenchido com o valor atual: CampoValor acumula
+  // dígitos por cima do que já está lá (estilo calculadora) — pré-preencher
+  // obrigaria apagar o valor inteiro antes de digitar o novo, o oposto de
+  // uma edição rápida e discreta.
+  const [valorCentavos, setValorCentavos] = useState(0);
+  const [carregando, setCarregando] = useState(false);
+
+  async function salvar() {
+    setCarregando(true);
+    await consolidarValorPadrao({
+      valorPadraoId: item.id,
+      mesReferencia: mes,
+      anoReferencia: ano,
+      valor: valorCentavos / 100,
+    });
+    setCarregando(false);
+    onFechar();
+    router.refresh();
+  }
+
+  async function usarPadrao() {
+    setCarregando(true);
+    await removerConsolidacaoValorPadrao({
+      valorPadraoId: item.id,
+      mesReferencia: mes,
+      anoReferencia: ano,
+    });
+    setCarregando(false);
+    onFechar();
+    router.refresh();
+  }
+
+  if (editando) {
+    return (
+      <div className="flex flex-col gap-1 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted-foreground">{item.descricao}</span>
+          <span className="flex items-center gap-1">
+            <CampoValor
+              id={`consolidacao-${item.id}`}
+              ariaLabel={`Valor de ${item.descricao} para este mês`}
+              valorCentavos={valorCentavos}
+              onChange={setValorCentavos}
+              className="w-28"
+            />
+            <button
+              type="button"
+              onClick={salvar}
+              disabled={carregando || valorCentavos === 0}
+              aria-label="Salvar"
+              className="rounded p-1 text-entrada hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={onFechar}
+              disabled={carregando}
+              aria-label="Cancelar"
+              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        </div>
+        {item.consolidado && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={usarPadrao}
+              disabled={carregando}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              usar padrão ({formatarReais(item.valorPadrao)})
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-between border-b pb-2 text-sm">
-      <span className="text-muted-foreground">Receita padrão</span>
-      <span className="font-medium">{formatarReais(valor)}</span>
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{item.descricao}</span>
+      <span className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={`Consolidar ${item.descricao} para este mês`}
+          title="Consolidar para este mês"
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+        <span className="font-medium">{formatarReais(item.valor)}</span>
+      </span>
+    </div>
+  );
+}
+
+// Lista de itens de receita padrão (Requisitos 3.8, Design §13.5) — sempre
+// por item, mesmo com um só cadastrado. Um único divider (borda inferior no
+// container) separa o bloco inteiro dos lançamentos reais abaixo; não há
+// divider entre os itens em si.
+function ListaReceitaPadrao({ itens, mes, ano }) {
+  const router = useRouter();
+  const [editandoId, setEditandoId] = useState(null);
+
+  if (itens.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-b pb-2">
+      {itens.map((item) => (
+        <LinhaItemReceitaPadrao
+          key={item.id}
+          item={item}
+          mes={mes}
+          ano={ano}
+          editando={editandoId === item.id}
+          onEditar={() => setEditandoId(item.id)}
+          onFechar={() => setEditandoId(null)}
+          router={router}
+        />
+      ))}
     </div>
   );
 }
@@ -198,6 +326,9 @@ function BlocoPorDia({
   renderTag,
   mensagemVazia,
   ehEntradas = false,
+  itensReceitaPadrao,
+  mes,
+  ano,
 }) {
   const [expandido, setExpandido] = useState(false);
 
@@ -213,7 +344,9 @@ function BlocoPorDia({
       />
       {expandido && (
         <>
-          {ehEntradas && <LinhaReceitaPadrao valor={estimado} />}
+          {ehEntradas && (
+            <ListaReceitaPadrao itens={itensReceitaPadrao} mes={mes} ano={ano} />
+          )}
           {grupos.length === 0 ? (
             <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
           ) : (
@@ -290,6 +423,7 @@ export function VisaoMensalClient({
   saidasDebito,
   saidasCredito,
   investimentos,
+  itensReceitaPadrao,
   composicaoEntradas,
   composicaoDebito,
   composicaoCredito,
@@ -357,11 +491,13 @@ export function VisaoMensalClient({
             Icone={ArrowDownCircle}
             cor="text-entrada"
             total={composicaoEntradas.total}
-            estimado={composicaoEntradas.estimado}
             grupos={entradas}
             renderTag={(t) => (t.ehInvestimento ? <TagResgate /> : null)}
             mensagemVazia="Nenhuma entrada adicional neste mês."
             ehEntradas
+            itensReceitaPadrao={itensReceitaPadrao}
+            mes={mes}
+            ano={ano}
           />
           <BlocoInvestimentos
             Icone={PiggyBank}

@@ -120,5 +120,25 @@ model ValorPadrao {
 
   criadoEm DateTime @default(now())
 
+  consolidacoes ConsolidacaoValorPadrao[]
+
   @@index([usuarioId])
+}
+
+// Ajuste pontual de um item de receita padrão pra um mês específico
+// (spec-01 §3.8, spec-02 §13.5) — substitui ValorPadrao.valor só naquele
+// mês, sem tocar no item nem nos demais meses.
+model ConsolidacaoValorPadrao {
+  id            String      @id @default(cuid())
+  valorPadraoId String
+  valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
+
+  mesReferencia Int // 1-12
+  anoReferencia Int
+  valor         Decimal // substitui ValorPadrao.valor só nesse mês
+
+  criadoEm DateTime @default(now())
+
+  @@unique([valorPadraoId, mesReferencia, anoReferencia])
+  @@index([mesReferencia, anoReferencia])
 }

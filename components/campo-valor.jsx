@@ -4,7 +4,7 @@ import { formatarCentavosParaReais } from "@/lib/moeda";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function CampoValor({ id, label, valorCentavos, onChange, className = "" }) {
+export function CampoValor({ id, label, valorCentavos, onChange, className = "", ariaLabel }) {
   // Formata o valor exibido a cada tecla, então a posição do cursor dentro do
   // texto formatado não é confiável para saber "onde" um novo dígito entrou —
   // por isso os dígitos são acumulados numericamente (como uma calculadora,
@@ -33,12 +33,13 @@ export function CampoValor({ id, label, valorCentavos, onChange, className = "" 
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
-      <Label htmlFor={id}>{label}</Label>
+      {label && <Label htmlFor={id}>{label}</Label>}
       <Input
         id={id}
         type="text"
         inputMode="numeric"
         required
+        aria-label={label ? undefined : ariaLabel}
         value={formatarCentavosParaReais(valorCentavos)}
         onKeyDown={handleKeyDown}
         onPaste={(e) => e.preventDefault()}

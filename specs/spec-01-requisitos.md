@@ -152,7 +152,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - **Despesas padrão** — ex.: "Alimentação: R$ 1.000", "Combustível: R$ 200".
 - Cada item tem **descrição livre** e **valor**. Itens de despesa indicam ainda se são **crédito ou débito**; itens de receita não têm essa distinção (assume-se Conta corrente).
 - Os itens **não são vinculados a uma conta específica** nem a uma categoria — são estimativas difusas, não lançamentos.
-- A mesma lista vale para **todos os meses projetados**; não há exceção por mês.
+- A mesma lista vale para **todos os meses projetados** por padrão; a única exceção é a **consolidação mensal de receita padrão** (seção 3.8), que ajusta um item específico de receita só para um mês, sem alterar a lista em si nem os demais meses. Despesa padrão não tem exceção por mês — o teto consumido pelo real (abaixo) já dá a flexibilidade mês a mês que a receita, puramente aditiva, não tem.
 - Os valores são **informados pelo usuário**. O sistema não os calcula a partir do histórico de lançamentos.
 - Valores padrão **não geram transações**: não aparecem na tela de Transações, não podem ser editados como lançamento e não possuem data.
 
@@ -196,6 +196,18 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - A simulação é **efêmera**: não é persistida, não gera transações e é descartada ao sair da tela.
 - O sistema **não emite veredito** ("pode comprar" / "não pode") nem aplica reserva mínima — apenas apresenta os números recalculados, deixando a conclusão com o usuário.
 
+### 3.8 Especificação — Consolidação mensal de receita padrão
+
+Resolve uma limitação da seção 3.5: como receita padrão é sempre o valor cheio em todo mês, não havia como representar um mês com renda **menor** que o padrão sem editar o item pra todos os meses (passados e futuros), e uma renda **maior** exigia calcular a diferença manualmente pra lançar como entrada real — pouco intuitivo.
+
+- Cada item de **receita padrão** (não despesa) pode ser **consolidado** para um mês específico — um valor que substitui, só naquele mês, o valor genérico do item.
+- A consolidação é **por item**, não pelo total agregado de receita padrão do mês — cada linha da lista de receitas padrão tem seu próprio ajuste, independente dos outros itens.
+- Editada diretamente na **Visão mensal**, no bloco Entradas — não existe tela separada de gestão dessas exceções, e a lista de Valores padrão (seção 3.5) não é afetada nem exibe essas exceções.
+- Uma vez consolidado, o valor substitui o valor genérico daquele item **só para aquele mês**; entradas reais lançadas no mês continuam somando por cima, sem mudança na regra da seção 3.5 (o problema da renda maior que o padrão, citado acima, **continua** exigindo lançar a diferença — fora do escopo desta consolidação).
+- Vale tanto para **meses futuros** (planejamento) quanto para **meses já fechados** (correção retroativa) — mesmo mecanismo para os dois casos.
+- Uma consolidação é **permanente até ser editada ou removida** — não expira quando o mês fecha (diferente da estimativa de despesa, seção 3.5).
+- Remover uma consolidação faz o mês voltar a usar o valor genérico do item.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).
@@ -207,7 +219,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - Simulação de compra à vista no débito — a simulação cobre apenas o crédito.
 - Converter uma simulação em lançamento real.
 - Vincular valores padrão a uma conta específica ou a uma categoria.
-- Exceções mensais nos valores padrão (ex.: um valor diferente só em dezembro).
+- Exceções mensais nos valores padrão **de despesa** (ex.: um teto diferente só em dezembro) — receita padrão ganhou esse mecanismo na seção 3.8 (a dor descrita ali é específica de receita, puramente aditiva; despesa já tem flexibilidade mês a mês via teto consumido pelo real).
 - Cálculo automático dos valores padrão a partir do histórico de lançamentos.
 - Alternância entre tema claro e escuro — a aplicação adota tema escuro único.
 - Dados privados por usuário / permissões diferenciadas.
@@ -318,7 +330,11 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
 - [ ] A Visão mensal distingue visualmente a parcela estimada (despesa) da parcela real dos totais.
-- [ ] Na Visão mensal, a receita padrão aparece antes dos lançamentos reais do bloco Entradas, com rótulo "Receita padrão" e sem o estilo visual usado para estimativas de despesa.
+- [ ] Na Visão mensal, os itens de receita padrão aparecem antes dos lançamentos reais do bloco Entradas, um por item (rotulado pela própria descrição do item, não por um rótulo genérico "Receita padrão"), sem o estilo visual usado para estimativas de despesa, e sem divider entre os itens — só um divider separando o bloco de itens dos lançamentos reais.
+- [ ] Cada item de receita padrão pode ser consolidado (ajustado) para o mês em exibição na Visão mensal, sem alterar o item na lista de Valores padrão nem os demais meses.
+- [ ] Um item de receita padrão consolidado num mês mantém esse valor mesmo depois que o mês fecha, até ser editado ou removido — não expira sozinho.
+- [ ] Remover a consolidação de um item num mês faz esse mês voltar a usar o valor genérico do item.
+- [ ] Uma entrada real lançada num mês com item consolidado continua somando por cima do valor consolidado, sem descontá-lo.
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual; cada card resume Entradas, Saídas e Investimentos por ícone e valor consolidado, com o Disponível em destaque, rotulado "Disponível".
 - [ ] No mobile, os três indicadores (Entradas, Saídas, Investimentos) do card de mês da Projeção cabem numa única linha, sem quebra, para valores de até 5 dígitos (R$ XX.XXX,XX); valores maiores podem cortar o texto.
 - [ ] Os cards da Projeção não distinguem real de estimado (diferente da Visão mensal) — esse detalhe fica a um clique, na Visão mensal do mês.
