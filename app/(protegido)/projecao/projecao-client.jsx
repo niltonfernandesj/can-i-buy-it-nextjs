@@ -113,9 +113,9 @@ function GraficoDisponivel({ meses }) {
 }
 
 // Reutiliza a mesma linguagem visual da Visão mensal (Design §16.2): valor
-// composto em destaque, subtexto quando há parte não-real. Despesa: "R$X
-// real + R$Y estimado". Receita padrão: "R$Y receita padrão + R$X real" —
-// garantida, lidera o subtexto, sem o token --estimado.
+// composto em destaque, subtexto quando há parte não-real. Despesa: "R$X +
+// R$Y estimado". Receita padrão: "R$Y receita padrão + R$X" — garantida,
+// lidera o subtexto, mesma cor dos lançamentos comuns.
 function ValorComposto({ real, estimado, total, ehReceitaPadrao }) {
   return (
     <div>
@@ -123,12 +123,11 @@ function ValorComposto({ real, estimado, total, ehReceitaPadrao }) {
       {estimado > 0 &&
         (ehReceitaPadrao ? (
           <p className="text-xs text-muted-foreground">
-            <span className="text-entrada">{formatarReais(estimado)} receita padrão</span> +{" "}
-            {formatarReais(real)} real
+            {formatarReais(estimado)} receita padrão + {formatarReais(real)}
           </p>
         ) : (
           <p className="text-xs text-muted-foreground">
-            {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
+            {formatarReais(real)} + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
           </p>
         ))}
     </div>

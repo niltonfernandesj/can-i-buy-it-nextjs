@@ -48,23 +48,22 @@ function somarGrupo(grupo) {
   return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
 }
 
-// Composição em subtexto (Design §16.2). Despesa: "R$ 800 real + R$ 400
-// estimado" (real primeiro, é uma estimativa de verdade). Receita padrão:
-// "R$ 400 receita padrão + R$ 800 real" (garantida, lidera o subtexto,
-// sem o token --estimado — não é uma incerteza a comunicar).
+// Composição em subtexto (Design §16.2). Despesa: "R$ 800 + R$ 400 estimado"
+// (é uma estimativa de verdade). Receita padrão: "R$ 400 receita padrão +
+// R$ 800" (garantida, lidera o subtexto, mesma cor dos lançamentos comuns —
+// não é uma incerteza a comunicar, nem precisa de mais destaque que eles).
 function SubtextoComposicao({ real, estimado, ehReceitaPadrao }) {
   if (estimado <= 0) return null;
   if (ehReceitaPadrao) {
     return (
       <p className="mt-1 text-xs text-muted-foreground">
-        <span className="text-entrada">{formatarReais(estimado)} receita padrão</span> +{" "}
-        {formatarReais(real)} real
+        {formatarReais(estimado)} receita padrão + {formatarReais(real)}
       </p>
     );
   }
   return (
     <p className="mt-1 text-xs text-muted-foreground">
-      {formatarReais(real)} real + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
+      {formatarReais(real)} + <span className="text-estimado">{formatarReais(estimado)} estimado</span>
     </p>
   );
 }
@@ -149,8 +148,8 @@ function LinhaEstimado({ estimado }) {
 function LinhaReceitaPadrao({ valor }) {
   if (valor <= 0) return null;
   return (
-    <div className="flex items-center justify-between border-b pb-2 text-sm text-entrada">
-      <span>Receita padrão</span>
+    <div className="flex items-center justify-between border-b pb-2 text-sm">
+      <span className="text-muted-foreground">Receita padrão</span>
       <span className="font-medium">{formatarReais(valor)}</span>
     </div>
   );
