@@ -4,7 +4,7 @@ import {
   buscarSaidasCredito,
   buscarInvestimentos,
 } from "@/lib/consolidacao";
-import { comporMes } from "@/lib/projecao";
+import { comporMes, debitoAindaEstimavel } from "@/lib/projecao";
 import { db } from "@/lib/db";
 import { VisaoMensalClient } from "./visao-mensal-client";
 
@@ -40,8 +40,10 @@ export default async function VisaoMensalPage({ searchParams }) {
     investimentos,
     transacoesDoMes,
     valoresPadrao,
-    consolidacoes,
+    consolidacoesReceita,
+    consolidacoesDespesa,
     cartoes,
+    contasCorrentes,
   ] = await Promise.all([
     buscarEntradas(mes, ano),
     buscarSaidasDebito(mes, ano),
@@ -52,8 +54,10 @@ export default async function VisaoMensalPage({ searchParams }) {
       include: { conta: true },
     }),
     db.valorPadrao.findMany(),
-    db.consolidacaoValorPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),
+    db.consolidacaoReceitaPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),
+    db.consolidacaoDespesaPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),
     db.conta.findMany({ where: { tipo: "CARTAO_CREDITO" } }),
+    db.conta.findMany({ where: { tipo: "CONTA_CORRENTE" } }),
   ]);
 
   // comporMes (lib/projecao.js) é a fonte de verdade para real + estimado —
@@ -64,7 +68,8 @@ export default async function VisaoMensalPage({ searchParams }) {
     anoReferencia: ano,
     transacoes: transacoesDoMes,
     valoresPadrao,
-    consolidacoes,
+    consolidacoesReceita,
+    consolidacoesDespesa,
     cartoes,
     hoje: new Date(),
   });
@@ -76,7 +81,7 @@ export default async function VisaoMensalPage({ searchParams }) {
   const itensReceitaPadrao = valoresPadrao
     .filter((v) => v.tipo === "ENTRADA")
     .map((item) => {
-      const consolidacao = consolidacoes.find((c) => c.valorPadraoId === item.id);
+      const consolidacao = consolidacoesReceita.find((c) => c.valorPadraoId === item.id);
       return {
         id: item.id,
         descricao: item.descricao,
@@ -85,6 +90,33 @@ export default async function VisaoMensalPage({ searchParams }) {
         consolidado: Boolean(consolidacao),
       };
     });
+
+  // Checklist de despesas padrão no débito (Requisitos 3.9, Design §13.6) —
+  // mesmo espírito de itensReceitaPadrao, com o estado adicional de "resolvido
+  // sem pagar" (registro sem transacaoId) e o valor/data vindos da transação
+  // quando pago.
+  const itensDespesaPadraoDebito = valoresPadrao
+    .filter((v) => v.tipo === "SAIDA" && v.meio === "DEBITO")
+    .map((item) => {
+      const registro = consolidacoesDespesa.find((c) => c.valorPadraoId === item.id);
+      const transacao = registro?.transacaoId
+        ? transacoesDoMes.find((t) => t.id === registro.transacaoId)
+        : null;
+
+      return {
+        id: item.id,
+        descricao: item.descricao,
+        categoria: item.categoria,
+        valorPadrao: Number(item.valor),
+        consolidado: Boolean(registro),
+        resolvidoSemPagar: Boolean(registro) && !registro.transacaoId,
+        valor: transacao ? Number(transacao.valor) : null,
+        data: transacao ? transacao.dataCompra : null,
+        contaId: transacao ? transacao.contaId : null,
+      };
+    });
+
+  const mesEncerrado = !debitoAindaEstimavel(mes, ano, new Date());
 
   return (
     <main className="mx-auto max-w-4xl p-8">
@@ -97,6 +129,9 @@ export default async function VisaoMensalPage({ searchParams }) {
         saidasCredito={paraNumero(saidasCredito)}
         investimentos={investimentos.map((i) => ({ ...i, total: Number(i.total) }))}
         itensReceitaPadrao={itensReceitaPadrao}
+        itensDespesaPadraoDebito={itensDespesaPadraoDebito}
+        mesEncerrado={mesEncerrado}
+        contasCorrentes={contasCorrentes}
         composicaoEntradas={composicao.entradas}
         composicaoDebito={composicao.debito}
         composicaoCredito={composicao.credito}

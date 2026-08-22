@@ -11,10 +11,24 @@ import {
   Pencil,
   Check,
   X,
+  Circle,
+  CheckCircle2,
 } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
+import { formatarDataCurta } from "@/lib/datas";
+import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   SeletorPeriodo,
   useNavegacaoPeriodo,
@@ -22,8 +36,10 @@ import {
 import { DetalheDiario } from "@/components/visao-mensal/detalhe-diario";
 import { CampoValor } from "@/components/campo-valor";
 import {
-  consolidarValorPadrao,
-  removerConsolidacaoValorPadrao,
+  consolidarReceitaPadrao,
+  removerConsolidacaoReceitaPadrao,
+  consolidarDespesaPadrao,
+  removerConsolidacaoDespesaPadrao,
 } from "@/lib/actions/valores-padrao";
 
 const LIMIAR_SWIPE_PX = 50;
@@ -70,6 +86,21 @@ function classeAnimacaoSwipe(direcao) {
 
 function somarGrupo(grupo) {
   return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
+}
+
+function dataParaISO(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, "0");
+  const dia = String(data.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+// Pré-preenchimento da data no formulário de consolidação (Design §13.6):
+// hoje quando o mês exibido é o corrente, senão o dia 1 do mês exibido.
+function dataInicialConsolidacao(mes, ano) {
+  const hoje = new Date();
+  const ehMesAtual = hoje.getMonth() + 1 === mes && hoje.getFullYear() === ano;
+  return ehMesAtual ? dataParaISO(hoje) : dataParaISO(new Date(ano, mes - 1, 1));
 }
 
 // Composição em subtexto (Design §16.2). Despesa: "R$ 800 + R$ 400 estimado"
@@ -197,7 +228,7 @@ function LinhaItemReceitaPadrao({ item, mes, ano, editando, onEditar, onFechar, 
 
   async function salvar() {
     setCarregando(true);
-    await consolidarValorPadrao({
+    await consolidarReceitaPadrao({
       valorPadraoId: item.id,
       mesReferencia: mes,
       anoReferencia: ano,
@@ -210,7 +241,7 @@ function LinhaItemReceitaPadrao({ item, mes, ano, editando, onEditar, onFechar, 
 
   async function usarPadrao() {
     setCarregando(true);
-    await removerConsolidacaoValorPadrao({
+    await removerConsolidacaoReceitaPadrao({
       valorPadraoId: item.id,
       mesReferencia: mes,
       anoReferencia: ano,
@@ -316,6 +347,235 @@ function ListaReceitaPadrao({ itens, mes, ano }) {
   );
 }
 
+// Valor exibido à direita de uma linha da checklist de despesa padrão
+// (Design §13.6): resolvido usa o valor real (R$ 0 quando resolvido sem
+// pagar); pendente usa o valor do item, exceto em mês encerrado — aí não
+// soma ao total (§13.3), e um número que não entra na conta confundiria.
+function valorExibidoDespesaPadrao(item, mesEncerrado) {
+  if (item.consolidado) {
+    return formatarReais(item.resolvidoSemPagar ? 0 : item.valor);
+  }
+  return mesEncerrado ? "não registrado" : formatarReais(item.valorPadrao);
+}
+
+// Linha de um item de despesa padrão no débito (Requisitos 3.9, Design
+// §13.6) — checklist: o ícone é estado e gatilho ao mesmo tempo (Circle
+// pendente, CheckCircle2 resolvido). Item pago recua em text-muted-foreground
+// (a atenção vai pro que falta); pendente fica na cor normal.
+function LinhaItemDespesaPadrao({
+  item,
+  mes,
+  ano,
+  mesEncerrado,
+  contasCorrentes,
+  editando,
+  onEditar,
+  onFechar,
+  router,
+}) {
+  const resolvido = item.consolidado;
+  const Icone = resolvido ? CheckCircle2 : Circle;
+
+  const valorInicialCentavos = Math.round(
+    (resolvido && !item.resolvidoSemPagar ? item.valor : item.valorPadrao) * 100
+  );
+
+  const [valorCentavos, setValorCentavos] = useState(valorInicialCentavos);
+  const [data, setData] = useState(
+    item.data ? dataParaISO(new Date(item.data)) : dataInicialConsolidacao(mes, ano)
+  );
+  const [contaId, setContaId] = useState(item.contaId ?? "");
+  const [categoria, setCategoria] = useState(item.categoria ?? "OUTROS");
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  async function salvar() {
+    if (valorCentavos === 0 && resolvido && !item.resolvidoSemPagar) {
+      const confirmado = window.confirm(
+        `Salvar "${item.descricao}" com R$ 0,00 vai apagar o lançamento de ${formatarReais(
+          item.valor
+        )}. Confirma?`
+      );
+      if (!confirmado) return;
+    }
+
+    setErro("");
+    setCarregando(true);
+    const resultado = await consolidarDespesaPadrao({
+      valorPadraoId: item.id,
+      mesReferencia: mes,
+      anoReferencia: ano,
+      valor: valorCentavos / 100,
+      data,
+      contaId,
+      categoria,
+    });
+    setCarregando(false);
+
+    if (resultado?.error) {
+      setErro(resultado.error);
+      return;
+    }
+    onFechar();
+    router.refresh();
+  }
+
+  async function apagarOuDesfazer() {
+    const mensagem = item.resolvidoSemPagar
+      ? `Desfazer "${item.descricao}"? Volta a pendente.`
+      : `Apagar o lançamento de "${item.descricao}" (${formatarReais(item.valor)})? Volta a pendente.`;
+    if (!window.confirm(mensagem)) return;
+
+    setCarregando(true);
+    await removerConsolidacaoDespesaPadrao({
+      valorPadraoId: item.id,
+      mesReferencia: mes,
+      anoReferencia: ano,
+    });
+    setCarregando(false);
+    onFechar();
+    router.refresh();
+  }
+
+  if (editando) {
+    return (
+      <div className="flex flex-col gap-3 border-t border-dashed pt-3">
+        <span className="text-sm">{item.descricao}</span>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+          <CampoValor
+            id={`despesa-padrao-valor-${item.id}`}
+            label="Valor"
+            className="sm:w-32"
+            valorCentavos={valorCentavos}
+            onChange={setValorCentavos}
+          />
+          <div className="flex flex-col gap-2 sm:w-40">
+            <Label htmlFor={`despesa-padrao-data-${item.id}`}>Data</Label>
+            <Input
+              id={`despesa-padrao-data-${item.id}`}
+              type="date"
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-1 flex-col gap-2 sm:min-w-[10rem]">
+            <Label htmlFor={`despesa-padrao-conta-${item.id}`}>Conta</Label>
+            <Select value={contaId} onValueChange={setContaId}>
+              <SelectTrigger id={`despesa-padrao-conta-${item.id}`}>
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                {contasCorrentes.map((conta) => (
+                  <SelectItem key={conta.id} value={conta.id}>
+                    {conta.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-1 flex-col gap-2 sm:min-w-[9rem]">
+            <Label htmlFor={`despesa-padrao-categoria-${item.id}`}>Categoria</Label>
+            <Select value={categoria} onValueChange={setCategoria}>
+              <SelectTrigger id={`despesa-padrao-categoria-${item.id}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
+                  <SelectItem key={valor} value={valor}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {erro && <p className="text-sm text-destructive">{erro}</p>}
+
+        <div className="flex items-center justify-between gap-2">
+          {resolvido ? (
+            <button
+              type="button"
+              onClick={apagarOuDesfazer}
+              disabled={carregando}
+              className="text-xs text-destructive underline underline-offset-2 hover:text-foreground"
+            >
+              {item.resolvidoSemPagar ? "Desfazer" : "Apagar lançamento"}
+            </button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onFechar} disabled={carregando}>
+              Cancelar
+            </Button>
+            <Button type="button" size="sm" onClick={salvar} disabled={carregando}>
+              {carregando ? "Salvando..." : resolvido ? "Salvar" : "Consolidar"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label={resolvido ? `Editar ${item.descricao}` : `Consolidar ${item.descricao}`}
+          title={resolvido ? "Editar" : "Consolidar"}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+        >
+          <Icone className="h-4 w-4" />
+        </button>
+        <span className={resolvido ? "text-muted-foreground" : ""}>{item.descricao}</span>
+        {resolvido && !item.resolvidoSemPagar && item.data && (
+          <span className="text-xs text-muted-foreground">{formatarDataCurta(item.data)}</span>
+        )}
+      </span>
+      <span
+        className={cn("font-medium tabular-nums", resolvido && "text-muted-foreground")}
+      >
+        {valorExibidoDespesaPadrao(item, mesEncerrado)}
+      </span>
+    </div>
+  );
+}
+
+// Lista de itens de despesa padrão no débito (Requisitos 3.9, Design §13.6)
+// — mesma posição/espírito de ListaReceitaPadrao, com divisor tracejado
+// (não sólido) separando do agrupamento por dia: comunica "isto é previsão
+// resolvível", coerente com o tracejado já usado em LinhaEstimado.
+function ListaDespesaPadrao({ itens, mes, ano, mesEncerrado, contasCorrentes }) {
+  const router = useRouter();
+  const [editandoId, setEditandoId] = useState(null);
+
+  if (itens.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2 border-b border-dashed pb-2">
+      <p className="text-xs text-muted-foreground">Despesas padrão</p>
+      {itens.map((item) => (
+        <LinhaItemDespesaPadrao
+          key={item.id}
+          item={item}
+          mes={mes}
+          ano={ano}
+          mesEncerrado={mesEncerrado}
+          contasCorrentes={contasCorrentes}
+          editando={editandoId === item.id}
+          onEditar={() => setEditandoId(item.id)}
+          onFechar={() => setEditandoId(null)}
+          router={router}
+        />
+      ))}
+    </div>
+  );
+}
+
 function BlocoPorDia({
   titulo,
   Icone,
@@ -327,6 +587,10 @@ function BlocoPorDia({
   mensagemVazia,
   ehEntradas = false,
   itensReceitaPadrao,
+  ehSaidasDebito = false,
+  itensDespesaPadraoDebito,
+  mesEncerrado,
+  contasCorrentes,
   mes,
   ano,
 }) {
@@ -347,6 +611,15 @@ function BlocoPorDia({
           {ehEntradas && (
             <ListaReceitaPadrao itens={itensReceitaPadrao} mes={mes} ano={ano} />
           )}
+          {ehSaidasDebito && (
+            <ListaDespesaPadrao
+              itens={itensDespesaPadraoDebito}
+              mes={mes}
+              ano={ano}
+              mesEncerrado={mesEncerrado}
+              contasCorrentes={contasCorrentes}
+            />
+          )}
           {grupos.length === 0 ? (
             <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
           ) : (
@@ -360,7 +633,7 @@ function BlocoPorDia({
               />
             ))
           )}
-          {!ehEntradas && <LinhaEstimado estimado={estimado} />}
+          {!ehEntradas && !ehSaidasDebito && <LinhaEstimado estimado={estimado} />}
         </>
       )}
     </section>
@@ -424,6 +697,9 @@ export function VisaoMensalClient({
   saidasCredito,
   investimentos,
   itensReceitaPadrao,
+  itensDespesaPadraoDebito,
+  mesEncerrado,
+  contasCorrentes,
   composicaoEntradas,
   composicaoDebito,
   composicaoCredito,
@@ -513,6 +789,12 @@ export function VisaoMensalClient({
             estimado={composicaoDebito.estimado}
             grupos={saidasDebito}
             mensagemVazia="Nenhuma saída no débito neste mês."
+            ehSaidasDebito
+            itensDespesaPadraoDebito={itensDespesaPadraoDebito}
+            mesEncerrado={mesEncerrado}
+            contasCorrentes={contasCorrentes}
+            mes={mes}
+            ano={ano}
           />
           <BlocoPorDia
             titulo="Saídas no crédito"

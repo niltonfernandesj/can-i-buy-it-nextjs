@@ -207,6 +207,10 @@ model Transacao {
 
   criadoEm          DateTime      @default(now())
 
+  // Presente só quando a transação nasceu de uma consolidação de despesa
+  // padrão no débito (§13.6) — é o que a tira do agrupamento por dia.
+  consolidacaoDespesa ConsolidacaoDespesaPadrao?
+
   @@index([usuarioId])
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
@@ -223,18 +227,22 @@ model ValorPadrao {
   valor      Decimal        // sempre positivo; sinal é dado pelo `tipo`
   tipo       TipoTransacao  // ENTRADA (receita padrão) | SAIDA (despesa padrão)
   meio       MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
+  categoria  Categoria?     // só para tipo = SAIDA; pré-preenche a consolidação (§13.6)
 
   criadoEm   DateTime       @default(now())
 
-  consolidacoes ConsolidacaoValorPadrao[]
+  consolidacoesReceita ConsolidacaoReceitaPadrao[]
+  consolidacoesDespesa ConsolidacaoDespesaPadrao[]
 
   @@index([usuarioId])
 }
 
-// Ajuste pontual de um item de receita padrão pra um mês específico
+// Ajuste pontual de um item de RECEITA padrão pra um mês específico
 // (Requisitos 3.8, Design §13.5) — substitui o valor genérico do item
 // SÓ naquele mês, sem tocar em ValorPadrao nem nos demais meses.
-model ConsolidacaoValorPadrao {
+// Renomeado de ConsolidacaoValorPadrao na Task 76, quando surgiu a
+// consolidação de despesa e o nome genérico virou ambíguo.
+model ConsolidacaoReceitaPadrao {
   id            String      @id @default(cuid())
   valorPadraoId String
   valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
@@ -248,19 +256,52 @@ model ConsolidacaoValorPadrao {
   @@unique([valorPadraoId, mesReferencia, anoReferencia])
   @@index([mesReferencia, anoReferencia])
 }
+
+// Marca que um item de DESPESA padrão no débito foi resolvido num mês
+// (Requisitos 3.9, Design §13.6). Diferente da consolidação de receita,
+// esta GERA um lançamento real — daí o vínculo com Transacao.
+model ConsolidacaoDespesaPadrao {
+  id            String      @id @default(cuid())
+  valorPadraoId String
+  valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
+
+  mesReferencia Int         // 1-12
+  anoReferencia Int
+
+  // null = consolidado por R$ 0 ("não precisei pagar neste mês"), sem
+  // lançamento. Quando presente, o valor vem da própria transação — não há
+  // coluna `valor` aqui de propósito, pra não existir duas fontes de verdade
+  // (a transação é editável por /transacoes).
+  transacaoId   String?     @unique
+  transacao     Transacao?  @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
+
+  criadoEm      DateTime    @default(now())
+
+  @@unique([valorPadraoId, mesReferencia, anoReferencia])
+  @@index([mesReferencia, anoReferencia])
+}
 ```
 
 **Notas sobre `ValorPadrao`:**
-- **Não tem data, conta nem categoria** — é uma declaração atemporal, não um lançamento. Nunca vira `Transacao` e nunca aparece em `/transacoes`.
+- **Não tem data nem conta** — é uma declaração atemporal, não um lançamento. O item em si nunca vira `Transacao` e nunca aparece em `/transacoes`.
+- **`categoria` (adicionada na Task 77) é a única exceção** ao ponto acima: existe só para pré-preencher o formulário de consolidação de despesa (§13.6), que *gera* um lançamento. Nula para `ENTRADA` (a consolidação de receita não cria transação, §13.5) e opcional para `SAIDA`. Reabre parcialmente o item "vincular valores padrão a uma conta específica ou a uma categoria", listado como fora do escopo no spec-01 — parcialmente porque **só categoria** entrou; a conta continua fora, escolhida na hora de consolidar (o mesmo item padrão pode ser pago de contas diferentes em meses diferentes).
 - **`meio` só se aplica a despesas.** Receitas são sempre creditadas em Conta corrente conceitualmente, e a Visão mensal não separa receitas por meio — por isso o campo é nulo para `ENTRADA`. A obrigatoriedade quando `tipo = SAIDA` é validada na Server Action, não no banco (o Prisma não expressa `CHECK` condicional de forma portátil).
 - **`usuarioId` é apenas autoria**, como em `Conta` e `Transacao`: os valores padrão são compartilhados entre os membros da família, coerente com o modelo de dados único da spec-01 §2.
 
-**Notas sobre `ConsolidacaoValorPadrao`:**
+**Notas sobre `ConsolidacaoReceitaPadrao`:**
 - **Não é uma `Transacao`.** Cogitado e descartado — reaproveitar `Transacao` obrigaria preencher `contaId`/`categoria`/`dataCompra`/`dataEfetiva`, nenhum dos quais tem correspondência conceitual real aqui (a mesma razão pela qual `ValorPadrao` já não é uma `Transacao`), e ainda exigiria filtrar essas linhas fora de toda consulta que hoje soma/lista `Transacao` (a tela `/transacoes`, `entradaReal` em `comporMes`) pra não aparecerem misturadas aos lançamentos comuns.
 - **Vínculo por `valorPadraoId` (FK), não por texto/descrição** — sobrevive a uma renomeação do item em Valores padrão; não há ambiguidade entre itens com a mesma descrição.
 - **Sem `usuarioId` próprio** — herda a autoria de `ValorPadrao` via `valorPadraoId`, mesmo raciocínio de dado compartilhado entre a família.
-- **Escopo restrito a `tipo = ENTRADA`** validado na Server Action (não há `CHECK` no schema, mesmo padrão de `ValorPadrao.meio`) — despesa padrão não ganha esse mecanismo (Requisitos, "Fora do escopo").
+- **Escopo restrito a `tipo = ENTRADA`** validado na Server Action (não há `CHECK` no schema, mesmo padrão de `ValorPadrao.meio`) — despesa padrão tem mecanismo próprio, com semântica diferente (`ConsolidacaoDespesaPadrao`, abaixo).
 - **`@@unique([valorPadraoId, mesReferencia, anoReferencia])`** garante no máximo uma consolidação por item por mês — criar uma nova consolidação pro mesmo item/mês é um `upsert`, não uma segunda linha.
+
+**Notas sobre `ConsolidacaoDespesaPadrao`:**
+- **Tabela separada da de receita, não uma coluna a mais nela.** As duas compartilham a chave (`valorPadraoId` + mês/ano) e a ideia de "este item vale outra coisa neste mês", mas divergem no essencial: a de receita **guarda um valor**; a de despesa **guarda um vínculo com um lançamento** e tira o valor de lá. Uma tabela única precisaria de `valor` e `transacaoId` ambos nuláveis, com o significado de cada linha dependendo implicitamente de `ValorPadrao.tipo` — exatamente a ambiguidade que motivou não pendurar a consolidação de receita em `Transacao` (nota acima).
+- **Sem coluna `valor`, de propósito.** Quando há transação, o valor é o dela — que continua editável por `/transacoes`. Duplicar aqui criaria duas fontes de verdade que divergem silenciosamente na primeira edição feita por fora.
+- **`transacaoId` nulo = consolidado por R$ 0** ("não precisei pagar neste mês", Requisitos 3.9). Não se cria transação de valor zero: além de poluir `/transacoes`, quebraria a convenção de `Transacao.valor` sempre positivo.
+- **`onDelete: Cascade` na transação** resolve sozinho o requisito de "apagar o lançamento faz o item voltar a pendente", inclusive quando a exclusão acontece por `/transacoes` — sem código de sincronização espalhado.
+- **A relação inversa é `Transacao.consolidacaoDespesa`** (opcional, um-para-um), e é ela que `buscarSaidasDebito` usa pra tirar esses lançamentos do agrupamento por dia (§13.6).
+- **Apagar o item de `ValorPadrao` apaga as consolidações, mas não as transações** — o dinheiro foi gasto de fato (Requisitos 3.9). Como a FK `valorPadraoId` é `RESTRICT`, `apagarValorPadrao` faz `deleteMany` das consolidações antes, dentro da mesma `$transaction` já usada hoje para a consolidação de receita. Efeito colateral correto e esperado: os lançamentos órfãos voltam a aparecer no agrupamento por dia.
 
 **Nota sobre `Categoria` como enum:** como a spec define lista fixa definida no código, um `enum` do Prisma é mais simples que uma tabela — não precisa de seed nem de FK. Se no futuro categorias passarem a ser editáveis pelo usuário (fora do MVP), migra-se para uma tabela própria.
 
@@ -476,7 +517,7 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 | Rota | Descrição | Componentes-chave |
 |---|---|---|
 | `/login`, `/cadastro` | Autenticação | Form + NextAuth |
-| `/contas` | CRUD de Contas | Criação em **duas etapas** (seção 8.2.3): 1) seleção do tipo; 2) formulário específico do tipo. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
+| `/contas` | CRUD de Contas | Criação por seção — um gatilho "+" por tipo, sem etapa de escolha (seção 8.2.3, revisado Task 75). Edição inline, mesmo mecanismo de Valores padrão. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
 | `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). Checkbox "Recorrente" (+ nº de meses): disponível para saída em Conta corrente ou Cartão de crédito, **e também para entrada em Conta corrente** (não para entrada em Cartão de crédito); mutuamente exclusivo com "Parcelado" (só existe p/ saída no crédito). Quando "Recorrente" + tipo Entrada, o checkbox "É investimento" fica indisponível (resgate recorrente fora do escopo — seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
 | `/visao-mensal` | Visão mensal (renomeada de `/acompanhamento` → `/visao-geral`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
 | `/transacoes` | Tabela | Tabela enxuta (5 colunas) com indicadores visuais compactos, barra de filtros acima (busca + Conta/Categoria/Mês-Ano), linha inteira clicável abrindo modal único de detalhe/edição/exclusão (seção 12) |
@@ -520,11 +561,13 @@ Tela única de consulta e gestão: listagem, busca/filtros e ações de editar/a
 #### 8.2.3 Contas (`/contas`)
 Tela única mostrando todas as contas simultaneamente, agrupadas visualmente por tipo: Contas correntes, Cartões de crédito, Contas de investimento.
 
-**Criação de conta em duas etapas:**
-1. O usuário escolhe o tipo de conta (Conta corrente, Cartão de crédito ou Conta de investimento).
-2. O sistema apresenta o formulário específico daquele tipo.
+**Criação de conta original — wizard de 2 etapas, implementado e depois revisto:** a versão original desta seção especificava um botão único "+ Nova conta" no topo da página, abrindo um `Dialog` em 2 etapas (1. escolher o tipo; 2. formulário específico) — implementado como tal (`NovaContaDialog`). A Task 75 revisa esse fluxo (ver abaixo), a pedido do usuário, visando consistência com a tela de Valores padrão (§15.4).
 
-> **Nota de impacto**: o `contas-client.jsx` atual (Tasks 9–10) implementa um formulário único, com `Select` de tipo e campos condicionais (`ehCartao`) — não o wizard de 2 etapas, e a listagem é uma tabela única (coluna "Tipo"), não agrupada visualmente. Essa tela precisa ser refeita; ver seção 8.5.
+**Criação por seção, sem etapa de tipo (revisado — Task 75):** o botão único "+ Nova conta" sai de cena. Cada uma das três seções (Contas correntes, Cartões de crédito, Contas de investimento) ganha seu próprio gatilho **"+"** no cabeçalho do card — mesmo padrão do "+" de Valores padrão (§15.4). Clicar nele abre o formulário específico daquele tipo **direto**, sem a etapa de escolha — o tipo já está implícito por qual seção o usuário clicou. `NovaContaDialog` e a etapa `escolherTipo`/`etapa === "tipo"` saem do código; o formulário abre **inline, no topo da lista daquela seção** (mesmo padrão de posição do formulário de Valores padrão), não mais num `Dialog`.
+
+**Edição inline, não mais em Dialog (revisado — Task 75):** editar uma conta usava `EditarContaDialog`/`EditarContaConteudo` — passa a trocar a linha da conta por um formulário inline, mesmo mecanismo de `FormularioInline` já usado em Valores padrão, reaproveitando os campos de `CamposConta` (nome, e para cartão, dia de fechamento/vencimento). A regra de bloqueio de `tipo`/`diaFechamento`/`diaVencimento` quando a conta já tem transações vinculadas (§17.4) continua idêntica — os campos ficam desabilitados dentro do formulário inline, com a mesma explicação de hoje.
+
+**Ícones no lugar de botões de texto (revisado — Task 75):** "Editar" (`Button variant="outline"`) e "Apagar" (`Button variant="destructive"`, vermelho sólido) por linha viram ícones discretos — `Pencil`/`Trash2` (`lucide-react`), `text-muted-foreground` em repouso, sem cor de destaque. No hover: editar vai para `text-foreground`; apagar vai para um tom vermelho suave (não o vermelho sólido do botão antigo). Mesmo espírito do ícone de lápis já validado na consolidação de receita padrão da Visão mensal (§13.5). `window.confirm` antes de apagar continua como está — só o gatilho visual muda.
 
 ### 8.3 Detalhamento da Visão mensal
 
@@ -562,6 +605,8 @@ Mesma estrutura/padrão de leitura nos quatro blocos, diferenciados por ícone p
 
 #### 8.3.7 Estrutura visual contínua
 Os quatro blocos são seções abertas da página (não cards independentes), separadas por espaçamento vertical e divisores sutis — como um extrato contínuo. Cabeçalho de cada bloco: ícone + nome + valor total consolidado na mesma linha (ex.: "▪ ENTRADAS R$ 8.500,00"). No mobile: ícone+título à esquerda, valor total à direita, mesma linha.
+
+Dentro de um bloco expandido, os valores padrão daquele meio vêm **antes** dos lançamentos agrupados por dia, separados deles por um divisor: receita padrão no bloco Entradas (§13.5) e despesas padrão no bloco Saídas no débito (§13.6, a partir da Task 79). Saídas no crédito não tem essa lista — a despesa padrão de crédito continua sendo um teto agregado, exibido na linha "Estimado restante" ao final do bloco.
 
 #### 8.3.8 Estado de erro no carregamento
 Erro contextual quando a Visão mensal não conseguir carregar/atualizar: informa a falha claramente (sem confundir com "sem movimentações"), disponibiliza "Tentar novamente", mantém a estrutura identificável, e **permanece visível** enquanto os dados não estiverem disponíveis (não é uma notificação temporária isolada).
@@ -749,50 +794,74 @@ Usar `.some()` é equivalente a comparar com o fechamento mais tardio, e evita c
  * Compõe os totais de um mês a partir das três fontes:
  * lançamentos reais, compromissos já assumidos e valores padrão.
  */
-function comporMes({ mesReferencia, anoReferencia, transacoes, valoresPadrao, consolidacoes, cartoes, hoje }) {
+function comporMes({
+  mesReferencia, anoReferencia, transacoes, valoresPadrao,
+  consolidacoesReceita, consolidacoesDespesa, cartoes, hoje,
+}) {
   const doMes = transacoes.filter(
     (t) => t.mesReferencia === mesReferencia && t.anoReferencia === anoReferencia
   );
   const ehParcela = (t) => t.parcelamentoId !== null;
+  const doMesFiltro = (c) => c.mesReferencia === mesReferencia && c.anoReferencia === anoReferencia;
 
   // --- Entradas: real + receita padrão (por item, com consolidação do mês
   // substituindo o valor genérico quando existir — Requisitos 3.8, §13.5) ---
   const entradaReal = somar(doMes.filter((t) => t.tipo === "ENTRADA"));
-  const consolidacoesDoMes = consolidacoes.filter(
-    (c) => c.mesReferencia === mesReferencia && c.anoReferencia === anoReferencia
-  );
+  const receitasDoMes = consolidacoesReceita.filter(doMesFiltro);
   const entradaPadrao = valoresPadrao
     .filter((v) => v.tipo === "ENTRADA")
     .reduce((soma, item) => {
-      const consolidacao = consolidacoesDoMes.find((c) => c.valorPadraoId === item.id);
+      const consolidacao = receitasDoMes.find((c) => c.valorPadraoId === item.id);
       return soma + Number(consolidacao ? consolidacao.valor : item.valor);
     }, 0);
 
-  // --- Saídas: teto por meio, consumido pelo real ---
-  function comporSaidas(meio) {
-    const tipoConta = meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE";
+  // --- Saídas no crédito: teto consumido pelo real (Requisitos 3.5) ---
+  function comporCredito() {
     const doMeio = doMes.filter(
-      (t) => t.tipo === "SAIDA" && !t.ehInvestimento && t.conta.tipo === tipoConta
+      (t) => t.tipo === "SAIDA" && !t.ehInvestimento && t.conta.tipo === "CARTAO_CREDITO"
     );
 
     const parcelas   = somar(doMeio.filter(ehParcela));            // somam por cima
     const consumidor = somar(doMeio.filter((t) => !ehParcela(t))); // avulsos + recorrências
 
     const teto = somar(
-      valoresPadrao.filter((v) => v.tipo === "SAIDA" && v.meio === meio)
+      valoresPadrao.filter((v) => v.tipo === "SAIDA" && v.meio === "CREDITO")
     );
-    const aindaEstimavel =
-      meio === "CREDITO"
-        ? creditoAindaEstimavel(mesReferencia, anoReferencia, cartoes, hoje)
-        : debitoAindaEstimavel(mesReferencia, anoReferencia, hoje);
-
+    const aindaEstimavel = creditoAindaEstimavel(mesReferencia, anoReferencia, cartoes, hoje);
     const estimado = aindaEstimavel ? Math.max(0, teto - consumidor) : 0;
 
     return { real: parcelas + consumidor, estimado, total: parcelas + consumidor + estimado };
   }
 
-  const credito       = comporSaidas("CREDITO");
-  const debito        = comporSaidas("DEBITO");
+  // --- Saídas no débito: previsão fixa por item, resolvida por consolidação
+  // (Requisitos 3.5 revisado + 3.9, §13.6). Nenhum lançamento consome nada:
+  // itens não consolidados somam cheios, lançamentos somam por cima. ---
+  function comporDebito() {
+    const real = somar(
+      doMes.filter(
+        (t) => t.tipo === "SAIDA" && !t.ehInvestimento && t.conta.tipo === "CONTA_CORRENTE"
+      )
+    );
+
+    const despesasDoMes = consolidacoesDespesa.filter(doMesFiltro);
+    const pendentes = valoresPadrao.filter(
+      (v) =>
+        v.tipo === "SAIDA" &&
+        v.meio === "DEBITO" &&
+        !despesasDoMes.some((c) => c.valorPadraoId === v.id)
+    );
+
+    // Mês encerrado não soma previsão (Requisitos 3.5) — os pendentes ainda
+    // aparecem na tela, mas sem valor (§13.6).
+    const estimado = debitoAindaEstimavel(mesReferencia, anoReferencia, hoje)
+      ? somar(pendentes)
+      : 0;
+
+    return { real, estimado, total: real + estimado };
+  }
+
+  const credito       = comporCredito();
+  const debito        = comporDebito();
   const investimentos = somar(doMes.filter((t) => t.tipo === "SAIDA" && t.ehInvestimento));
 
   return {
@@ -813,18 +882,20 @@ Pontos que merecem atenção:
 - **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
 - **A mesma função serve as duas telas.** A Visão mensal chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
-- **`entradas.estimado` é a chave, não a semântica.** O nome é compartilhado com `credito.estimado`/`debito.estimado` só por simetria de forma (mesmo shape `{real, estimado, total}`, mesma função que os produz) — o conteúdo é outra coisa: para saídas é uma estimativa de verdade (teto ainda não consumido); para entradas é a receita padrão, um valor garantido que nunca é reduzido (Requisitos 3.5). A camada de exibição (§16.2) trata os dois de forma diferente; a função não foi renomeada porque o nome é interno e já documentado aqui — renomear só a chave sem mudar comportamento não valia o churn em `lib/projecao.js`, seus testes e as duas telas que a consomem.
-- **`consolidacoes` segue o mesmo padrão de `transacoes`**: o chamador passa a lista relevante (um mês na Visão mensal, a janela de 12 meses na Projeção) e `comporMes` filtra internamente por `mesReferencia`/`anoReferencia` — nenhuma das duas telas pré-filtra antes de chamar. Detalhe da resolução em §13.5.
+- **`entradas.estimado` é a chave, não a semântica.** O nome é compartilhado com `credito.estimado`/`debito.estimado` só por simetria de forma (mesmo shape `{real, estimado, total}`, mesma função que os produz) — o conteúdo é outra coisa em cada um: no crédito é uma estimativa de verdade (teto ainda não consumido); no débito é a soma dos itens padrão ainda não consolidados (Requisitos 3.5 revisado); nas entradas é a receita padrão, um valor garantido que nunca é reduzido. A camada de exibição (§16.2) trata os três de forma diferente; a função não foi renomeada porque o nome é interno e já documentado aqui — renomear só a chave sem mudar comportamento não valia o churn em `lib/projecao.js`, seus testes e as telas que a consomem.
+- **Débito e crédito deixaram de compartilhar `comporSaidas`** (Task 78). A função única parametrizada por `meio` existia porque a regra era idêntica nos dois; com o débito virando previsão por item, manter um só corpo exigiria condicionais em quase toda linha. Duas funções irmãs e explícitas custam menos leitura que uma genérica cheia de exceção.
+- **`real` no débito passa a incluir os lançamentos de consolidação**, que são transações comuns — não há filtro especial aqui. O filtro existe só na camada de exibição (§8.3.7), pra não mostrar o mesmo gasto duas vezes dentro do bloco.
+- **As duas listas de consolidação seguem o mesmo padrão de `transacoes`**: o chamador passa a lista relevante (um mês na Visão mensal, a janela de 12 meses na Projeção) e `comporMes` filtra internamente por `mesReferencia`/`anoReferencia` — nenhuma tela pré-filtra antes de chamar. Detalhes em §13.5 e §13.6.
 
 ### 13.4 Casos de teste obrigatórios (Vitest)
 
 Como a regra tem várias bordas, `lib/projecao.test.js` deve cobrir no mínimo:
 
 1. Mês futuro sem lançamento algum → estimativa integral em crédito e débito; receita padrão integral.
-2. Mês com gasto avulso menor que o teto → estimativa = teto − avulso.
-3. Mês com gasto avulso maior que o teto → estimativa zero, total = real.
-4. Mês com parcela → parcela soma por cima do teto, sem consumi-lo.
-5. Mês com ocorrência de recorrência → consome o teto, como um avulso.
+2. Mês com gasto avulso **no crédito** menor que o teto → estimativa = teto − avulso.
+3. Mês com gasto avulso **no crédito** maior que o teto → estimativa zero, total = real.
+4. Mês com parcela **no crédito** → parcela soma por cima do teto, sem consumi-lo.
+5. Mês com ocorrência de recorrência **no crédito** → consome o teto, como um avulso.
 6. Mês com fatura já fechada em todos os cartões → estimativa de crédito zero.
 7. Mês com dois cartões de fechamentos distintos, um fechado e outro não → estimativa de crédito ainda vale.
 8. Nenhum cartão cadastrado → estimativa de crédito zero.
@@ -836,9 +907,21 @@ Como a regra tem várias bordas, `lib/projecao.test.js` deve cobrir no mínimo:
 14. Dois itens de receita padrão, só um consolidado no mês → o consolidado usa seu valor de consolidação, o outro usa o valor genérico, somados corretamente.
 15. Entrada real pontual num mês com item consolidado → soma por cima do valor consolidado, sem descontá-lo (mesma regra do caso 10, agora sobre um valor consolidado).
 
+Casos adicionados na Task 78, cobrindo a virada do débito para previsão por item:
+
+16. Gasto avulso no débito → **não** consome a previsão; estimado continua sendo a soma dos itens padrão de débito, e o avulso soma por cima (inverte o caso 2 no débito).
+17. Ocorrência de recorrência no débito → mesmo comportamento do caso 16, sem consumir nada (inverte o caso 5 no débito).
+18. Gasto avulso no débito maior que a soma dos itens padrão → estimado **não** vai a zero; continua cheio (inverte o caso 3 no débito).
+19. Item de despesa padrão no débito consolidado no mês → sai da previsão; o lançamento vinculado entra em `real`.
+20. Dois itens de despesa no débito, só um consolidado → o consolidado entra por `real`, o pendente mantém previsão cheia.
+21. Consolidação de despesa por R$ 0 (`transacaoId` nulo) → item sai da previsão e nada entra em `real`.
+22. Consolidação de despesa num **outro** mês → não vaza para o mês composto; o item continua previsto.
+23. Mês passado com item de despesa no débito não consolidado → estimado zero (`debitoAindaEstimavel` falso), mas o lançamento real do mês continua somando.
+24. Item de despesa padrão no **crédito** → nunca é afetado pelas consolidações de despesa; segue a regra de teto do caso 2.
+
 ### 13.5 Consolidação mensal de receita padrão
 
-Resolve Requisitos 3.8. `ConsolidacaoValorPadrao` (§3) é uma tabela separada de `ValorPadrao` — não um campo nele, nem uma linha "especial" dentro dela — porque a lista de Valores padrão representa "vale todo mês, sempre"; misturar exceções pontuais na mesma tabela obrigaria toda leitura a discriminar "isso é regra geral ou exceção de um mês?". `comporMes` (§13.3) resolve por item: existe uma `ConsolidacaoValorPadrao` para `(valorPadraoId, mesReferencia, anoReferencia)`? Usa o valor dela; senão, usa `ValorPadrao.valor`.
+Resolve Requisitos 3.8. `ConsolidacaoReceitaPadrao` (§3 — chamada `ConsolidacaoValorPadrao` até a Task 76, renomeada quando a consolidação de despesa tornou o nome genérico ambíguo) é uma tabela separada de `ValorPadrao` — não um campo nele, nem uma linha "especial" dentro dela — porque a lista de Valores padrão representa "vale todo mês, sempre"; misturar exceções pontuais na mesma tabela obrigaria toda leitura a discriminar "isso é regra geral ou exceção de um mês?". `comporMes` (§13.3) resolve por item: existe uma consolidação de receita para `(valorPadraoId, mesReferencia, anoReferencia)`? Usa o valor dela; senão, usa `ValorPadrao.valor`.
 
 **Por que não virou `Transacao`:** cogitado durante o design (a ideia original do usuário), descartado por três atritos concretos — `Transacao.contaId`/`categoria`/`dataCompra`/`dataEfetiva` são obrigatórios e nenhum tem correspondência conceitual aqui (mesma razão pela qual `ValorPadrao` em si nunca foi uma `Transacao`); identificar as linhas de consolidação por texto (`descricao`) pra excluí-las de `entradaReal` e da tela `/transacoes` seria frágil (quebra numa renomeação, ambíguo com descrições duplicadas); e mesmo contornando isso com um campo novo de vínculo, o resultado seria estruturalmente a mesma tabela nova proposta aqui, só que pendurada em `Transacao` de um jeito mais confuso.
 
@@ -848,12 +931,57 @@ Resolve Requisitos 3.8. `ConsolidacaoValorPadrao` (§3) é uma tabela separada d
 
 **Edição inline — ícone de lápis:** cada linha ganha um botão-ícone (`Pencil`, `lucide-react`, ~12px, `text-muted-foreground`, hover destaca) antes do valor — não um botão "Editar" como na tela Valores padrão, que ali é a tela inteira dedicada a isso; aqui é uma ação secundária dentro de uma tela de consulta, e precisa ficar discreta. Clicar troca **só aquela linha** por um formulário compacto: um campo de valor (reaproveitando a lógica de `CampoValor` — acumulação estilo calculadora — mas **sem o `<Label>` visível**, que não cabe no espaço inline; `CampoValor` ganha um prop `label` opcional, quando omitido não renderiza o elemento, usando `aria-label` no input em vez disso) e dois botões-ícone compactos (`Check`/`X`, Salvar/Cancelar) — mesmo espírito do formulário inline já usado em Valores padrão (`FormularioInline`), só que reduzido ao mínimo (sem campo de descrição, que não muda). Quando o item **já tem** consolidação ativa nesse mês, o formulário ganha um link pequeno "usar padrão (R$ X)" que remove a consolidação **imediatamente** (sem precisar de Salvar) e volta o item ao valor genérico.
 
-**Server Actions** (`lib/actions/valores-padrao.js` ou arquivo novo dedicado):
-- `consolidarValorPadrao({ valorPadraoId, mesReferencia, anoReferencia, valor })` — `upsert` por `(valorPadraoId, mesReferencia, anoReferencia)` (a constraint `@@unique` do schema garante no máximo uma linha). Valida sessão (padrão do projeto) e que `valorPadrao.tipo === "ENTRADA"` antes de gravar.
-- `removerConsolidacaoValorPadrao({ valorPadraoId, mesReferencia, anoReferencia })` — apaga a linha, se existir.
+**Server Actions** (`lib/actions/valores-padrao.js`) — nomes revisados na Task 76, junto com o rename do model, pra ficarem simétricos com os de despesa (§13.6):
+- `consolidarReceitaPadrao({ valorPadraoId, mesReferencia, anoReferencia, valor })` — `upsert` por `(valorPadraoId, mesReferencia, anoReferencia)` (a constraint `@@unique` do schema garante no máximo uma linha). Valida sessão (padrão do projeto) e que `valorPadrao.tipo === "ENTRADA"` antes de gravar. Chamava-se `consolidarValorPadrao`.
+- `removerConsolidacaoReceitaPadrao({ valorPadraoId, mesReferencia, anoReferencia })` — apaga a linha, se existir. Chamava-se `removerConsolidacaoValorPadrao`.
 - Ambas seguidas de `router.refresh()` no cliente, mesmo padrão já usado em `ValoresPadraoClient`.
 
-**`page.jsx` (Visão mensal e Projeção):** ambos passam a buscar `db.consolidacaoValorPadrao.findMany(...)` — Visão mensal filtrando pelo mês em exibição, Projeção pela janela de 12 meses (mesmo padrão de `OR` já usado para `transacoes`) — e repassam para `comporMes`. Só a Visão mensal precisa **também** montar a lista bruta de itens de receita padrão + valor resolvido do mês (uma pequena composição própria em `page.jsx`, fora de `comporMes`, já que a Projeção nunca precisa do detalhe por item — só do agregado que `comporMes` já devolve). A Projeção não muda em nenhum outro ponto: já consome só `entradas.total`, que passa a vir correto automaticamente.
+**`page.jsx` (Visão mensal e Projeção):** ambos passam a buscar `db.consolidacaoReceitaPadrao.findMany(...)` — Visão mensal filtrando pelo mês em exibição, Projeção pela janela de 12 meses (mesmo padrão de `OR` já usado para `transacoes`) — e repassam para `comporMes`. Só a Visão mensal precisa **também** montar a lista bruta de itens de receita padrão + valor resolvido do mês (uma pequena composição própria em `page.jsx`, fora de `comporMes`, já que a Projeção nunca precisa do detalhe por item — só do agregado que `comporMes` já devolve). A Projeção não muda em nenhum outro ponto: já consome só `entradas.total`, que passa a vir correto automaticamente.
+
+### 13.6 Consolidação de despesa padrão no débito
+
+Resolve Requisitos 3.9. Enquanto a consolidação de receita (§13.5) só substitui um número, esta **gera um lançamento real** — é o registro de que a conta foi paga. O modelo de dados (`ConsolidacaoDespesaPadrao`, §3) e o porquê de ser tabela separada estão documentados no schema.
+
+**Estados de um item de despesa padrão no débito, num dado mês:**
+
+| Estado | Registro de consolidação | Transação | Entra no mês como |
+|---|---|---|---|
+| Pendente | não existe | — | `estimado` (valor cheio do item), zerado se o mês já encerrou |
+| Pago | existe, `transacaoId` preenchido | existe | `real` (valor da transação) |
+| Resolvido sem pagar | existe, `transacaoId` nulo | não existe | nada |
+
+**Layout do bloco "Saídas no débito" (§8.3.7 revisado, fiel ao mock validado com o usuário):**
+
+1. **Lista de despesas padrão, no topo** — espelha a posição que a receita padrão já ocupa no bloco Entradas (§13.5): vem **antes** dos lançamentos, com um rótulo de seção `Despesas padrão` em `text-xs text-muted-foreground`. Um item por linha, na ordem de cadastro, incluindo pagos e pendentes na mesma lista (é uma checklist — a ordem estável mês a mês é o que a torna legível).
+2. **Divisor tracejado** (`border-t border-dashed`) separando a lista dos lançamentos.
+3. **Agrupamento por dia**, como hoje (`DetalheDiario`), **sem** os lançamentos gerados por consolidação.
+
+A linha "Estimado restante" (`LinhaEstimado`) **deixa de existir no débito** — a lista de pendentes já é o restante, agora nominal e acionável. O componente continua sendo usado pelo bloco de crédito, sem mudança.
+
+**Anatomia de cada linha da checklist:**
+
+- **Gatilho + estado no mesmo controle** — um botão-ícone à esquerda: `Circle` (`lucide-react`) quando pendente, `CheckCircle2` quando resolvido. O ícone comunica o estado e é o que abre o formulário; não há legenda.
+- **Item pago recua**: descrição e valor em `text-muted-foreground`, enquanto o pendente fica na cor normal do texto. A atenção vai naturalmente pro que falta — inversão deliberada do peso visual, no mesmo espírito de um app de tarefas. (Descartado: descrição riscada, que em contexto financeiro se lê como "estornado".)
+- **Data do pagamento** (`text-xs text-muted-foreground`) entre a descrição e o valor, só quando pago com lançamento. Como o lançamento sai do agrupamento por dia, essa é a única pista de *quando* — sem ela a informação se perderia.
+- **Valor** à direita, `tabular-nums`. Em mês encerrado, um item pendente exibe o texto `não registrado` no lugar do valor — ele não soma ao total (§13.3), e mostrar um número que não entra na conta confundiria.
+
+**Formulário inline de consolidação:** clicar no ícone troca a área abaixo da linha por um formulário compacto, mesmo padrão de `FormularioInline` já usado em Valores padrão e na consolidação de receita:
+
+- **Campos:** valor (`CampoValor`, pré-preenchido com o valor do item quando pendente, ou com o valor atual quando editando), data (pré-preenchida com hoje se o mês exibido for o corrente, senão com o dia 1 do mês exibido — ou com a data da transação quando editando), conta corrente (`Select` só com contas `CONTA_CORRENTE`, pré-preenchida com a conta da transação quando editando, senão vazia) e categoria (`Select`, pré-preenchida com `ValorPadrao.categoria`).
+- **Validação da data:** precisa cair dentro do mês exibido. Para débito, `calcularReferencia` deriva `mesReferencia` de `dataCompra` (§4) — uma data fora do mês faria o lançamento nascer em outro mês e sumir da lista, sem erro aparente.
+- **Ações:** `Cancelar` e `Consolidar` à direita. Quando o item **já está resolvido**, o botão primário vira `Salvar` e aparece à esquerda uma ação destrutiva: **`Apagar lançamento`** quando há transação, **`Desfazer`** quando foi resolvido por R$ 0. O rótulo é explícito de propósito — um botão só "Apagar" dentro da linha de uma despesa padrão se leria como apagar o *item padrão*, que é global e afeta todos os meses.
+- **Confirmações** (`window.confirm`, mesmo padrão das exclusões em Contas e Valores padrão): antes de apagar o lançamento, e antes de salvar com R$ 0 um item que tinha lançamento — este segundo caso é uma exclusão de transação disparada por uma edição de valor, destrutivo demais pra acontecer em silêncio.
+
+**Server Actions** (`lib/actions/valores-padrao.js`, ao lado das de receita):
+- `consolidarDespesaPadrao({ valorPadraoId, mesReferencia, anoReferencia, valor, data, contaId, categoria })` — valida sessão, que o item é `tipo === "SAIDA" && meio === "DEBITO"`, que a conta é `CONTA_CORRENTE` e que a data cai no mês. Numa `$transaction`: cria (ou atualiza) a `Transacao` e faz `upsert` do registro de consolidação. Com valor zero, não cria transação — e, se havia uma, apaga (o `Cascade` cuidaria do registro, então a ordem importa: atualizar o registro para `transacaoId: null` antes de apagar a transação).
+- `removerConsolidacaoDespesaPadrao({ valorPadraoId, mesReferencia, anoReferencia })` — apaga o registro e, se houver, a transação vinculada.
+- Ambas revalidam `/visao-mensal`, `/projecao` e `/transacoes` — esta última porque a consolidação cria/apaga lançamentos que aparecem lá.
+
+**Leitura (`buscarSaidasDebito`, `lib/consolidacao.js`):** ganha `consolidacaoDespesa: null` no `where`, aproveitando a relação inversa opcional de `Transacao` (§3) — é o filtro que tira o lançamento consolidado do agrupamento por dia sem tocar em mais nada. `/transacoes` **não** filtra: lá o lançamento é uma transação como qualquer outra.
+
+**`visao-mensal/page.jsx`** passa a montar também a lista de itens de despesa padrão do débito com o estado resolvido de cada um (`id`, `descricao`, `categoria`, `valorPadrao`, e — quando consolidado — `valor`, `data` e `contaId` vindos da transação, este último pra pré-preencher a conta no formulário ao editar), na mesma composição própria que já monta `itensReceitaPadrao`.
+
+**A Projeção não muda** — consome só `debito.total`, que passa a vir correto automaticamente. Consolidar não é oferecido lá: a tela é resumo de doze meses, e a ação pertence ao detalhe de um mês.
 
 ## 14. Tela de Projeção e simulação
 
@@ -976,9 +1104,13 @@ Dentro do grupo Dados, a troca entre as três telas acontece por uma **barra de 
 
 ### 15.4 Tela de Valores padrão
 
-Rota `/valores-padrao`, dentro do grupo Ajustes. Tela única com **duas listas** — Receitas padrão e Despesas padrão — cada uma com CRUD inline: linha com descrição e valor, botão de adicionar, e edição/exclusão por item.
+Rota `/valores-padrao`, dentro do grupo Ajustes. Tela única com **duas listas** — Receitas padrão e Despesas padrão — cada uma com CRUD inline: linha com descrição e valor, e edição/exclusão por item.
 
-O formulário de despesa tem um seletor **Crédito/Débito**; o de receita não (seção 3 do schema). Reaproveita `CampoValor` (máscara monetária) já usado em `/lancamento` e no modal de `/transacoes`.
+O formulário de despesa tem um seletor **Crédito/Débito** e um seletor de **Categoria** (adicionado na Task 77 — pré-preenche a consolidação de despesa, §13.6; o padrão é `OUTROS`); o de receita não tem nenhum dos dois (seção 3 do schema). Reaproveita `CampoValor` (máscara monetária) já usado em `/lancamento` e no modal de `/transacoes`.
+
+**Gatilho de adicionar, no cabeçalho (revisado — Task 75):** o botão "Adicionar" ficava no fim da lista de cada card — some com o crescimento da lista, exigindo rolagem pra achar a ação mais comum da tela. Passa a ser um **"+"** discreto no cabeçalho de cada card (ao lado do título "Receitas padrão"/"Despesas padrão"), sempre visível independente de quantos itens já existem. O formulário de novo item abre **no topo da lista** (antes do primeiro item existente), não mais no fim — coerente com o gatilho estar no topo.
+
+**Ícones no lugar de botões de texto (revisado — Task 75):** "Editar" (`Button variant="outline"`) e "Apagar" (`Button variant="destructive"`) por item viram ícones — `Pencil`/`Trash2` (`lucide-react`), `text-muted-foreground` em repouso, `text-foreground` (editar) ou vermelho suave (apagar) no hover. Mesmo padrão aplicado em Contas (§8.2.3) e já usado no lápis de consolidação de receita padrão na Visão mensal (§13.5). `window.confirm` antes de apagar continua como está.
 
 Mutações via Server Actions em `lib/actions/valores-padrao.js`, com `revalidatePath` para `/valores-padrao`, `/visao-mensal` e `/projecao` — as três telas que consomem esses dados. Omitir alguma delas reproduz o bug de cache que já ocorreu com contas (seção 8.5).
 

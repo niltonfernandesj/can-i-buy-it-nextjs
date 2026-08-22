@@ -400,6 +400,74 @@ Bug reportado pelo usuário — investigado, causa raiz confirmada por reproduç
 
 ---
 
+**Task 75. Ícones no lugar de botões de texto e ações de criar/editar mais acessíveis — Valores padrão e Contas**
+Os botões "Editar"/"Apagar" (texto + cor sólida) por linha poluem visualmente as duas telas, e o gatilho de criar item fica escondido — no fim de cada lista em Valores padrão, atrás de um wizard de 2 etapas em Contas. Design §8.2.3 e §15.4 revisados, validados com o usuário via mock em HTML interativo (antes/depois nas duas telas) antes desta task:
+
+- **Ícones (`valores-padrao-client.jsx` e `contas-client.jsx`):** `LinhaValorPadrao` e `SecaoContas` trocam os `Button` de texto ("Editar" outline, "Apagar" destructive) por botões-ícone discretos — `Pencil`/`Trash2` (`lucide-react`), `text-muted-foreground` em repouso; hover leva editar a `text-foreground` e apagar a um tom vermelho suave (não mais o vermelho sólido do botão antigo). `window.confirm` antes de apagar continua idêntico — só o gatilho visual muda.
+- **Valores padrão — "+" no cabeçalho:** `ListaValoresPadrao` move o gatilho de adicionar do fim do `CardContent` pro `CardHeader` (`justify-between`, "+" ao lado do título "Receitas padrão"/"Despesas padrão"). Quando `adicionando`, `FormularioInline` passa a renderizar **antes** de `itens.map(...)` (topo da lista), não depois.
+- **Contas — edição vira inline:** `EditarContaDialog`/`EditarContaConteudo` saem; `SecaoContas` ganha um estado de "qual conta está em edição" (mesmo espírito de `editandoId` em `ListaValoresPadrao`) e troca a linha da conta por um formulário inline reaproveitando `CamposConta`, mesma estrutura de `FormularioInline`. A regra de campos bloqueados quando a conta tem transações (Design §17.4) continua idêntica, só muda o container visual (inline em vez de dentro de um `Dialog`).
+- **Contas — criação vira por seção, sem escolha de tipo:** o botão global "+ Nova conta" (`flex justify-end` no topo da página) e `NovaContaDialog` (com sua etapa `escolherTipo`) saem. Cada `SecaoContas` (Contas correntes, Cartões de crédito, Contas de investimento) ganha seu próprio "+" no `CardHeader`, que abre `CamposConta` **inline, no topo da lista daquela seção**, já com o `tipo` implícito pela seção clicada — sem tela/etapa intermediária de escolha.
+- Nenhuma mudança nas Server Actions (`criarConta`, `editarConta`, `apagarConta`, `criarValorPadrao`, `editarValorPadrao`, `apagarValorPadrao`) nem no schema — a task é inteiramente de UI/mecanismo de interação nos dois Client Components.
+
+*(Checkpoint sugerido: critérios de aceite revisados de Contas — spec-01 item 5 e §6. QA de interface obrigatório — mudança de UI e mutação de dado — cobrindo: criar uma conta de cada tipo pelo "+" da seção correta (confirmando que o tipo vem certo, sem etapa de escolha), editar uma conta bloqueada (campos desabilitados) e uma não bloqueada, apagar uma conta, e o mesmo roteiro (criar via "+" do cabeçalho, editar, apagar) para receita padrão e despesa padrão em Valores padrão.)*
+
+---
+
+## M18 — Consolidação de despesa padrão no débito
+
+Quatro tasks que entregam a funcionalidade descrita em Requisitos 3.9 e Design §13.6, validada com o usuário numa entrevista de requisitos aprofundada + mock em HTML interativo antes de qualquer código. A ordem é de dependência: refatoração e campo novo primeiro, regra e schema depois, superfície da funcionalidade por último.
+
+**Task 76. Renomear `ConsolidacaoValorPadrao` → `ConsolidacaoReceitaPadrao`**
+Refatoração pura, **sem nenhuma mudança de comportamento**, preparando terreno pra `ConsolidacaoDespesaPadrao` (Task 78): com duas consolidações de naturezas diferentes, o nome genérico atual (que na prática é receita-only) vira ambíguo. Design §3 e §13.5 revisados.
+
+- **Schema/migration:** renomeia o model e a tabela. A relação em `ValorPadrao` passa de `consolidacoes` para `consolidacoesReceita`.
+- **Server Actions (`lib/actions/valores-padrao.js`):** `consolidarValorPadrao` → `consolidarReceitaPadrao`; `removerConsolidacaoValorPadrao` → `removerConsolidacaoReceitaPadrao`.
+- **Chamadas:** `visao-mensal-client.jsx` (os dois imports e usos em `LinhaItemReceitaPadrao`), `db.consolidacaoValorPadrao.findMany` em `visao-mensal/page.jsx` e `projecao/page.jsx`, e o `deleteMany` dentro de `apagarValorPadrao`.
+- **`lib/projecao.js`:** nada muda ainda — o parâmetro `consolidacoes` de `comporMes` só é renomeado na Task 78, quando passa a existir um segundo. Manter aqui evitaria um rename em duas etapas, mas misturaria refatoração com mudança de regra.
+- Tasks 73 e anteriores em spec-03 **mantêm o nome antigo** no texto, como registro histórico — mesmo padrão dos renames de rota (Tasks 20 e 68).
+
+*(Checkpoint: lint + testes + build. QA de interface leve — consolidar e remover uma receita padrão na Visão mensal continua funcionando exatamente como antes; nenhum comportamento novo a validar.)*
+
+**Task 77. `ValorPadrao` ganha categoria**
+Prepara a consolidação de despesa (Task 79), que precisa de uma categoria pra criar o lançamento — `Transacao.categoria` é obrigatória e `ValorPadrao` não tinha nenhuma. Reabre parcialmente um item listado como fora do escopo no spec-01 (só categoria; a conta continua sendo escolhida na hora de consolidar). Design §3 e §15.4 revisados.
+
+- **Schema/migration:** `ValorPadrao.categoria Categoria?` — nulável, usada só quando `tipo = SAIDA`.
+- **`valores-padrao-client.jsx`:** o `FormularioInline` de despesa ganha um `Select` de Categoria (mesmas opções de `CATEGORIA_LABELS` já usadas em `/lancamento`), ao lado do seletor Crédito/Débito. Receita padrão não exibe o campo. Default `OUTROS` ao criar.
+- **`LinhaValorPadrao`:** o subtexto da despesa passa a exibir a categoria junto do meio (ex.: `R$ 1.500,00 · Débito · Mercado`).
+- **Server Actions:** `criarValorPadrao`/`editarValorPadrao` passam a aceitar e validar `categoria` — obrigatória quando `tipo = SAIDA`, forçada a `null` quando `ENTRADA` (mesmo padrão já usado para `meio`).
+- Nenhuma mudança em `comporMes` — a categoria não participa de cálculo nenhum, só de exibição e do pré-preenchimento futuro.
+
+*(Checkpoint: critério de aceite de Valores padrão — spec-01 §6. QA de interface: criar uma despesa padrão com categoria, editar trocando a categoria, e confirmar que receita padrão não pede o campo.)*
+
+**Task 78. Schema da consolidação de despesa e a virada da regra do débito**
+Entrega o modelo de dados e a regra de negócio, **sem superfície de uso** — nada ainda cria consolidações. Requisitos 3.5 (revisado) e 3.9, Design §3, §13.3, §13.4 e §13.6.
+
+- **Schema/migration:** novo model `ConsolidacaoDespesaPadrao` (`valorPadraoId`, `mesReferencia`, `anoReferencia`, `transacaoId String? @unique` com `onDelete: Cascade`, `@@unique([valorPadraoId, mesReferencia, anoReferencia])`). **Sem coluna `valor`** — quando há transação, o valor é o dela (ver Design §3 pro porquê). `Transacao` ganha a relação inversa `consolidacaoDespesa`.
+- **`comporMes` (`lib/projecao.js`):** `comporSaidas(meio)` se divide em `comporCredito()` e `comporDebito()`. Crédito mantém a regra de teto, idêntica. Débito passa a `real` = todos os lançamentos de débito do mês; `estimado` = soma dos itens padrão de débito **sem** consolidação naquele mês (zero se `debitoAindaEstimavel` for falso). Nenhum lançamento consome nada no débito.
+- **Parâmetros:** `consolidacoes` vira `consolidacoesReceita`, e entra `consolidacoesDespesa` (ambos com o mesmo padrão de lista bruta filtrada internamente).
+- **`visao-mensal/page.jsx` e `projecao/page.jsx`:** passam a buscar e repassar `consolidacoesDespesa` (Visão mensal pelo mês exibido; Projeção pela janela de 12 meses).
+- **`apagarValorPadrao`:** o `deleteMany` dentro da `$transaction` passa a apagar também as consolidações de despesa do item. As transações vinculadas **sobrevivem** (Requisitos 3.9) — e, por deixarem de ser consolidações, voltam a aparecer no agrupamento por dia.
+- **`lib/projecao.test.js`:** 9 casos novos (16 a 24 do Design §13.4), cobrindo a inversão no débito (avulso/recorrência não consomem, real acima da previsão não zera), item consolidado, consolidação por R$ 0, vazamento entre meses e a não-contaminação do crédito. Os casos 2-5 existentes ganham a marcação de que valem **só para crédito**.
+
+> **Atenção ao deploy:** entre esta task e a 79 o total de Saídas no débito fica **inflado** nos meses com gasto real — a previsão passa a somar cheia, mas ainda não existe como consolidar nada. Publicar as duas juntas, ou publicar a 79 logo em seguida.
+
+*(Checkpoint: critérios de aceite revisados de valores padrão — spec-01 §6. Sem QA de interface — não há tela nova; lint + testes + build bastam, e os 9 casos novos do Vitest são a evidência principal.)*
+
+**Task 79. Checklist de despesas padrão na Visão mensal**
+A superfície da funcionalidade: consolidar, editar, desfazer e acompanhar o que falta pagar. Layout **fiel ao mock validado com o usuário** (Design §13.6, que descreve cada elemento).
+
+- **Server Actions (`lib/actions/valores-padrao.js`):** `consolidarDespesaPadrao({ valorPadraoId, mesReferencia, anoReferencia, valor, data, contaId, categoria })` e `removerConsolidacaoDespesaPadrao({ valorPadraoId, mesReferencia, anoReferencia })`. A primeira valida sessão, `tipo === "SAIDA" && meio === "DEBITO"`, conta `CONTA_CORRENTE` e **data dentro do mês exibido** (sem isso o lançamento nasce em outro mês e some da lista, sem erro aparente). Cria/atualiza a `Transacao` e faz `upsert` do registro numa `$transaction`; com valor zero não cria transação e apaga a que existir. Ambas revalidam `/visao-mensal`, `/projecao` e `/transacoes`.
+- **`buscarSaidasDebito` (`lib/consolidacao.js`):** ganha `consolidacaoDespesa: null` no `where` — tira os lançamentos consolidados do agrupamento por dia. `/transacoes` **não** filtra.
+- **`visao-mensal/page.jsx`:** monta `itensDespesaPadraoDebito` (`id`, `descricao`, `categoria`, `valorPadrao`, e quando consolidado `valor`/`data`/`contaId` vindos da transação — `contaId` pré-preenche a conta no formulário ao editar), na mesma composição que já monta `itensReceitaPadrao`.
+- **`visao-mensal-client.jsx`:** `BlocoPorDia` do débito passa a renderizar a lista **antes** dos grupos por dia, com rótulo de seção `Despesas padrão`, seguida do divisor tracejado. `LinhaEstimado` deixa de ser usada no débito (continua no crédito, sem mudança). Cada linha: botão-ícone `Circle`/`CheckCircle2` (estado **e** gatilho), descrição, data (só quando pago com lançamento), valor — item pago inteiro em `text-muted-foreground`, pendente na cor normal. Em mês encerrado, pendente exibe `não registrado` no lugar do valor.
+- **Formulário inline:** valor (`CampoValor`), data, conta corrente (`Select` só de `CONTA_CORRENTE`) e categoria (`Select` pré-preenchido pelo item). Ações `Cancelar`/`Consolidar`; quando o item já está resolvido, o primário vira `Salvar` e aparece à esquerda **`Apagar lançamento`** (ou **`Desfazer`**, quando resolvido por R$ 0 — não há lançamento a apagar). O rótulo é explícito de propósito: um "Apagar" solo se leria como apagar o item padrão, que é global.
+- **Confirmações (`window.confirm`):** antes de apagar o lançamento, e antes de salvar com R$ 0 um item que tinha lançamento — este é uma exclusão de transação disparada por edição de valor, destrutiva demais pra acontecer em silêncio.
+- Despesa padrão no **crédito** não ganha nada disso; o bloco de crédito fica idêntico.
+
+*(Checkpoint: critérios de aceite da seção 3.9 — spec-01 §6. QA de interface obrigatório, cobrindo: consolidar um item e ver o lançamento sair do agrupamento por dia mas aparecer em /transações; editar o valor consolidado; apagar o lançamento e ver o item voltar a pendente; apagar o mesmo lançamento por /transações e confirmar o mesmo efeito; consolidar por R$ 0 e confirmar que nenhuma transação foi criada; data fora do mês rejeitada; e um mês encerrado exibindo "não registrado" sem somar ao total.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -421,3 +489,4 @@ Bug reportado pelo usuário — investigado, causa raiz confirmada por reproduç
 | M15 | Requisitos não funcionais — tema escuro (spec-01 §4) |
 | M16 | Escopo itens 12, 13, 14 (valores padrão, projeção de 12 meses, simulação) |
 | M17 | Escopo item 10 (navegação agrupada em Dados e Ajustes) |
+| M18 | Escopo item 12 revisado — consolidação de despesa padrão no débito e acompanhamento de pagamentos (spec-01 §3.5 revisado e §3.9) |

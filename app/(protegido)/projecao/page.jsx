@@ -24,20 +24,28 @@ export default async function ProjecaoPage() {
   const hoje = new Date();
   const pares = janela12Meses(hoje);
 
-  const [transacoes, valoresPadrao, consolidacoes, cartoes] = await Promise.all([
-    db.transacao.findMany({
-      where: { OR: pares.map(({ mesReferencia, anoReferencia }) => ({ mesReferencia, anoReferencia })) },
-      include: { conta: true },
-    }),
-    db.valorPadrao.findMany(),
-    db.consolidacaoValorPadrao.findMany({
-      where: { OR: pares.map(({ mesReferencia, anoReferencia }) => ({ mesReferencia, anoReferencia })) },
-    }),
-    db.conta.findMany({ where: { tipo: "CARTAO_CREDITO" } }),
-  ]);
+  const janelaOr = pares.map(({ mesReferencia, anoReferencia }) => ({ mesReferencia, anoReferencia }));
+
+  const [transacoes, valoresPadrao, consolidacoesReceita, consolidacoesDespesa, cartoes] =
+    await Promise.all([
+      db.transacao.findMany({ where: { OR: janelaOr }, include: { conta: true } }),
+      db.valorPadrao.findMany(),
+      db.consolidacaoReceitaPadrao.findMany({ where: { OR: janelaOr } }),
+      db.consolidacaoDespesaPadrao.findMany({ where: { OR: janelaOr } }),
+      db.conta.findMany({ where: { tipo: "CARTAO_CREDITO" } }),
+    ]);
 
   const meses = pares.map(({ mesReferencia, anoReferencia }) =>
-    comporMes({ mesReferencia, anoReferencia, transacoes, valoresPadrao, consolidacoes, cartoes, hoje })
+    comporMes({
+      mesReferencia,
+      anoReferencia,
+      transacoes,
+      valoresPadrao,
+      consolidacoesReceita,
+      consolidacoesDespesa,
+      cartoes,
+      hoje,
+    })
   );
 
   return (

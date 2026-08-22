@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Pencil, Trash2 } from "lucide-react";
 import {
   criarValorPadrao,
   editarValorPadrao,
   apagarValorPadrao,
 } from "@/lib/actions/valores-padrao";
 import { formatarReais } from "@/lib/moeda";
+import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import {
 
 const MEIO_LABELS = { CREDITO: "Crédito", DEBITO: "Débito" };
 
-const FORM_INICIAL = { descricao: "", valorCentavos: 0, meio: "DEBITO" };
+const FORM_INICIAL = { descricao: "", valorCentavos: 0, meio: "DEBITO", categoria: "OUTROS" };
 
 function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
   const [form, setForm] = useState(valorInicial ?? FORM_INICIAL);
@@ -42,6 +43,7 @@ function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
       valor: form.valorCentavos / 100,
       tipo,
       meio: ehDespesa ? form.meio : null,
+      categoria: ehDespesa ? form.categoria : null,
     });
 
     setCarregando(false);
@@ -89,6 +91,26 @@ function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
             </Select>
           </div>
         )}
+        {ehDespesa && (
+          <div className="flex flex-col gap-2 sm:w-40">
+            <Label htmlFor={`categoria-${tipo}`}>Categoria</Label>
+            <Select
+              value={form.categoria}
+              onValueChange={(categoria) => setForm({ ...form, categoria })}
+            >
+              <SelectTrigger id={`categoria-${tipo}`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
+                  <SelectItem key={valor} value={valor}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       {erro && <p className="text-sm text-destructive">{erro}</p>}
       <div className="flex justify-end gap-2">
@@ -110,16 +132,28 @@ function LinhaValorPadrao({ item, ehDespesa, onEditar, onApagar }) {
         <p className="text-sm font-medium">{item.descricao}</p>
         <p className="text-xs text-muted-foreground">
           {formatarReais(item.valor)}
-          {ehDespesa && ` · ${MEIO_LABELS[item.meio]}`}
+          {ehDespesa && ` · ${MEIO_LABELS[item.meio]} · ${CATEGORIA_LABELS[item.categoria]}`}
         </p>
       </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="outline" onClick={() => onEditar(item.id)}>
-          Editar
-        </Button>
-        <Button size="sm" variant="destructive" onClick={() => onApagar(item)}>
-          Apagar
-        </Button>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onEditar(item.id)}
+          aria-label={`Editar ${item.descricao}`}
+          title="Editar"
+          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onApagar(item)}
+          aria-label={`Apagar ${item.descricao}`}
+          title="Apagar"
+          className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
     </div>
   );
@@ -144,11 +178,21 @@ function ListaValoresPadrao({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <Icone className="h-4 w-4 text-muted-foreground" />
           {titulo}
         </CardTitle>
+        <button
+          type="button"
+          onClick={onIniciarAdicao}
+          disabled={adicionando}
+          aria-label={`Adicionar ${titulo.toLowerCase()}`}
+          title="Adicionar"
+          className="flex h-6 w-6 items-center justify-center rounded border text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </button>
       </CardHeader>
       <CardContent>
         {itens.length === 0 && !adicionando && (
@@ -156,6 +200,10 @@ function ListaValoresPadrao({
         )}
 
         <div className="flex flex-col">
+          {adicionando && (
+            <FormularioInline tipo={tipo} onCancelar={onCancelarAdicao} onSalvar={onCriar} />
+          )}
+
           {itens.map((item) =>
             editandoId === item.id ? (
               <FormularioInline
@@ -165,6 +213,7 @@ function ListaValoresPadrao({
                   descricao: item.descricao,
                   valorCentavos: Math.round(item.valor * 100),
                   meio: item.meio ?? "DEBITO",
+                  categoria: item.categoria ?? "OUTROS",
                 }}
                 onCancelar={onCancelarEdicao}
                 onSalvar={(dados) => onEditarSalvar(item.id, dados)}
@@ -179,18 +228,7 @@ function ListaValoresPadrao({
               />
             )
           )}
-
-          {adicionando && (
-            <FormularioInline tipo={tipo} onCancelar={onCancelarAdicao} onSalvar={onCriar} />
-          )}
         </div>
-
-        {!adicionando && (
-          <Button variant="outline" size="sm" className="mt-3" onClick={onIniciarAdicao}>
-            <Plus className="h-4 w-4" />
-            Adicionar
-          </Button>
-        )}
       </CardContent>
     </Card>
   );

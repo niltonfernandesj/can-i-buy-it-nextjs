@@ -101,6 +101,8 @@ model Transacao {
 
   criadoEm          DateTime      @default(now())
 
+  consolidacaoDespesa ConsolidacaoDespesaPadrao?
+
   @@index([usuarioId])
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
@@ -117,18 +119,22 @@ model ValorPadrao {
   valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
   tipo      TipoTransacao // ENTRADA (receita padrão) | SAIDA (despesa padrão)
   meio      MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
+  categoria Categoria? // obrigatória quando tipo = SAIDA; null quando ENTRADA — pré-preenche a consolidação de despesa (Task 79)
 
   criadoEm DateTime @default(now())
 
-  consolidacoes ConsolidacaoValorPadrao[]
+  consolidacoesReceita ConsolidacaoReceitaPadrao[]
+  consolidacoesDespesa ConsolidacaoDespesaPadrao[]
 
   @@index([usuarioId])
 }
 
 // Ajuste pontual de um item de receita padrão pra um mês específico
 // (spec-01 §3.8, spec-02 §13.5) — substitui ValorPadrao.valor só naquele
-// mês, sem tocar no item nem nos demais meses.
-model ConsolidacaoValorPadrao {
+// mês, sem tocar no item nem nos demais meses. Renomeado de
+// ConsolidacaoValorPadrao na Task 76, quando ConsolidacaoDespesaPadrao
+// (Task 78) tornou o nome genérico ambíguo.
+model ConsolidacaoReceitaPadrao {
   id            String      @id @default(cuid())
   valorPadraoId String
   valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
@@ -136,6 +142,29 @@ model ConsolidacaoValorPadrao {
   mesReferencia Int // 1-12
   anoReferencia Int
   valor         Decimal // substitui ValorPadrao.valor só nesse mês
+
+  criadoEm DateTime @default(now())
+
+  @@unique([valorPadraoId, mesReferencia, anoReferencia])
+  @@index([mesReferencia, anoReferencia])
+}
+
+// Marca que um item de despesa padrão no débito foi resolvido num mês
+// (spec-01 §3.9, spec-02 §13.6). Diferente da consolidação de receita, esta
+// gera um lançamento real — daí o vínculo com Transacao.
+model ConsolidacaoDespesaPadrao {
+  id            String      @id @default(cuid())
+  valorPadraoId String
+  valorPadrao   ValorPadrao @relation(fields: [valorPadraoId], references: [id])
+
+  mesReferencia Int // 1-12
+  anoReferencia Int
+
+  // null = consolidado por R$ 0 ("não precisei pagar neste mês"), sem
+  // lançamento. Quando presente, o valor vem da própria transação — sem
+  // coluna `valor` aqui, pra não existir duas fontes de verdade.
+  transacaoId String?    @unique
+  transacao   Transacao? @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
 
   criadoEm DateTime @default(now())
 

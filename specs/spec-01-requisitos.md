@@ -45,7 +45,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Cada tipo tem atributos próprios: Cartão de crédito tem dia de fechamento e dia de vencimento; Conta corrente e Conta de investimento não têm atributos extras no MVP (apenas nome/apelido).
    - A distinção **débito/crédito** (antes um campo separado) agora é **deduzida do tipo da conta**: saída vinculada a Conta corrente = débito; saída vinculada a Cartão de crédito = crédito.
    - CRUD simples para as contas: nome/apelido, tipo, e atributos específicos do tipo.
-   - A criação de uma conta ocorre em duas etapas: o usuário primeiro escolhe o tipo (Conta corrente, Cartão de crédito ou Conta de investimento) e, em seguida, preenche o formulário específico daquele tipo.
+   - A criação de uma conta acontece direto no formulário específico do tipo — o usuário inicia a criação a partir da seção daquele tipo (Contas correntes, Cartões de crédito ou Contas de investimento), que já define o tipo, sem uma etapa separada de escolha (revisado — Task 75; a versão original desta seção previa uma etapa de escolha de tipo antes do formulário, substituída por decisão do usuário visando consistência com a tela de Valores padrão).
    - Contas são compartilhadas entre os membros da família, assim como as transações.
 6. **Marcação de investimento (aporte/resgate)**
    - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte ou resgate, e não um gasto/renda comum.
@@ -165,16 +165,24 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - **Consequência operacional:** a mesma renda não deve existir nos dois lugares. Ao adotar receitas padrão, o usuário deixa de lançar entradas recorrentes para aquela renda — do contrário, os meses em que ambas existirem contarão o valor duas vezes.
 - **Limitação aceita:** como uma receita padrão não tem vigência, alterar seu valor muda também os meses já passados. Para um app de uso pessoal com foco no futuro, isso é preferível à complexidade de versionar o valor no tempo.
 
-**Despesas padrão — teto consumido pelo real:**
+**As duas despesas padrão não seguem mais a mesma regra** (revisado — Task 78): **crédito continua sendo um teto consumido pelo real**; **débito passa a ser uma previsão fixa por item**, resolvida individualmente via consolidação (seção 3.9). A divergência não é arbitrária — ela acompanha como o dinheiro sai em cada meio: no crédito os gastos pingam ao longo do mês, difusos, e a fatura fecha num total só (um teto que o real vai comendo descreve isso bem); no débito, as despesas padrão são contas nominais que se paga uma a uma (aluguel, internet, mercado), e o que o usuário quer saber é *quais já pagou*, não *quanto sobrou de um teto agregado*.
 
-- Uma despesa padrão funciona como **teto esperado**, que os lançamentos reais vão consumindo. O valor projetado é `máx(0, total padrão do meio − real já lançado que consome)`.
+**Despesas padrão no crédito — teto consumido pelo real (inalterado):**
+
+- Uma despesa padrão no crédito funciona como **teto esperado**, que os lançamentos reais vão consumindo. O valor projetado é `máx(0, total padrão do crédito − real já lançado que consome)`.
 - Se o real ultrapassar a estimativa, **vale o real** — a estimativa apenas deixa de somar.
 - **Consomem a estimativa:** gastos avulsos e **ocorrências de recorrência** — ambos representam o gasto corrente e previsível que a tabela modela.
 - **Não consomem, somam por cima:** **parcelas**. Uma parcela é o compromisso pontual de uma compra específica, não parte do gasto do dia a dia — é exatamente o que o usuário quer ver somado à sua média.
-- A estimativa deixa de ser aplicada quando o período não pode mais receber novos gastos:
-  - **Crédito:** vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
-  - **Débito:** vale até o **fim do mês** de referência.
-- Como consequência, a composição de despesas de cada mês degrada naturalmente com o tempo: **meses passados** nunca exibem estimativa; o **mês corrente** exibe uma composição de real e estimado; **meses futuros** são majoritariamente estimados, somados às parcelas já comprometidas.
+- A estimativa vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
+
+**Despesas padrão no débito — previsão fixa por item (revisado — Task 78):**
+
+- Cada item de despesa padrão no débito entra no mês pelo **seu valor cheio**, individualmente — não há teto agregado.
+- **Nenhum lançamento consome esses valores.** Gastos avulsos, ocorrências de recorrência e parcelas no débito **somam por cima**, como qualquer despesa. (Antes desta revisão, avulsos e recorrências consumiam o teto do débito.)
+- Um item deixa de ser previsão e passa a valer pelo real quando é **consolidado** (seção 3.9) — aí ele sai da previsão e o lançamento correspondente entra como real.
+- A previsão dos itens ainda não consolidados vale até o **fim do mês** de referência. Em meses já encerrados, um item não consolidado não soma nada (mas continua visível como não registrado — seção 3.9).
+
+Em ambos os meios, a composição de despesas de cada mês degrada naturalmente com o tempo: **meses passados** nunca somam previsão; o **mês corrente** exibe uma composição de real e previsto; **meses futuros** são majoritariamente previstos, somados às parcelas já comprometidas.
 
 ### 3.6 Especificação — Projeção de 12 meses
 
@@ -207,6 +215,21 @@ Resolve uma limitação da seção 3.5: como receita padrão é sempre o valor c
 - Vale tanto para **meses futuros** (planejamento) quanto para **meses já fechados** (correção retroativa) — mesmo mecanismo para os dois casos.
 - Uma consolidação é **permanente até ser editada ou removida** — não expira quando o mês fecha (diferente da estimativa de despesa, seção 3.5).
 - Remover uma consolidação faz o mês voltar a usar o valor genérico do item.
+
+### 3.9 Especificação — Consolidação de despesa padrão no débito
+
+Complementa a seção 3.5: além de prever o gasto, o usuário precisa **registrar que pagou** cada despesa padrão do débito e **acompanhar o que ainda falta pagar** no mês. Diferente da consolidação de receita (3.8), que só ajusta um valor, aqui a consolidação **gera um lançamento real**.
+
+- Aplica-se **somente a despesas padrão no débito**. Despesas no crédito seguem o modelo de teto (3.5) e não são consolidáveis — a fatura já agrega os gastos do cartão.
+- Consolidar um item significa: informar **valor, data, conta corrente e categoria**, e o sistema cria a **transação real** correspondente naquele mês. O item deixa de contar como previsão e passa a contar pelo lançamento.
+- A **categoria vem pré-preenchida** a partir do item de despesa padrão, que passa a ter categoria própria (seção 3.5 — o item continua sem conta vinculada; a conta é escolhida na hora de consolidar).
+- A data informada precisa cair **dentro do mês exibido** — é ela que determina em qual mês o lançamento entra.
+- O usuário acompanha, no mesmo lugar, **quais itens já foram pagos e quais continuam pendentes** naquele mês.
+- Um item consolidado pode ser **editado** (alterando o lançamento) ou ter o **lançamento apagado**, voltando a aparecer como pendente.
+- **Consolidar com valor zero** é permitido e significa "neste mês não precisei pagar": o item conta como resolvido, mas **nenhum lançamento é criado**.
+- Apagar o lançamento por qualquer caminho (inclusive pela tela de Transações) faz o item **voltar a pendente** automaticamente — não existe item marcado como pago sem o lançamento por trás.
+- Em **meses já encerrados** os itens pendentes continuam visíveis, sinalizando um possível registro esquecido, mas **não somam** ao total do mês (coerente com 3.5).
+- Apagar um item de despesa padrão **não apaga** os lançamentos já gerados por ele — o dinheiro foi gasto de fato; os lançamentos apenas deixam de estar vinculados ao item.
 
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
@@ -316,17 +339,18 @@ Resolve uma limitação da seção 3.5: como receita padrão é sempre o valor c
 - [ ] Clicar em qualquer linha da tabela abre um modal com o detalhe completo do registro (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) e as ações de editar/apagar.
 - [ ] A tela permite buscar por descrição e filtrar por Conta, Categoria e Mês/Ano de referência.
 - [ ] A navegação principal apresenta cinco áreas em dois grupos — Dados (Visão mensal, Transações, Projeção) e Ajustes (Contas, Valores padrão) — e uma ação global "+ Nova transação" acessível a partir de qualquer uma delas, abrindo o formulário completo sem etapas de pré-seleção.
-- [ ] A criação de uma conta ocorre em duas etapas: escolha do tipo, seguida do formulário específico.
+- [ ] A criação de uma conta acontece direto a partir da seção do tipo desejado (Contas correntes, Cartões de crédito ou Contas de investimento), sem etapa separada de escolha de tipo.
 - [ ] Um usuário logado consegue abrir o menu do usuário e fazer logoff, sendo redirecionado para a tela de login.
 - [ ] O usuário consegue cadastrar, editar e apagar itens nas listas de receitas padrão e despesas padrão, informando descrição e valor.
 - [ ] Um item de despesa padrão indica se é crédito ou débito; um item de receita padrão não pede essa informação.
 - [ ] Valores padrão não aparecem na tela de Transações e não podem ser editados como lançamento.
 - [ ] Uma receita padrão entra pelo valor cheio em todo mês exibido, sem ser consumida por lançamentos reais.
 - [ ] Uma entrada real lançada num mês soma ao valor da receita padrão daquele mês, em vez de descontá-lo.
-- [ ] Num mês futuro sem despesas reais, a projeção exibe a despesa padrão integral.
-- [ ] Num mês cuja fatura ainda está aberta, com gastos reais já lançados, a projeção exibe apenas a diferença entre a despesa padrão e o real já gasto.
-- [ ] Quando o gasto real ultrapassa a despesa padrão, a projeção passa a exibir o valor real, sem somar a estimativa por cima.
-- [ ] Ocorrências de recorrência de despesa consomem a despesa padrão; parcelas não a consomem e somam por cima.
+- [ ] Num mês futuro sem despesas reais, a projeção exibe a despesa padrão integral (crédito e débito).
+- [ ] Num mês cuja fatura ainda está aberta, com gastos reais já lançados **no crédito**, a projeção exibe apenas a diferença entre a despesa padrão de crédito e o real já gasto.
+- [ ] Quando o gasto real no crédito ultrapassa a despesa padrão de crédito, a projeção passa a exibir o valor real, sem somar a estimativa por cima.
+- [ ] Ocorrências de recorrência de despesa **no crédito** consomem a despesa padrão de crédito; parcelas não a consomem e somam por cima.
+- [ ] **No débito**, nenhum lançamento (avulso, recorrência ou parcela) consome a despesa padrão — os itens ainda não consolidados somam pelo valor cheio e os lançamentos somam por cima.
 - [ ] Depois que a fatura mais tardia de um mês de referência fecha, a estimativa de crédito deixa de aparecer naquele mês.
 - [ ] Num mês já encerrado, nenhuma estimativa é exibida — apenas lançamentos reais.
 - [ ] A Visão mensal distingue visualmente a parcela estimada (despesa) da parcela real dos totais.
@@ -334,6 +358,15 @@ Resolve uma limitação da seção 3.5: como receita padrão é sempre o valor c
 - [ ] Cada item de receita padrão pode ser consolidado (ajustado) para o mês em exibição na Visão mensal, sem alterar o item na lista de Valores padrão nem os demais meses.
 - [ ] Um item de receita padrão consolidado num mês mantém esse valor mesmo depois que o mês fecha, até ser editado ou removido — não expira sozinho.
 - [ ] Remover a consolidação de um item num mês faz esse mês voltar a usar o valor genérico do item.
+- [ ] Na Visão mensal, o bloco "Saídas no débito" lista as despesas padrão do débito no topo (antes dos lançamentos agrupados por dia), cada uma indicando se já foi paga ou está pendente.
+- [ ] Consolidar uma despesa padrão do débito cria um lançamento real com o valor, a data, a conta corrente e a categoria informados — a categoria vem pré-preenchida a partir do item.
+- [ ] Um lançamento gerado por consolidação não aparece no agrupamento por dia do bloco, apenas na linha do item (mas aparece normalmente na tela de Transações).
+- [ ] Consolidar uma despesa padrão do débito com valor zero marca o item como resolvido sem criar lançamento algum.
+- [ ] Editar um item já consolidado altera o lançamento vinculado; apagar o lançamento faz o item voltar a pendente.
+- [ ] Apagar, na tela de Transações, um lançamento gerado por consolidação faz o item voltar a aparecer como pendente na Visão mensal.
+- [ ] Num mês já encerrado, uma despesa padrão do débito não consolidada continua visível como não registrada, sem somar ao total do mês.
+- [ ] Apagar um item de despesa padrão não apaga os lançamentos já gerados por ele.
+- [ ] Despesas padrão no crédito não oferecem consolidação.
 - [ ] Uma entrada real lançada num mês com item consolidado continua somando por cima do valor consolidado, sem descontá-lo.
 - [ ] A tela de Projeção exibe os 12 meses seguintes ao mês atual; cada card resume Entradas, Saídas e Investimentos por ícone e valor consolidado, com o Disponível em destaque, rotulado "Disponível".
 - [ ] No mobile, os três indicadores (Entradas, Saídas, Investimentos) do card de mês da Projeção cabem numa única linha, sem quebra, para valores de até 5 dígitos (R$ XX.XXX,XX); valores maiores podem cortar o texto.
