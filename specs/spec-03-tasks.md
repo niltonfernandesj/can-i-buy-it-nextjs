@@ -388,6 +388,18 @@ Receita padrão é sempre o valor cheio em todo mês, puramente aditiva — dife
 
 ---
 
+**Task 74. Correção: `dataCompra`/`dataEfetiva` gravadas/exibidas um dia a menos em produção**
+Bug reportado pelo usuário — investigado, causa raiz confirmada por reprodução controlada (servidor com `TZ=UTC` forçado + navegador simulando fuso do Brasil), corrigido e revalidado com o mesmo cenário antes desta task. Design §1 revisado (nova subseção "Fuso do servidor").
+
+- **Causa:** `paraData()` (`lib/actions/transacoes.js`) constrói a data com `new Date(ano, mes-1, dia)`, que resolve no fuso do processo. Servidor na Vercel roda em UTC; a exibição/edição acontece em Client Components, no fuso do navegador (Brasil). O valor gravado é tecnicamente correto (meia-noite UTC do dia certo), mas toda leitura no navegador mostra o dia anterior — e o modal de edição reenvia essa data já errada se salva sem alteração, andando a data real pra trás a cada edição.
+- **Correção:** `process.env.TZ = "America/Sao_Paulo"` fixado em `lib/db.js` (módulo importado por toda Server Action/Server Component que lida com data) — não como variável de ambiente, porque a **Vercel bloqueia `TZ` por ser reservada internamente**. Nenhuma mudança em `paraData`, `calcularFatura`, ou qualquer lógica de data existente — só o fuso do processo em si.
+- Reversão das tentativas anteriores de configurar `TZ` via `.env`/`.env.example` (não teriam efeito de qualquer forma — `.env` não sobrescreve uma variável já presente no processo, e a Vercel não aceita a variável).
+- Sem mudança em `mesReferencia`/`anoReferencia` — já eram calculados corretamente no servidor a partir da data original, antes de qualquer releitura; o bug era só na data de calendário exibida/gravada, não na lógica financeira de qual mês cada transação conta.
+
+*(Checkpoint: reprodução controlada — servidor iniciado com `TZ=UTC` forçado no shell (simulando o runtime da Vercel) + Playwright com `timezoneId: "America/Sao_Paulo"` — confirmando que uma data digitada é gravada e exibida de volta como o mesmo dia, sem a correção depender de nenhuma variável de ambiente. Suite de testes completa, sem mudança de comportamento nela — os testes de `lib/` são funções puras sem I/O, não importam `lib/db.js`.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |

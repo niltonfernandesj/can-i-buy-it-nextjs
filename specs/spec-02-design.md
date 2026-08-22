@@ -19,6 +19,7 @@
 | Testes | **Vitest** | Ver justificativa abaixo. |
 | Gráficos | **Recharts** | Reintroduzida na Task 72, escopada só ao gráfico de Disponível da Projeção (§14.2) — ver nota abaixo. |
 | Hospedagem | Vercel (hobby) | Conforme requisito. |
+| Fuso do servidor | **`America/Sao_Paulo`, fixado em código** | Task 74 — ver nota abaixo. |
 
 ### Banco de dados: por que Postgres, e não SQLite local
 
@@ -46,6 +47,16 @@ Sugestão de cobertura prioritária (a virar tarefas concretas na fase de Tasks)
 A Task 17 implementou um gráfico de gastos por categoria com **Recharts** (`GraficoGastosPorCategoria`, em `acompanhamento-client.jsx`). O spec-01 revisado (seção 3, item 7) removeu o requisito de gráficos/análises visuais da **Visão mensal** — o foco passou a ser acompanhamento operacional e consulta das movimentações consolidadas. Consequência técnica: a dependência `recharts` e o componente `GraficoGastosPorCategoria` ficaram órfãos e foram removidos na Task 21.
 
 Essa remoção **não se estendeu à Projeção** — a Task 62 (M16) abriu uma exceção limitada e deliberada com um gráfico de barras do Disponível em `div` + CSS puro, justamente pra não reintroduzir a dependência por algo simples. A Task 72 reverte essa escolha específica: o gráfico da Projeção evolui pra Recharts (rótulos, eixo, tooltip — ver §14.2), e a dependência volta ao `package.json`. **Ainda não há gráficos na Visão mensal** — o requisito removido no spec-01 item 7 continua valendo lá; a reintrodução é só pro gráfico já existente na Projeção.
+
+### Fuso do servidor: por que fixado em código, não por variável de ambiente
+
+**Bug encontrado em produção (Task 74):** `lib/actions/transacoes.js` converte a data do formulário (`"YYYY-MM-DD"`) com `new Date(ano, mes-1, dia)` — construção que resolve no fuso do **processo**, não numa zona fixa. Em dev local isso nunca deu problema porque servidor e "navegador" (a própria máquina) estão no mesmo fuso. Em produção, a função serverless da Vercel roda em **UTC**, enquanto o navegador do usuário está no Brasil (UTC−3): uma data digitada como `15/01/2026` é corretamente gravada como `2026-01-15T00:00:00.000Z` (meia-noite UTC), mas ao ser lida de volta num Client Component (`transacoes-client.jsx`, `lib/datas.js`) — que roda no navegador — os getters locais (`getDate()`, `toLocaleDateString()` sem fuso explícito) resolvem no fuso do navegador e devolvem o dia **anterior**. Afeta `dataCompra` e `dataEfetiva` igualmente (`dataEfetiva` é sempre a mesma instância de `dataCompra`, nunca derivada separadamente — Design §13, `calcularReferencia`). Mais grave: o modal de edição pré-preenche a data já deslocada — salvar sem tocar nela reenvia a data errada pro servidor, que grava de verdade um dia a menos, **compondo o erro a cada edição**.
+
+**Correção:** fixar o fuso do processo do servidor pra `America/Sao_Paulo`, eliminando a divergência com o navegador (a app é de uso familiar, sempre Brasil — não há caso de uso multi-fuso a suportar).
+
+**Por que em código (`lib/db.js`) e não como variável de ambiente:** a Vercel **bloqueia `TZ` como nome de variável de ambiente configurável pelo usuário** — é reservada, usada internamente pela plataforma. A alternativa validada: `process.env.TZ = "America/Sao_Paulo"` como efeito colateral no topo de `lib/db.js`, módulo importado por toda Server Action e todo Server Component que lê ou grava data — roda cedo o bastante em cada cold start pra valer antes de qualquer `new Date()` do app. Validado que o Node.js não trava o fuso na primeira leitura: reatribuir `process.env.TZ` em runtime, mesmo depois de outras datas já terem sido calculadas no mesmo processo, funciona corretamente para todo `new Date()`/getter local subsequente.
+
+**Alternativa descartada:** reescrever toda construção/leitura de data do app pra usar métodos UTC (`Date.UTC`, `getUTCDate`, etc.) em vez de métodos locais — resolveria de forma robusta contra qualquer fuso de servidor, mas é uma refatoração grande (`lib/fatura.js`, `lib/parcelamento.js`, `lib/recorrencia.js`, todas as telas com campo de data, todos os testes), desproporcional ao problema de uma app de uso familiar sempre-Brasil.
 
 ## 2. Arquitetura geral
 
