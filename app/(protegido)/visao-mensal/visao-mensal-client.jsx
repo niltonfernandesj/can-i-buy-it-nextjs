@@ -100,7 +100,9 @@ function dataParaISO(data) {
 function dataInicialConsolidacao(mes, ano) {
   const hoje = new Date();
   const ehMesAtual = hoje.getMonth() + 1 === mes && hoje.getFullYear() === ano;
-  return ehMesAtual ? dataParaISO(hoje) : dataParaISO(new Date(ano, mes - 1, 1));
+  return ehMesAtual
+    ? dataParaISO(hoje)
+    : dataParaISO(new Date(ano, mes - 1, 1));
 }
 
 // Composição em subtexto (Design §16.2). Despesa: "R$ 800 + R$ 400 estimado"
@@ -218,7 +220,15 @@ function LinhaEstimado({ estimado }) {
 // linha única agregada, agora por item, cada um consolidável pra este mês
 // via o lápis). Sem borda própria — o divider que separa do bloco de
 // lançamentos reais é só um, no container da lista (ListaReceitaPadrao).
-function LinhaItemReceitaPadrao({ item, mes, ano, editando, onEditar, onFechar, router }) {
+function LinhaItemReceitaPadrao({
+  item,
+  mes,
+  ano,
+  editando,
+  onEditar,
+  onFechar,
+  router,
+}) {
   // Começa vazio, não pré-preenchido com o valor atual: CampoValor acumula
   // dígitos por cima do que já está lá (estilo calculadora) — pré-preencher
   // obrigaria apagar o valor inteiro antes de digitar o novo, o oposto de
@@ -377,12 +387,15 @@ function LinhaItemDespesaPadrao({
   const Icone = resolvido ? CheckCircle2 : Circle;
 
   const valorInicialCentavos = Math.round(
-    (resolvido && !item.resolvidoSemPagar ? item.valor : item.valorPadrao) * 100
+    (resolvido && !item.resolvidoSemPagar ? item.valor : item.valorPadrao) *
+      100,
   );
 
   const [valorCentavos, setValorCentavos] = useState(valorInicialCentavos);
   const [data, setData] = useState(
-    item.data ? dataParaISO(new Date(item.data)) : dataInicialConsolidacao(mes, ano)
+    item.data
+      ? dataParaISO(new Date(item.data))
+      : dataInicialConsolidacao(mes, ano),
   );
   const [contaId, setContaId] = useState(item.contaId ?? "");
   const [categoria, setCategoria] = useState(item.categoria ?? "OUTROS");
@@ -393,8 +406,8 @@ function LinhaItemDespesaPadrao({
     if (valorCentavos === 0 && resolvido && !item.resolvidoSemPagar) {
       const confirmado = window.confirm(
         `Salvar "${item.descricao}" com R$ 0,00 vai apagar o lançamento de ${formatarReais(
-          item.valor
-        )}. Confirma?`
+          item.valor,
+        )}. Confirma?`,
       );
       if (!confirmado) return;
     }
@@ -475,7 +488,9 @@ function LinhaItemDespesaPadrao({
             </Select>
           </div>
           <div className="flex flex-1 flex-col gap-2 sm:min-w-[9rem]">
-            <Label htmlFor={`despesa-padrao-categoria-${item.id}`}>Categoria</Label>
+            <Label htmlFor={`despesa-padrao-categoria-${item.id}`}>
+              Categoria
+            </Label>
             <Select value={categoria} onValueChange={setCategoria}>
               <SelectTrigger id={`despesa-padrao-categoria-${item.id}`}>
                 <SelectValue />
@@ -507,10 +522,21 @@ function LinhaItemDespesaPadrao({
             <span />
           )}
           <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={onFechar} disabled={carregando}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onFechar}
+              disabled={carregando}
+            >
               Cancelar
             </Button>
-            <Button type="button" size="sm" onClick={salvar} disabled={carregando}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={salvar}
+              disabled={carregando}
+            >
               {carregando ? "Salvando..." : resolvido ? "Salvar" : "Consolidar"}
             </Button>
           </div>
@@ -525,19 +551,30 @@ function LinhaItemDespesaPadrao({
         <button
           type="button"
           onClick={onEditar}
-          aria-label={resolvido ? `Editar ${item.descricao}` : `Consolidar ${item.descricao}`}
+          aria-label={
+            resolvido
+              ? `Editar ${item.descricao}`
+              : `Consolidar ${item.descricao}`
+          }
           title={resolvido ? "Editar" : "Consolidar"}
           className="rounded p-0.5 text-muted-foreground hover:text-foreground"
         >
           <Icone className="h-4 w-4" />
         </button>
-        <span className={resolvido ? "text-muted-foreground" : ""}>{item.descricao}</span>
+        <span className={resolvido ? "text-muted-foreground" : ""}>
+          {item.descricao}
+        </span>
         {resolvido && !item.resolvidoSemPagar && item.data && (
-          <span className="text-xs text-muted-foreground">{formatarDataCurta(item.data)}</span>
+          <span className="text-xs text-muted-foreground">
+            {formatarDataCurta(item.data)}
+          </span>
         )}
       </span>
       <span
-        className={cn("font-medium tabular-nums", resolvido && "text-muted-foreground")}
+        className={cn(
+          "font-medium tabular-nums",
+          resolvido && "text-muted-foreground",
+        )}
       >
         {valorExibidoDespesaPadrao(item, mesEncerrado)}
       </span>
@@ -549,7 +586,13 @@ function LinhaItemDespesaPadrao({
 // — mesma posição/espírito de ListaReceitaPadrao, com divisor tracejado
 // (não sólido) separando do agrupamento por dia: comunica "isto é previsão
 // resolvível", coerente com o tracejado já usado em LinhaEstimado.
-function ListaDespesaPadrao({ itens, mes, ano, mesEncerrado, contasCorrentes }) {
+function ListaDespesaPadrao({
+  itens,
+  mes,
+  ano,
+  mesEncerrado,
+  contasCorrentes,
+}) {
   const router = useRouter();
   const [editandoId, setEditandoId] = useState(null);
 
@@ -609,7 +652,11 @@ function BlocoPorDia({
       {expandido && (
         <>
           {ehEntradas && (
-            <ListaReceitaPadrao itens={itensReceitaPadrao} mes={mes} ano={ano} />
+            <ListaReceitaPadrao
+              itens={itensReceitaPadrao}
+              mes={mes}
+              ano={ano}
+            />
           )}
           {ehSaidasDebito && (
             <ListaDespesaPadrao
@@ -633,7 +680,9 @@ function BlocoPorDia({
               />
             ))
           )}
-          {!ehEntradas && !ehSaidasDebito && <LinhaEstimado estimado={estimado} />}
+          {!ehEntradas && !ehSaidasDebito && (
+            <LinhaEstimado estimado={estimado} />
+          )}
         </>
       )}
     </section>
@@ -788,7 +837,7 @@ export function VisaoMensalClient({
             total={composicaoDebito.total}
             estimado={composicaoDebito.estimado}
             grupos={saidasDebito}
-            mensagemVazia="Nenhuma saída no débito neste mês."
+            mensagemVazia="Nenhuma saída adicional no débito neste mês."
             ehSaidasDebito
             itensDespesaPadraoDebito={itensDespesaPadraoDebito}
             mesEncerrado={mesEncerrado}
