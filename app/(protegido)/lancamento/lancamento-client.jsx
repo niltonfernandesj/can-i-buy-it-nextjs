@@ -323,7 +323,7 @@ export function LancamentoClient({ contas }) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="dataCompra">Data</Label>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center justify-center gap-1.5">
               <button type="button" onClick={() => somarDia(-1)} aria-label="Dia anterior" className={BOTAO_ICONE}>
                 <ChevronLeft className="h-4 w-4" />
               </button>
@@ -333,7 +333,7 @@ export function LancamentoClient({ contas }) {
                 required
                 value={form.dataCompra}
                 onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
-                className="text-center"
+                className="w-40 text-center"
               />
               <button type="button" onClick={() => somarDia(1)} aria-label="Dia seguinte" className={BOTAO_ICONE}>
                 <ChevronRight className="h-4 w-4" />
