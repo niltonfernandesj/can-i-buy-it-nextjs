@@ -476,6 +476,17 @@ Reduz a repetição ao lançar várias transações seguidas com a mesma conta/d
 
 *(Checkpoint: critério de aceite do item 2 — spec-01 §6. QA de interface: salvar um lançamento e confirmar que Tipo/Conta/Data continuam preenchidos, e que valor/categoria/descrição/checkboxes voltam ao padrão.)*
 
+## M20 — Correção: agrupamento por dia herdava horário de lançamento antigo
+
+**Task 81. `agruparPorDia` deriva o dia exibido da chave, não da data bruta de uma transação**
+Bug reportado pelo usuário — investigado, causa raiz confirmada por reprodução controlada, corrigido e revalidado antes desta task. Design §1 revisado (nova subseção logo após "Fuso do servidor").
+
+- **Causa:** `agruparPorDia` (`lib/consolidacao.js`, usada por Entradas/Débito/Crédito) agrupa por `dataCompra.toISOString().slice(0,10)` (chave estável), mas exibe `dia: transacao.dataCompra` da **primeira** transação (por `dataCompra` crescente) que cria o grupo. Lançamentos gravados **antes** da Task 74 continuam em meia-noite UTC literal (`T00:00:00.000Z`) — sempre ordenam antes de um lançamento novo e correto do mesmo dia (`T03:00:00.000Z`) — e, exibida em `toLocaleDateString("pt-BR")` no fuso de São Paulo, meia-noite UTC literal volta um dia. O cabeçalho do grupo inteiro herda essa data errada, mesmo pra transações do grupo gravadas certinho. Reproduzido consultando os dados reais de produção (só leitura, credenciais rotacionadas logo em seguida).
+- **Correção:** `agruparPorDia` reconstrói o `dia` exibido a partir da própria chave (`"YYYY-MM-DD"` → `new Date(ano, mes-1, dia)`, construção local, mesmo padrão de `paraData`) em vez de reaproveitar a data bruta de uma transação do grupo. Nenhuma mudança na chave de agrupamento em si, em `mesReferencia`/`anoReferencia`, ou em qualquer Server Action.
+- Sem migração de dados — os valores antigos (`T00:00:00.000Z`) continuam gravados como estão; a correção torna a **exibição agrupada** robusta a essa mistura, sem depender de corrigir cada linha antiga.
+
+*(Checkpoint: reprodução controlada — replicação de `agruparPorDia` rodada contra os dados reais de produção (mês/ano do caso relatado), confirmando o cabeçalho errado antes da correção e o cabeçalho correto depois, com o mesmo conjunto de dados. Suite de testes completa. QA de interface leve — criar dois lançamentos de crédito no mesmo dia com horários UTC distintos (simulando a mistura antigo/novo) e confirmar que o cabeçalho do dia exibe a data correta.)*
+
 ---
 
 ## Resumo de rastreabilidade
@@ -501,3 +512,4 @@ Reduz a repetição ao lançar várias transações seguidas com a mesma conta/d
 | M17 | Escopo item 10 (navegação agrupada em Dados e Ajustes) |
 | M18 | Escopo item 12 revisado — consolidação de despesa padrão no débito e acompanhamento de pagamentos (spec-01 §3.5 revisado e §3.9) |
 | M19 | Escopo item 2 revisado — formulário de lançamento mantém Tipo/Conta/Data ao salvar |
+| M20 | Correção — agrupamento por dia na Visão mensal herdava horário de lançamento antigo |
