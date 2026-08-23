@@ -603,6 +603,8 @@ Detalhamento por interação:
 
 Sem informações de conta/cartão no detalhamento diário no MVP. Sem limite arbitrário de itens nem "Ver mais" — conteúdo excedente usa altura máxima + rolagem interna (`overflow-y-auto`) dentro do `Popover`/`Sheet`.
 
+**Tag de parcela no crédito (Task 84):** `DetalheDiario` (`components/visao-mensal/detalhe-diario.jsx`) já tem um ponto de extensão pra isso — o prop `renderTag`, usado hoje só em Entradas pra marcar resgate de investimento (`TagResgate`). O bloco Saídas no crédito passa a receber seu próprio `renderTag`, retornando a mesma tag pill já usada em `/transacoes` (`bg-muted rounded-full`, "X de Y") quando `t.numeroParcela` existe — mesmo componente/estilo, sem inventar um novo. Nenhuma mudança em `DetalheDiario` em si.
+
 #### 8.3.5 Regra visual — Saídas no crédito
 Continua filtrado pelo mês de referência da fatura (seção 6); agrupado pelo dia da compra original; uma compra de outro mês pode aparecer no período visualizado quando sua fatura pertence a esse mês de referência. A data original da compra deve ficar visível, para não parecer erro.
 
@@ -666,6 +668,8 @@ Resolve Requisitos 3.1 (bullet "Alternância de visão no bloco Saídas no créd
 **Fonte dos dados:** nenhuma busca nova — a visão "Por cartão" reagrupa, no cliente, os mesmos dados já buscados por `buscarSaidasCredito` (mesmo mês de referência, já ordenados por `dataCompra`). Reagrupar por `transacao.conta.nome`/`conta.id` em vez de por dia é suficiente; `buscarSaidasCredito` já faz `include: { conta: true }`, então o nome do cartão já vem junto.
 
 **Linha "Estimado restante" (§16.2):** aparece igual nas duas visões, ao final do bloco, fora da área que alterna — não é reagrupada por cartão (continua sendo o teto agregado de todos os cartões, Requisitos 3.5).
+
+**Tag de parcela (Task 84):** cada linha de lançamento no subgrupo ganha a mesma tag pill de `/transacoes` ("X de Y") ao lado da descrição quando `t.numeroParcela` existe — mesmo tratamento visual do detalhamento por dia (§8.3.4), pra a marcação de parcela não depender de qual visão está ativa.
 
 ### 8.4 Mapeamento sugerido de componentes
 

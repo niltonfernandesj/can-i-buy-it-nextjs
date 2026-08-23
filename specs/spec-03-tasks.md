@@ -514,6 +514,17 @@ A funcionalidade em si: apoiar a conferência manual dos lançamentos do app con
 
 ---
 
+**Task 84. Tag de parcela nas duas visões do bloco Saídas no crédito**
+Mock em HTML interativo validado com o usuário antes da implementação. Design §8.3.4 e §8.3.16 revisados.
+
+- **Visão "Por dia":** `visao-mensal-client.jsx` passa a fornecer `renderTag` no `BlocoPorDia` de Saídas no crédito (hoje só Entradas usa esse prop, pra `TagResgate`) — retorna a mesma tag pill de `/transacoes` ("X de Y") quando `transacao.numeroParcela` existe, senão `null`. Nenhuma mudança em `DetalheDiario`.
+- **Visão "Por cartão":** cada linha de `ListaPorCartao` (Task 83) ganha a mesma tag, ao lado da descrição, com a mesma condição (`numeroParcela` existe).
+- Reaproveita o componente/estilo de tag já existente (`BadgeTransacao` em `transacoes-client.jsx`, ou uma cópia local idêntica caso não seja exportável de lá) — sem inventar um novo visual.
+
+*(Checkpoint: critério de aceite revisado da Visão mensal — spec-01 §6. QA de interface: um lançamento parcelado exibe a tag "X de Y" no popover/sheet do dia e, ao trocar pra visão "Por cartão", a mesma tag aparece na linha correspondente; um lançamento não-parcelado não exibe tag em nenhuma das duas visões.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |

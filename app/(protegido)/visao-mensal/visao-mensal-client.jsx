@@ -724,6 +724,12 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
               >
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className="truncate">{transacao.descricao}</span>
+                  {transacao.numeroParcela && (
+                    <TagParcela
+                      numeroParcela={transacao.numeroParcela}
+                      totalParcelas={transacao.totalParcelas}
+                    />
+                  )}
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {formatarDiaMes(transacao.dataCompra)}
                   </span>
@@ -821,6 +827,16 @@ function TagResgate() {
   return (
     <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
       Resgate de investimento
+    </span>
+  );
+}
+
+// Mesma tag pill já usada em /transacoes (BadgeTransacao) pra marcar uma
+// parcela — não exportada de lá, cópia local idêntica (Task 84).
+function TagParcela({ numeroParcela, totalParcelas }) {
+  return (
+    <span className="shrink-0 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+      {numeroParcela} de {totalParcelas}
     </span>
   );
 }
@@ -980,6 +996,11 @@ export function VisaoMensalClient({
             total={composicaoCredito.total}
             estimado={composicaoCredito.estimado}
             grupos={saidasCredito}
+            renderTag={(t) =>
+              t.numeroParcela ? (
+                <TagParcela numeroParcela={t.numeroParcela} totalParcelas={t.totalParcelas} />
+              ) : null
+            }
             mensagemVazia="Nenhuma saída no crédito neste mês."
             ehSaidasCredito
           />
