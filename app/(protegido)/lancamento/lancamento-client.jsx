@@ -80,7 +80,7 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
             "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
             valorAtual === opcao.valor
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-input bg-transparent text-muted-foreground hover:text-foreground"
+              : "border-input bg-muted text-muted-foreground hover:text-foreground"
           )}
         >
           {opcao.rotulo}
@@ -91,7 +91,7 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
 }
 
 const BOTAO_ICONE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground hover:text-foreground";
-const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded text-sm font-semibold text-muted-foreground hover:text-foreground";
+const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded border text-sm font-semibold text-muted-foreground hover:text-foreground";
 
 const FORM_INICIAL = {
   tipo: "SAIDA",
