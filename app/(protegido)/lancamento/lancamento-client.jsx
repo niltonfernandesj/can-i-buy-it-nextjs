@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  PiggyBank,
   Wallet,
 } from "lucide-react";
 import { criarTransacao, criarTransacaoParcelada, criarTransacaoRecorrente } from "@/lib/actions/transacoes";
@@ -19,13 +20,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 function hojeISO() {
   const hoje = new Date();
@@ -38,6 +32,7 @@ function hojeISO() {
 const TIPOS = [
   { valor: "SAIDA", rotulo: "Saída", Icone: ArrowUpCircle },
   { valor: "ENTRADA", rotulo: "Entrada", Icone: ArrowDownCircle },
+  { valor: "INVESTIMENTO", rotulo: "Investimento", Icone: PiggyBank },
 ];
 
 const MEIOS = [
@@ -108,7 +103,6 @@ const FORM_INICIAL = {
   numeroParcelas: 1,
   descricao: "",
   dataCompra: hojeISO(),
-  ehInvestimento: false,
   contaInvestimentoId: "",
   recorrente: false,
   numeroMeses: "3",
@@ -136,34 +130,33 @@ export function LancamentoClient({ contas }) {
   const ehContaCorrente = form.meio === "DEBITO";
   const ehParcelado = form.numeroParcelas > 1;
 
-  // Saída pode ser recorrente em conta corrente ou cartão (meio é sempre um
-  // dos dois); entrada recorrente só é permitida em conta corrente.
-  const recorrenteDisponivel = form.tipo === "SAIDA" ? true : ehContaCorrente;
+  // Saída e Investimento (aporte, sempre uma saída de conta corrente por
+  // trás) podem ser recorrentes em qualquer meio; entrada recorrente só é
+  // permitida em conta corrente.
+  const recorrenteDisponivel = form.tipo === "ENTRADA" ? ehContaCorrente : true;
 
   function selecionarMeio(meio) {
     const contaAindaValida =
       contas.find((c) => c.id === form.contaId)?.tipo ===
       (meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
-    const recorrenteAindaValido = form.tipo === "SAIDA" ? true : meio === "DEBITO";
+    const recorrenteAindaValido = form.tipo === "ENTRADA" ? meio === "DEBITO" : true;
 
     setForm({
       ...form,
       meio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(meio)[0]?.id ?? "",
       numeroParcelas: meio === "CREDITO" ? form.numeroParcelas : 1,
-      ehInvestimento: meio === "DEBITO" ? form.ehInvestimento : false,
-      contaInvestimentoId: meio === "DEBITO" ? form.contaInvestimentoId : "",
       recorrente: form.recorrente && recorrenteAindaValido,
     });
   }
 
   function selecionarTipo(tipo) {
-    // Só existe entrada no débito — troca o meio automaticamente.
-    const novoMeio = tipo === "ENTRADA" ? "DEBITO" : form.meio;
+    // Só existe entrada e investimento no débito — troca o meio automaticamente.
+    const novoMeio = tipo === "ENTRADA" || tipo === "INVESTIMENTO" ? "DEBITO" : form.meio;
     const contaAindaValida =
       contas.find((c) => c.id === form.contaId)?.tipo ===
       (novoMeio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
-    const recorrenteAindaValido = tipo === "SAIDA" ? true : novoMeio === "DEBITO";
+    const recorrenteAindaValido = tipo === "ENTRADA" ? novoMeio === "DEBITO" : true;
 
     setForm({
       ...form,
@@ -171,8 +164,7 @@ export function LancamentoClient({ contas }) {
       meio: novoMeio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
       recorrente: form.recorrente && recorrenteAindaValido,
-      // Entrada recorrente não pode ser marcada como investimento (resgate).
-      ehInvestimento: tipo === "ENTRADA" && form.recorrente ? false : form.ehInvestimento,
+      contaInvestimentoId: tipo === "INVESTIMENTO" ? form.contaInvestimentoId : "",
     });
   }
 
@@ -200,12 +192,7 @@ export function LancamentoClient({ contas }) {
       recorrente: marcado,
       // Recorrente e Parcelado são mutuamente exclusivos.
       numeroParcelas: marcado ? 1 : form.numeroParcelas,
-      ehInvestimento: marcado && form.tipo === "ENTRADA" ? false : form.ehInvestimento,
     });
-  }
-
-  function marcarInvestimento(marcado) {
-    setForm({ ...form, ehInvestimento: marcado });
   }
 
   async function handleSubmit(e) {
@@ -213,6 +200,11 @@ export function LancamentoClient({ contas }) {
     setErro("");
     setSucesso("");
     setCarregando(true);
+
+    // Investimento é um tipo só na UI — internamente é uma Saída marcada
+    // como aporte (Design §8.2.4, "sem mudança de schema").
+    const tipoReal = form.tipo === "INVESTIMENTO" ? "SAIDA" : form.tipo;
+    const ehInvestimento = form.tipo === "INVESTIMENTO";
 
     const resultado = ehParcelado
       ? await criarTransacaoParcelada({
@@ -225,25 +217,25 @@ export function LancamentoClient({ contas }) {
         })
       : form.recorrente
       ? await criarTransacaoRecorrente({
-          tipo: form.tipo,
+          tipo: tipoReal,
           descricao: form.descricao,
           categoria: form.categoria,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
           valor: form.valorCentavos / 100,
           numeroMeses: form.numeroMeses,
-          ehInvestimento: form.ehInvestimento,
-          contaInvestimentoId: form.ehInvestimento ? form.contaInvestimentoId : undefined,
+          ehInvestimento,
+          contaInvestimentoId: ehInvestimento ? form.contaInvestimentoId : undefined,
         })
       : await criarTransacao({
-          tipo: form.tipo,
+          tipo: tipoReal,
           valor: form.valorCentavos / 100,
           descricao: form.descricao,
           categoria: form.categoria,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
-          ehInvestimento: form.ehInvestimento,
-          contaInvestimentoId: form.ehInvestimento ? form.contaInvestimentoId : undefined,
+          ehInvestimento,
+          contaInvestimentoId: ehInvestimento ? form.contaInvestimentoId : undefined,
         });
 
     setCarregando(false);
@@ -254,10 +246,11 @@ export function LancamentoClient({ contas }) {
     }
 
     setSucesso("Lançamento salvo com sucesso.");
-    // Tipo, Meio, Conta, Categoria e Data tendem a se repetir entre
-    // lançamentos consecutivos (ex.: várias compras seguidas no mesmo
-    // cartão, na mesma categoria, no mesmo dia) — só esses sobrevivem ao
-    // reset (Task 80 e Task 85).
+    // Tipo, Meio, Conta, Categoria, Data e Conta de destino tendem a se
+    // repetir entre lançamentos consecutivos (ex.: várias compras seguidas
+    // no mesmo cartão, na mesma categoria, no mesmo dia; ou aportes
+    // seguidos pra mesma conta de investimento) — só esses sobrevivem ao
+    // reset (Task 80, Task 85 e Task 86).
     setForm({
       ...FORM_INICIAL,
       tipo: form.tipo,
@@ -265,6 +258,7 @@ export function LancamentoClient({ contas }) {
       contaId: form.contaId,
       categoria: form.categoria,
       dataCompra: form.dataCompra,
+      contaInvestimentoId: form.contaInvestimentoId,
     });
     valorInputRef.current?.focus();
   }
@@ -281,20 +275,35 @@ export function LancamentoClient({ contas }) {
           <div className="flex flex-col gap-2">
             <Label>Meio</Label>
             <ToggleSegmentado
-              opcoes={form.tipo === "ENTRADA" ? MEIOS.filter((m) => m.valor === "DEBITO") : MEIOS}
+              opcoes={
+                form.tipo === "ENTRADA" || form.tipo === "INVESTIMENTO"
+                  ? MEIOS.filter((m) => m.valor === "DEBITO")
+                  : MEIOS
+              }
               valorAtual={form.meio}
               onSelecionar={selecionarMeio}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>Conta</Label>
+            <Label>{form.tipo === "INVESTIMENTO" ? "Conta de origem" : "Conta"}</Label>
             <Chips
               opcoes={contasDoMeio(form.meio).map((c) => ({ valor: c.id, rotulo: c.nome }))}
               valorAtual={form.contaId}
               onSelecionar={selecionarConta}
             />
           </div>
+
+          {form.tipo === "INVESTIMENTO" && (
+            <div className="flex flex-col gap-2">
+              <Label>Conta de destino</Label>
+              <Chips
+                opcoes={contasInvestimento.map((c) => ({ valor: c.id, rotulo: c.nome }))}
+                valorAtual={form.contaInvestimentoId}
+                onSelecionar={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
+              />
+            </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label>Categoria</Label>
@@ -383,35 +392,6 @@ export function LancamentoClient({ contas }) {
                     value={form.numeroMeses}
                     onChange={(e) => setForm({ ...form, numeroMeses: e.target.value })}
                   />
-                </div>
-              )}
-            </div>
-          )}
-
-          {ehContaCorrente && !(form.recorrente && form.tipo === "ENTRADA") && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox id="ehInvestimento" checked={form.ehInvestimento} onCheckedChange={marcarInvestimento} />
-                <Label htmlFor="ehInvestimento">É investimento</Label>
-              </div>
-              {form.ehInvestimento && (
-                <div className="flex flex-col gap-2 pl-6">
-                  <Label htmlFor="contaInvestimentoId">Conta de investimento</Label>
-                  <Select
-                    value={form.contaInvestimentoId}
-                    onValueChange={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
-                  >
-                    <SelectTrigger id="contaInvestimentoId">
-                      <SelectValue placeholder="Selecione a conta de investimento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {contasInvestimento.map((conta) => (
-                        <SelectItem key={conta.id} value={conta.id}>
-                          {conta.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               )}
             </div>
