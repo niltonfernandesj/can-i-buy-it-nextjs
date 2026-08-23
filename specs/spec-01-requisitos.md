@@ -32,9 +32,10 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - O administrador não pode retirar a própria condição de administrador nem alterar o próprio e-mail por essa tela — do contrário perderia o acesso sem caminho de volta pela aplicação.
 2. **Lançamento manual de transações**
    - Tela para registrar transações de **entrada** (receita) e **saída** (despesa).
-   - Campos: valor, data, descrição, tipo (entrada/saída), categoria.
+   - Campos: valor, data, descrição, tipo, categoria.
    - Transações são atribuídas ao usuário que as criou, mas visíveis a todos.
-   - Após salvar um lançamento com sucesso, o formulário limpa a maioria dos campos, mas mantém **Tipo, Conta e Data** preenchidos — os três campos mais prováveis de se repetir entre lançamentos consecutivos (ex.: registrar várias compras seguidas no mesmo cartão, no mesmo dia — revisado, Task 80).
+   - Após salvar um lançamento com sucesso, o formulário limpa a maioria dos campos, mas mantém **Tipo, Conta, Categoria e Data** preenchidos — os campos mais prováveis de se repetir entre lançamentos consecutivos (ex.: registrar várias compras seguidas no mesmo cartão, no mesmo dia, na mesma categoria — revisado, Task 80 e Task 85).
+   - **Tipo (revisado — Task 86):** o usuário escolhe entre três opções — **Entrada**, **Saída** ou **Investimento** — pra reduzir a fricção de marcar um aporte, hoje uma marcação secundária (checkbox) sobre Saída. A escolha de Tipo continua determinando internamente se a transação é uma entrada ou uma saída (seção 6, abaixo) — "Investimento" nesta tela sempre corresponde a uma saída (aporte); não há opção equivalente pra resgate, que continua sendo lançado como uma Entrada comum (seção 6).
 3. **Edição e exclusão**
    - Qualquer transação já lançada pode ser editada ou apagada livremente (sem histórico de alterações no MVP).
 4. **Categorias**
@@ -49,15 +50,16 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - A criação de uma conta acontece direto no formulário específico do tipo — o usuário inicia a criação a partir da seção daquele tipo (Contas correntes, Cartões de crédito ou Contas de investimento), que já define o tipo, sem uma etapa separada de escolha (revisado — Task 75; a versão original desta seção previa uma etapa de escolha de tipo antes do formulário, substituída por decisão do usuário visando consistência com a tela de Valores padrão).
    - Contas são compartilhadas entre os membros da família, assim como as transações.
 6. **Marcação de investimento (aporte/resgate)**
-   - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte ou resgate, e não um gasto/renda comum.
-   - Aporte: saída vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de destino.
-   - Resgate: entrada vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de origem.
+   - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte, e não um gasto comum.
+   - Aporte: saída vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de destino. **Lançado escolhendo Tipo = Investimento (revisado — Task 86)** — deixa de existir como uma marcação secundária (checkbox) sobre uma saída comum; ao escolher esse Tipo, a tela pede diretamente a Conta de origem (a conta corrente) e a Conta de destino (a conta de investimento).
+   - Resgate: uma entrada comum, vinda de uma conta de investimento — **sem marcação nem conta de investimento vinculada na tela de lançamento (revisado — Task 86)**. A capacidade de vincular uma entrada a uma conta de investimento de origem existe no modelo de dados mas não tem mais superfície de uso — na prática, o usuário registra um resgate como qualquer outra Entrada.
 7. **Visão mensal (tela de acompanhamento financeiro mensal)**
    - Resumo mensal (total de entradas, total de saídas, disponível).
    - Sem gráficos ou análises visuais no MVP — foco em acompanhamento operacional e consulta das movimentações consolidadas do período.
    - Ver especificação detalhada na seção 3.1 abaixo.
 8. **Parcelamento de compras no crédito**
    - Ao lançar uma saída no crédito, o usuário pode definir quantidade de parcelas e valor da parcela.
+   - **Integrado ao campo Valor (revisado — Task 85):** a quantidade de parcelas deixa de ser uma marcação secundária (checkbox "Parcelado") com campos próprios — vira um controle sempre visível junto do campo Valor (só quando a conta escolhida é Cartão de crédito), começando em 1 (uma parcela = compra não parcelada, comportamento padrão). A partir de 2, o próprio campo Valor passa a significar "valor de cada parcela", e uma legenda mostra o total da compra calculado a partir do valor e da quantidade informados.
    - Ver especificação detalhada na seção 3.2 abaixo.
 9. **Tela de listagem de transações (tabela)**
    - Visualização tabular de todas as transações lançadas, uma linha por registro.
@@ -71,9 +73,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
     - **No desktop**, a barra lateral exibe os cinco destinos simultaneamente, com os dois grupos separados apenas por um **divisor** (sem rótulos de grupo).
     - Uma ação global "+ Nova transação" fica acessível a partir de qualquer área, abrindo diretamente o formulário completo de lançamento (sem etapa de pré-seleção de tipo).
     - Um menu do usuário logado, acessível a partir de qualquer área, exibe o nome do usuário autenticado e permite fazer logoff da aplicação, redirecionando para a tela de login.
-11. **Transação recorrente**
-    - Uma saída (no débito ou no crédito) ou uma entrada (só em Conta corrente) pode ser marcada como recorrente, repetindo o mesmo valor, conta, categoria e descrição por uma quantidade de meses definida pelo usuário.
-    - Ver especificação detalhada na seção 3.4 abaixo.
+11. ~~**Transação recorrente**~~ — **removido (Task 87).** A funcionalidade descrita originalmente na seção 3.4 (saída recorrente no débito ou crédito; entrada recorrente só em conta corrente) sai da aplicação por completo — schema, backend e tela de lançamento. No débito, já era redundante com despesa padrão (seção 3.5, que oferece conferência mensal de verdade, sem exigir comprometer valor/prazo de antemão) e receita padrão (mesma seção, pro lado da entrada). No crédito, era usada principalmente pra assinaturas — sem substituto imediato até que uma futura funcionalidade de gestão de assinaturas exista; até lá, uma assinatura no crédito volta a ser lançada manualmente, mês a mês, sem nenhum rastro de que é recorrente. Ver seção 3.4 (abaixo) e Design §5/§8.2.4 pro detalhe do que sai.
 12. **Valores padrão**
     - O usuário mantém duas listas de valores mensais: **receitas padrão**, que entram integralmente em todo mês (renda perpétua, sem data de término), e **despesas padrão**, que estimam o gasto corrente dos meses ainda não realizados.
     - Ver especificação detalhada na seção 3.5 abaixo.
@@ -131,23 +131,14 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   4. Conta (nome/apelido)
   5. Valor
 - **Data efetiva**, não Data da compra: é a data que determina o mês/fatura em que a transação realmente é cobrada. Numa compra parcelada, a Data da compra é a mesma em todas as parcelas — só a Data efetiva distingue quando cada parcela ocorre.
-- Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X"), recorrência ("X de X") e marcação de investimento.
-- Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data do lançamento, Mês de referência **por extenso**, Parcela, Recorrência, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre), 3.2 (parcelas: apagar isolada vs. apagar as restantes) e 3.4 (recorrência: mesmo padrão).
+- Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X") e marcação de investimento. ~~Recorrência ("X de X")~~ — **removido (Task 87)**, junto com a funcionalidade em si.
+- Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data do lançamento, Mês de referência **por extenso**, Parcela, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre) e 3.2 (parcelas: apagar isolada vs. apagar as restantes).
 - **Filtros:** uma busca geral por descrição, mais filtros específicos por Conta, Categoria e Mês/Ano de referência — substitui o filtro por coluna individual usado até então.
 - Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
 
-### 3.4 Especificação — Lançamento de transação recorrente
+### 3.4 ~~Especificação — Lançamento de transação recorrente~~ (removida — Task 87)
 
-- Aplica-se a: saídas vinculadas a Conta corrente **ou** Cartão de crédito; e entradas, **apenas** vinculadas a Conta corrente.
-- Na tela de lançamento, o usuário marca a transação como **Recorrente** e informa a **quantidade de meses** (N ≥ 2) pelos quais ela deve se repetir.
-- **Recorrente** e **Parcelado** são mutuamente exclusivos — aplica-se apenas a saídas no crédito (parcelado não existe para entrada).
-- Ao salvar, o sistema cria **N transações**, uma por ocorrência, todas com o mesmo valor, conta, categoria e descrição, cada uma no mesmo dia do mês da data original, avançando um mês por ocorrência (ex: lançada dia 5/ago, as ocorrências seguintes caem em 5/set, 5/out...).
-  - Caso o dia da data original não exista em algum mês seguinte (ex: dia 31 num mês de 30 dias, ou 29/30/31 em fevereiro), a ocorrência daquele mês cai no último dia do mês — mesmo tratamento já usado no parcelamento (seção 3.2).
-- O **mês de referência** de cada ocorrência segue a mesma regra já definida para o tipo de conta vinculada (seção 3.1): mês da própria data para débito; mês de vencimento da fatura, calculado a partir da data daquela ocorrência, para crédito.
-- Cada ocorrência registra sua posição na recorrência (ex: "3 de 12") e todas as ocorrências de uma mesma recorrência compartilham um identificador de grupo — mecanismo análogo ao parcelamento, mas distinto dele (uma saída não é simultaneamente parcela e ocorrência recorrente).
-- **Edição e exclusão de ocorrências:** mesmo padrão já definido para parcelas (seção 3.2) — por padrão, afeta apenas a ocorrência selecionada; o usuário tem a opção adicional de propagar a ação (edição ou exclusão) para todas as ocorrências futuras da mesma recorrência.
-- Uma saída recorrente vinculada à Conta corrente pode também ser marcada como investimento (aporte), como qualquer saída no débito — as duas marcações são independentes.
-- Uma **entrada recorrente não pode** ser marcada como investimento (resgate) — combinação fora do escopo do MVP.
+Esta seção descrevia a funcionalidade de transação recorrente (saída no débito ou crédito; entrada só em conta corrente; N ocorrências geradas de uma vez, com posição "X de N" e propagação de edição/exclusão às ocorrências futuras — mesmo mecanismo do parcelamento, seção 3.2, mas um grupo distinto). O texto original é preservado no histórico do repositório; ver o motivo da remoção no item 11 (seção 3, acima) e o detalhe técnico do que sai em Design §5/§8.2.4.
 
 ### 3.5 Especificação — Valores padrão
 

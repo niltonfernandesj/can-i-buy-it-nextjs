@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Wallet,
+} from "lucide-react";
 import { criarTransacao, criarTransacaoParcelada, criarTransacaoRecorrente } from "@/lib/actions/transacoes";
-import { CATEGORIA_LABELS, TIPO_LABELS } from "@/lib/categorias";
-import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
+import { CATEGORIA_LABELS } from "@/lib/categorias";
+import { formatarReais } from "@/lib/moeda";
+import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,63 +35,162 @@ function hojeISO() {
   return `${ano}-${mes}-${dia}`;
 }
 
+const TIPOS = [
+  { valor: "SAIDA", rotulo: "Saída", Icone: ArrowUpCircle },
+  { valor: "ENTRADA", rotulo: "Entrada", Icone: ArrowDownCircle },
+];
+
+const MEIOS = [
+  { valor: "CREDITO", rotulo: "Crédito", Icone: CreditCard },
+  { valor: "DEBITO", rotulo: "Débito", Icone: Wallet },
+];
+
+// Toggle de um clique — Tipo e Meio só têm 2 opções, não justificam um
+// dropdown (Design §8.2.4). Estado selecionado em alto contraste
+// (bg-primary/text-primary-foreground), não uma variação sutil sobre
+// bg-muted — testado com o usuário via mock, contraste baixo demais.
+function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado }) {
+  return (
+    <div className="flex gap-0.5 rounded-md bg-muted p-0.5">
+      {opcoes.map((opcao) => (
+        <button
+          key={opcao.valor}
+          type="button"
+          onClick={() => onSelecionar(opcao.valor)}
+          disabled={desabilitado}
+          className={cn(
+            "flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+            valorAtual === opcao.valor
+              ? "bg-primary font-semibold text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <opcao.Icone className="h-3.5 w-3.5" />
+          {opcao.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Chips de um clique — Conta e Categoria (Design §8.2.4).
+function Chips({ opcoes, valorAtual, onSelecionar }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {opcoes.map((opcao) => (
+        <button
+          key={opcao.valor}
+          type="button"
+          onClick={() => onSelecionar(opcao.valor)}
+          className={cn(
+            "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+            valorAtual === opcao.valor
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-input bg-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {opcao.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const BOTAO_ICONE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground hover:text-foreground";
+const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded text-sm font-semibold text-muted-foreground hover:text-foreground";
+
 const FORM_INICIAL = {
   tipo: "SAIDA",
+  meio: "CREDITO",
   contaId: "",
-  valorCentavos: 0,
   categoria: "OUTROS",
+  valorCentavos: 0,
+  numeroParcelas: 1,
   descricao: "",
   dataCompra: hojeISO(),
   ehInvestimento: false,
   contaInvestimentoId: "",
-  parcelado: false,
-  numeroParcelas: "2",
-  valorParcelaCentavos: 0,
   recorrente: false,
   numeroMeses: "3",
 };
 
 export function LancamentoClient({ contas }) {
-  const [form, setForm] = useState(FORM_INICIAL);
+  const [form, setForm] = useState(() => ({
+    ...FORM_INICIAL,
+    contaId: contas.find((c) => c.tipo === "CARTAO_CREDITO")?.id ?? "",
+  }));
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const valorInputRef = useRef(null);
 
   const contasParaSelecao = contas.filter((c) => c.tipo !== "CONTA_INVESTIMENTO");
   const contasInvestimento = contas.filter((c) => c.tipo === "CONTA_INVESTIMENTO");
 
-  const contaSelecionada = contas.find((c) => c.id === form.contaId);
-  const ehContaCorrente = contaSelecionada?.tipo === "CONTA_CORRENTE";
-  const ehCartao = contaSelecionada?.tipo === "CARTAO_CREDITO";
+  function contasDoMeio(meio) {
+    const tipoConta = meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE";
+    return contasParaSelecao.filter((c) => c.tipo === tipoConta);
+  }
 
-  // Saída pode ser recorrente em conta corrente ou cartão; entrada recorrente
-  // só é permitida em conta corrente (não faz sentido em cartão de crédito).
-  const recorrenteDisponivel =
-    form.tipo === "SAIDA" ? ehCartao || ehContaCorrente : ehContaCorrente;
+  const ehCartao = form.meio === "CREDITO";
+  const ehContaCorrente = form.meio === "DEBITO";
+  const ehParcelado = form.numeroParcelas > 1;
 
-  function selecionarConta(contaId) {
-    const conta = contas.find((c) => c.id === contaId);
-    const recorrenteAindaValido =
-      form.tipo === "SAIDA"
-        ? conta?.tipo === "CONTA_CORRENTE" || conta?.tipo === "CARTAO_CREDITO"
-        : conta?.tipo === "CONTA_CORRENTE";
+  // Saída pode ser recorrente em conta corrente ou cartão (meio é sempre um
+  // dos dois); entrada recorrente só é permitida em conta corrente.
+  const recorrenteDisponivel = form.tipo === "SAIDA" ? true : ehContaCorrente;
+
+  function selecionarMeio(meio) {
+    const contaAindaValida =
+      contas.find((c) => c.id === form.contaId)?.tipo ===
+      (meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
+    const recorrenteAindaValido = form.tipo === "SAIDA" ? true : meio === "DEBITO";
+
     setForm({
       ...form,
-      contaId,
-      ehInvestimento: conta?.tipo === "CONTA_CORRENTE" ? form.ehInvestimento : false,
-      contaInvestimentoId: conta?.tipo === "CONTA_CORRENTE" ? form.contaInvestimentoId : "",
-      parcelado: conta?.tipo === "CARTAO_CREDITO" ? form.parcelado : false,
+      meio,
+      contaId: contaAindaValida ? form.contaId : contasDoMeio(meio)[0]?.id ?? "",
+      numeroParcelas: meio === "CREDITO" ? form.numeroParcelas : 1,
+      ehInvestimento: meio === "DEBITO" ? form.ehInvestimento : false,
+      contaInvestimentoId: meio === "DEBITO" ? form.contaInvestimentoId : "",
       recorrente: form.recorrente && recorrenteAindaValido,
     });
   }
 
-  function marcarParcelado(marcado) {
+  function selecionarTipo(tipo) {
+    // Só existe entrada no débito — troca o meio automaticamente.
+    const novoMeio = tipo === "ENTRADA" ? "DEBITO" : form.meio;
+    const contaAindaValida =
+      contas.find((c) => c.id === form.contaId)?.tipo ===
+      (novoMeio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
+    const recorrenteAindaValido = tipo === "SAIDA" ? true : novoMeio === "DEBITO";
+
     setForm({
       ...form,
-      parcelado: marcado,
-      tipo: marcado ? "SAIDA" : form.tipo,
-      ehInvestimento: marcado ? false : form.ehInvestimento,
-      recorrente: marcado ? false : form.recorrente,
+      tipo,
+      meio: novoMeio,
+      contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
+      recorrente: form.recorrente && recorrenteAindaValido,
+      // Entrada recorrente não pode ser marcada como investimento (resgate).
+      ehInvestimento: tipo === "ENTRADA" && form.recorrente ? false : form.ehInvestimento,
+    });
+  }
+
+  function selecionarConta(contaId) {
+    setForm({ ...form, contaId });
+  }
+
+  function ajustarParcelas(delta) {
+    setForm({ ...form, numeroParcelas: Math.max(1, Math.min(99, form.numeroParcelas + delta)) });
+  }
+
+  function somarDia(delta) {
+    const [ano, mes, dia] = form.dataCompra.split("-").map(Number);
+    const d = new Date(ano, mes - 1, dia);
+    d.setDate(d.getDate() + delta);
+    setForm({
+      ...form,
+      dataCompra: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
     });
   }
 
@@ -90,14 +198,14 @@ export function LancamentoClient({ contas }) {
     setForm({
       ...form,
       recorrente: marcado,
-      parcelado: marcado ? false : form.parcelado,
-      // Entrada recorrente não pode ser marcada como investimento (resgate).
+      // Recorrente e Parcelado são mutuamente exclusivos.
+      numeroParcelas: marcado ? 1 : form.numeroParcelas,
       ehInvestimento: marcado && form.tipo === "ENTRADA" ? false : form.ehInvestimento,
     });
   }
 
   function marcarInvestimento(marcado) {
-    setForm({ ...form, ehInvestimento: marcado, parcelado: marcado ? false : form.parcelado });
+    setForm({ ...form, ehInvestimento: marcado });
   }
 
   async function handleSubmit(e) {
@@ -106,13 +214,13 @@ export function LancamentoClient({ contas }) {
     setSucesso("");
     setCarregando(true);
 
-    const resultado = form.parcelado
+    const resultado = ehParcelado
       ? await criarTransacaoParcelada({
           descricao: form.descricao,
           categoria: form.categoria,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
-          valorParcela: form.valorParcelaCentavos / 100,
+          valorParcela: form.valorCentavos / 100,
           numeroParcelas: form.numeroParcelas,
         })
       : form.recorrente
@@ -146,10 +254,19 @@ export function LancamentoClient({ contas }) {
     }
 
     setSucesso("Lançamento salvo com sucesso.");
-    // Tipo, Conta e Data tendem a se repetir entre lançamentos consecutivos
-    // (ex.: várias compras seguidas no mesmo cartão, no mesmo dia) — só esses
-    // três sobrevivem ao reset (Task 80).
-    setForm({ ...FORM_INICIAL, tipo: form.tipo, contaId: form.contaId, dataCompra: form.dataCompra });
+    // Tipo, Meio, Conta, Categoria e Data tendem a se repetir entre
+    // lançamentos consecutivos (ex.: várias compras seguidas no mesmo
+    // cartão, na mesma categoria, no mesmo dia) — só esses sobrevivem ao
+    // reset (Task 80 e Task 85).
+    setForm({
+      ...FORM_INICIAL,
+      tipo: form.tipo,
+      meio: form.meio,
+      contaId: form.contaId,
+      categoria: form.categoria,
+      dataCompra: form.dataCompra,
+    });
+    valorInputRef.current?.focus();
   }
 
   return (
@@ -157,139 +274,66 @@ export function LancamentoClient({ contas }) {
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="tipo">Tipo</Label>
-            <Select
-              value={form.tipo}
-              onValueChange={(tipo) => setForm({ ...form, tipo })}
-              disabled={form.parcelado || form.recorrente}
-            >
-              <SelectTrigger id="tipo">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(TIPO_LABELS).map(([valor, label]) => (
-                  <SelectItem key={valor} value={valor}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Tipo</Label>
+            <ToggleSegmentado opcoes={TIPOS} valorAtual={form.tipo} onSelecionar={selecionarTipo} desabilitado={ehParcelado} />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="conta">Conta</Label>
-            <Select value={form.contaId} onValueChange={selecionarConta}>
-              <SelectTrigger id="conta">
-                <SelectValue placeholder="Selecione uma conta" />
-              </SelectTrigger>
-              <SelectContent>
-                {contasParaSelecao.map((conta) => {
-                  const IconeConta = TIPO_CONTA_ICONES[conta.tipo];
-                  return (
-                    <SelectItem key={conta.id} value={conta.id}>
-                      <span className="flex items-center gap-2">
-                        <IconeConta className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                        {conta.nome}
-                        <span className="text-xs text-muted-foreground">
-                          · {TIPO_CONTA_LABELS[conta.tipo]}
-                        </span>
-                      </span>
-                    </SelectItem>
-                  );
-                })}
-              </SelectContent>
-            </Select>
+            <Label>Meio</Label>
+            <ToggleSegmentado
+              opcoes={form.tipo === "ENTRADA" ? MEIOS.filter((m) => m.valor === "DEBITO") : MEIOS}
+              valorAtual={form.meio}
+              onSelecionar={selecionarMeio}
+            />
           </div>
 
-          {(ehCartao || ehContaCorrente) && (
-            <div className="flex flex-col gap-4 rounded-md border p-4">
-              {ehCartao && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="parcelado"
-                    checked={form.parcelado}
-                    onCheckedChange={marcarParcelado}
-                  />
-                  <Label htmlFor="parcelado">Parcelado</Label>
-                </div>
-              )}
+          <div className="flex flex-col gap-2">
+            <Label>Conta</Label>
+            <Chips
+              opcoes={contasDoMeio(form.meio).map((c) => ({ valor: c.id, rotulo: c.nome }))}
+              valorAtual={form.contaId}
+              onSelecionar={selecionarConta}
+            />
+          </div>
 
-              {form.parcelado && (
-                <div className="flex gap-4">
-                  <div className="flex flex-1 flex-col gap-2">
-                    <Label htmlFor="numeroParcelas">Nº de parcelas</Label>
-                    <Input
-                      id="numeroParcelas"
-                      type="number"
-                      min={1}
-                      required
-                      value={form.numeroParcelas}
-                      onChange={(e) => setForm({ ...form, numeroParcelas: e.target.value })}
-                    />
-                  </div>
-                  <CampoValor
-                    id="valorParcela"
-                    label="Valor da parcela"
-                    className="flex-1"
-                    valorCentavos={form.valorParcelaCentavos}
-                    onChange={(valorParcelaCentavos) => setForm({ ...form, valorParcelaCentavos })}
-                  />
-                </div>
-              )}
+          <div className="flex flex-col gap-2">
+            <Label>Categoria</Label>
+            <Chips
+              opcoes={Object.entries(CATEGORIA_LABELS).map(([valor, rotulo]) => ({ valor, rotulo }))}
+              valorAtual={form.categoria}
+              onSelecionar={(categoria) => setForm({ ...form, categoria })}
+            />
+          </div>
 
-              {!form.parcelado && recorrenteDisponivel && (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="recorrente"
-                    checked={form.recorrente}
-                    onCheckedChange={marcarRecorrente}
-                  />
-                  <Label htmlFor="recorrente">Recorrente</Label>
-                </div>
-              )}
-
-              {form.recorrente && (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="numeroMeses">Quantidade de meses</Label>
-                  <Input
-                    id="numeroMeses"
-                    type="number"
-                    min={2}
-                    required
-                    value={form.numeroMeses}
-                    onChange={(e) => setForm({ ...form, numeroMeses: e.target.value })}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {!form.parcelado && (
+          <div className="flex flex-col gap-2">
             <CampoValor
+              ref={valorInputRef}
               id="valor"
-              label="Valor"
+              label={ehParcelado ? "Valor da parcela" : "Valor"}
               valorCentavos={form.valorCentavos}
               onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
+              extra={
+                ehCartao && (
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => ajustarParcelas(-1)} aria-label="Menos uma parcela" className={BOTAO_PARCELA}>
+                      −
+                    </button>
+                    <span className="min-w-[1.75rem] text-center text-xs font-semibold tabular-nums">
+                      {form.numeroParcelas}x
+                    </span>
+                    <button type="button" onClick={() => ajustarParcelas(1)} aria-label="Mais uma parcela" className={BOTAO_PARCELA}>
+                      +
+                    </button>
+                  </div>
+                )
+              }
             />
-          )}
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="categoria">Categoria</Label>
-            <Select
-              value={form.categoria}
-              onValueChange={(categoria) => setForm({ ...form, categoria })}
-            >
-              <SelectTrigger id="categoria">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
-                  <SelectItem key={valor} value={valor}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {ehParcelado && (
+              <p className="text-xs text-muted-foreground">
+                {form.numeroParcelas}x de {formatarReais(form.valorCentavos / 100)} ={" "}
+                {formatarReais((form.valorCentavos * form.numeroParcelas) / 100)}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2">
@@ -304,34 +348,58 @@ export function LancamentoClient({ contas }) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="dataCompra">Data</Label>
-            <Input
-              id="dataCompra"
-              type="date"
-              required
-              value={form.dataCompra}
-              onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
-            />
+            <div className="flex items-center gap-1.5">
+              <button type="button" onClick={() => somarDia(-1)} aria-label="Dia anterior" className={BOTAO_ICONE}>
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <Input
+                id="dataCompra"
+                type="date"
+                required
+                value={form.dataCompra}
+                onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
+                className="text-center"
+              />
+              <button type="button" onClick={() => somarDia(1)} aria-label="Dia seguinte" className={BOTAO_ICONE}>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          {ehContaCorrente && !(form.recorrente && form.tipo === "ENTRADA") && (
-            <div className="flex flex-col gap-4 rounded-md border p-4">
+          {!ehParcelado && recorrenteDisponivel && (
+            <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Checkbox
-                  id="ehInvestimento"
-                  checked={form.ehInvestimento}
-                  onCheckedChange={marcarInvestimento}
-                />
+                <Checkbox id="recorrente" checked={form.recorrente} onCheckedChange={marcarRecorrente} />
+                <Label htmlFor="recorrente">Recorrente</Label>
+              </div>
+              {form.recorrente && (
+                <div className="flex flex-col gap-2 pl-6">
+                  <Label htmlFor="numeroMeses">Quantidade de meses</Label>
+                  <Input
+                    id="numeroMeses"
+                    type="number"
+                    min={2}
+                    required
+                    value={form.numeroMeses}
+                    onChange={(e) => setForm({ ...form, numeroMeses: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {ehContaCorrente && !(form.recorrente && form.tipo === "ENTRADA") && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Checkbox id="ehInvestimento" checked={form.ehInvestimento} onCheckedChange={marcarInvestimento} />
                 <Label htmlFor="ehInvestimento">É investimento</Label>
               </div>
-
               {form.ehInvestimento && (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 pl-6">
                   <Label htmlFor="contaInvestimentoId">Conta de investimento</Label>
                   <Select
                     value={form.contaInvestimentoId}
-                    onValueChange={(contaInvestimentoId) =>
-                      setForm({ ...form, contaInvestimentoId })
-                    }
+                    onValueChange={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
                   >
                     <SelectTrigger id="contaInvestimentoId">
                       <SelectValue placeholder="Selecione a conta de investimento" />

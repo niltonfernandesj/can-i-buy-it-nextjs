@@ -190,6 +190,8 @@ model Transacao {
 
   contaId           String
   conta             Conta         @relation("ContaPrincipal", fields: [contaId], references: [id])
+  // numeroOcorrencia/totalOcorrencias/recorrenciaId (recorrência) removidas
+  // na Task 87 — sem substituto até uma futura gestão de assinaturas.
 
   dataCompra        DateTime
   dataEfetiva       DateTime
@@ -200,11 +202,6 @@ model Transacao {
   numeroParcela     Int?
   totalParcelas     Int?
   parcelamentoId    String?
-
-  // Recorrência (null quando não é uma transação recorrente)
-  numeroOcorrencia  Int?
-  totalOcorrencias  Int?
-  recorrenciaId     String?
 
   // Investimento
   ehInvestimento    Boolean       @default(false)
@@ -221,7 +218,6 @@ model Transacao {
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
   @@index([parcelamentoId])
-  @@index([recorrenciaId])
 }
 
 model ValorPadrao {
@@ -364,7 +360,7 @@ function calcularFatura(dataCompra, diaFechamento, diaVencimento) {
 
 **Caso de borda — dia de fechamento maior que o número de dias do mês** (ex: fechamento dia 31, compra em fevereiro): como a comparação é numérica (`diaCompra > diaFechamento`) e fevereiro nunca tem dia 31, toda compra em fevereiro será automaticamente tratada como "antes do fechamento" — o que corresponde exatamente ao comportamento esperado (fechamento "no fim do mês"). Não é necessário tratamento especial.
 
-## 5. Algoritmos de parcelamento e recorrência
+## 5. Algoritmos de parcelamento ~~e recorrência~~ (recorrência removida — Task 87)
 
 ### 5.1 Parcelamento
 
@@ -444,64 +440,9 @@ function gerarParcelas(dataCompra, valorParcela, n, cartao) {
 
 O clamping garante que "dia 31" em fevereiro vire corretamente "dia 28" (ou 29, se bissexto) sem gerar datas inválidas — e mesmo assim a progressão de mês de referência continua avançando exatamente 1 mês por parcela.
 
-### 5.2 Recorrência
+### 5.2 ~~Recorrência~~ (removida — Task 87)
 
-Resolve a seção 3.4 dos Requisitos. Mais simples que parcelamento: cada ocorrência é uma transação "real" no seu próprio dia do mês (não uma parcela derivada da fatura anterior), então `dataCompra` **varia** por ocorrência — sem distinção entre data da compra e data efetiva.
-
-```javascript
-function proximaDataMensal(dataBase, mesesAFrente) {
-  const ano = dataBase.getFullYear();
-  const mes = dataBase.getMonth() + 1;
-  const dia = dataBase.getDate();
-
-  let novoMes = mes + mesesAFrente;
-  const novoAno = ano + Math.floor((novoMes - 1) / 12);
-  novoMes = ((novoMes - 1) % 12) + 1;
-
-  const diaClampado = Math.min(dia, ultimoDiaDoMes(novoAno, novoMes));
-  return new Date(novoAno, novoMes - 1, diaClampado);
-}
-
-/**
- * @param {Date} dataCompra
- * @param {number} valor
- * @param {number} n - quantidade de meses/ocorrências
- * @param {{ tipo: string, diaFechamento?: number, diaVencimento?: number }} conta
- */
-function gerarOcorrenciasRecorrencia(dataCompra, valor, n, conta) {
-  const recorrenciaId = cuid();
-  const ocorrencias = [];
-
-  for (let i = 1; i <= n; i++) {
-    const data = proximaDataMensal(dataCompra, i - 1);
-
-    const { mesReferencia, anoReferencia } =
-      conta.tipo === "CARTAO_CREDITO"
-        ? calcularFatura(data, conta.diaFechamento, conta.diaVencimento)
-        : { mesReferencia: data.getMonth() + 1, anoReferencia: data.getFullYear() };
-
-    ocorrencias.push({
-      numeroOcorrencia: i, totalOcorrencias: n, recorrenciaId,
-      dataCompra: data, dataEfetiva: data,
-      mesReferencia, anoReferencia, valor,
-    });
-  }
-
-  return ocorrencias; // inserir todas em uma transaction do Prisma
-}
-```
-
-`ultimoDiaDoMes` é reaproveitada da seção 5.1, sem duplicação.
-
-**Exemplo (débito, lançada 31/jan/2026, N=3):** 31/jan (mês de referência jan/2026) → 28/fev (fev/2026, clamp por 2026 não ser bissexto) → 31/mar (mar/2026).
-
-**Exemplo (crédito, fechamento dia 17 / vencimento dia 24, lançada 5/ago/2026, N=3):** cada ocorrência recalcula `calcularFatura` de forma independente (não em cadeia como no parcelamento, já que a data de cada ocorrência já é conhecida de antemão) — 5/ago → ago/2026, 5/set → set/2026, 5/out → out/2026.
-
-**Edição e exclusão:** `editarTransacao`/`apagarTransacao` (`lib/actions/transacoes.js`) precisam tratar linhas com `recorrenciaId !== null` com a mesma restrição de campos editáveis (valor/descrição/categoria) e a mesma opção `propagarParaRestantes` (`WHERE recorrenciaId = X AND dataEfetiva >= selecionada`) já usadas para `parcelamentoId !== null` (seção 5.1). Uma transação nunca tem `parcelamentoId` e `recorrenciaId` preenchidos ao mesmo tempo.
-
-**Validação por tipo:** `criarTransacaoRecorrente` (`lib/actions/transacoes.js`) passa a receber `tipo` (`ENTRADA` ou `SAIDA`) e usa `gerarOcorrenciasRecorrencia` sem alteração — a função já é agnóstica de tipo, só usa `conta`. A validação de entrada é:
-- `tipo = SAIDA`: `conta.tipo` deve ser `CONTA_CORRENTE` ou `CARTAO_CREDITO` (regra já existente).
-- `tipo = ENTRADA`: `conta.tipo` deve ser **apenas** `CONTA_CORRENTE`; rejeita se `ehInvestimento = true` (resgate recorrente fora do escopo).
+Esta seção descrevia `gerarOcorrenciasRecorrencia` (`lib/recorrencia.js`, arquivo removido por completo) e a validação de `criarTransacaoRecorrente` (também removida). O algoritmo em si — gerar N ocorrências mensais a partir de uma data base, com clamp de dia via `ultimoDiaDoMes` (seção 5.1, que continua existindo pro parcelamento) — não é mais necessário: a funcionalidade de transação recorrente saiu da aplicação (Requisitos §3, item 11, revisado). O texto original é preservado no histórico do repositório.
 
 ## 6. Regras de consolidação (Visão mensal)
 
@@ -514,8 +455,6 @@ Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já r
 
 Essas quatro queries alimentam os quatro blocos da Visão mensal (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
 
-Ocorrências de transação recorrente (entrada ou saída) são transações comuns (mesma `mesReferencia`/`anoReferencia` de qualquer outra) — nenhuma query de consolidação precisa mudar.
-
 ## 7. Telas e componentes principais
 
 Todas as rotas abaixo (exceto autenticação) compartilham a navegação persistente definida na seção 8.1, renderizada pelo `layout.jsx` do grupo `(protegido)`.
@@ -524,7 +463,7 @@ Todas as rotas abaixo (exceto autenticação) compartilham a navegação persist
 |---|---|---|
 | `/login`, `/cadastro` | Autenticação | Form + NextAuth |
 | `/contas` | CRUD de Contas | Criação por seção — um gatilho "+" por tipo, sem etapa de escolha (seção 8.2.3, revisado Task 75). Edição inline, mesmo mecanismo de Valores padrão. Listagem única, agrupada visualmente por tipo (Contas correntes, Cartões de crédito, Contas de investimento) |
-| `/lancamento` | Novo lançamento | Form com: tipo, conta (filtra campos seguintes conforme tipo de conta), valor, categoria, descrição, data, checkbox "É investimento" (+ select de conta de investimento), e se conta = cartão: checkbox "Parcelado" (+ nº parcelas, valor da parcela). Checkbox "Recorrente" (+ nº de meses): disponível para saída em Conta corrente ou Cartão de crédito, **e também para entrada em Conta corrente** (não para entrada em Cartão de crédito); mutuamente exclusivo com "Parcelado" (só existe p/ saída no crédito). Quando "Recorrente" + tipo Entrada, o checkbox "É investimento" fica indisponível (resgate recorrente fora do escopo — seção 5.2). **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária. **Ao salvar (revisado, Task 80):** o formulário reseta pro padrão, exceto tipo/conta/data, que permanecem com o valor recém-usado — reduz a repetição ao lançar várias transações seguidas com a mesma conta/data |
+| `/lancamento` | Novo lançamento | Redesenhado nas Tasks 85-87 (§8.2.4) — Tipo (Entrada/Saída/Investimento) e Meio (Crédito/Débito) em toggles de um clique; Conta e Categoria em chips; parcelas integradas ao campo Valor; data com navegação ‹ ›; foco automático pro campo Valor após salvar. **Também é o destino direto da ação global "+ Nova transação"** (seção 8.1) — sem tela intermediária |
 | `/visao-mensal` | Visão mensal (renomeada de `/acompanhamento` → `/visao-geral`, ver seção 8.5) | Cabeçalho (título + ação "+ Nova transação"), seletor de mês/ano, resumo de 3 indicadores, 4 blocos em sequência vertical (Entradas, Investimentos, Saídas no débito, Saídas no crédito) com agrupamento diário e detalhamento via Popover/Sheet. Sem gráfico. Detalhamento completo na seção 8.3 |
 | `/transacoes` | Tabela | Tabela enxuta (5 colunas) com indicadores visuais compactos, barra de filtros acima (busca + Conta/Categoria/Mês-Ano), linha inteira clicável abrindo modal único de detalhe/edição/exclusão (seção 12) |
 
@@ -574,6 +513,46 @@ Tela única mostrando todas as contas simultaneamente, agrupadas visualmente por
 **Edição inline, não mais em Dialog (revisado — Task 75):** editar uma conta usava `EditarContaDialog`/`EditarContaConteudo` — passa a trocar a linha da conta por um formulário inline, mesmo mecanismo de `FormularioInline` já usado em Valores padrão, reaproveitando os campos de `CamposConta` (nome, e para cartão, dia de fechamento/vencimento). A regra de bloqueio de `tipo`/`diaFechamento`/`diaVencimento` quando a conta já tem transações vinculadas (§17.4) continua idêntica — os campos ficam desabilitados dentro do formulário inline, com a mesma explicação de hoje.
 
 **Ícones no lugar de botões de texto (revisado — Task 75):** "Editar" (`Button variant="outline"`) e "Apagar" (`Button variant="destructive"`, vermelho sólido) por linha viram ícones discretos — `Pencil`/`Trash2` (`lucide-react`), `text-muted-foreground` em repouso, sem cor de destaque. No hover: editar vai para `text-foreground`; apagar vai para um tom vermelho suave (não o vermelho sólido do botão antigo). Mesmo espírito do ícone de lápis já validado na consolidação de receita padrão da Visão mensal (§13.5). `window.confirm` antes de apagar continua como está — só o gatilho visual muda.
+
+#### 8.2.4 Lançamento (`/lancamento`) — redesenho de redução de fricção (Tasks 85-87)
+
+Motivação: o uso mais comum não é um lançamento isolado, é uma **sequência** — várias saídas no crédito lançadas em conjunto, olhando a fatura/extrato do cartão. Cada clique/campo evitável pesa multiplicado pela quantidade de lançamentos da sequência. Validado com o usuário via entrevista de requisitos + mock em HTML interativo (várias rodadas, incluindo comparação de mecanismos de alternância e posições de controle) antes de qualquer código.
+
+**Ordem final dos campos** (revisado — Task 85; Categoria muda de posição, hoje vem depois de Valor): Tipo → Meio → Conta (+ Conta de destino, só com Tipo = Investimento) → Categoria → Valor (+ parcelas) → Descrição → Data → "Lançar".
+
+**Tipo — toggle de um clique, três opções (revisado — Tasks 85 e 86):** substitui o `Select` (dropdown) — só 2 ou 3 opções não justificam abrir/fechar uma lista. Duas opções antes da Task 86 (Entrada/Saída), três depois (**+ Investimento**, ver abaixo). Ícones: `ArrowUpCircle`/`ArrowDownCircle` (mesmos do cabeçalho dos blocos Saídas/Entradas na Visão mensal), `PiggyBank` pro Investimento (mesmo do bloco Investimentos). Estado selecionado em alto contraste — fundo `bg-primary`/texto `text-primary-foreground` (mesmo tratamento dos chips de Categoria/Conta, abaixo), não a variação sutil `bg-card` sobre `bg-muted` cogitada e descartada por baixo contraste.
+
+**Meio — campo novo, mesmo padrão de toggle (Task 85):** Crédito/Débito, ícones `CreditCard`/`Wallet` (mesmos já usados em `TIPO_CONTA_ICONES`, `lib/contas.js`). Filtra os chips de Conta abaixo. A opção Crédito **some** (não fica só desabilitada) quando:
+- Tipo = Entrada — só existe entrada no débito (regra de negócio já vigente, agora explícita na UI: antes o formulário aceitava criar uma entrada em conta de cartão sem nenhum aviso).
+- Tipo = Investimento (Task 86) — aporte sempre parte da conta corrente.
+
+Nos dois casos, Meio é forçado pra Débito automaticamente ao trocar de Tipo.
+
+**Conta — chips em vez de `Select` (Task 85):** filtrados pelo Meio selecionado; trocar o Meio já pré-seleciona o primeiro chip visível, sem deixar o campo vazio. Rótulo do campo vira **"Conta de origem"** quando Tipo = Investimento (Task 86) — em qualquer outro Tipo, continua "Conta".
+
+**Investimento — Tipo próprio, não mais checkbox (revisado — Task 86):** hoje é uma marcação secundária ("É investimento") dentro de um bloco condicional sob Saída + Débito, fácil de passar despercebida. Passa a ser a terceira opção do toggle de Tipo. Ao selecioná-la:
+- Meio força Débito (acima).
+- Nasce um campo novo, **"Conta de destino"**, logo abaixo de Conta — mesmos chips que hoje ficam sob o checkbox "É investimento", só que sempre visíveis nesse contexto, não atrás de mais uma marcação.
+- **Sem mudança de schema** (decisão explícita do usuário, opção mais simples entre as duas cogitadas): `Transacao.tipo` continua `ENTRADA | SAIDA`; escolher Tipo = Investimento no formulário grava exatamente o que já é gravado hoje pro aporte — `tipo: SAIDA, ehInvestimento: true, contaId` (conta de origem), `contaInvestimentoId` (conta de destino). A Task 86 é inteiramente de apresentação — nenhuma Server Action muda de assinatura.
+- **Resgate não ganha nada dedicado.** Na prática, o usuário nunca marcou uma entrada como resgate (`ehInvestimento` numa `ENTRADA`) — resgate já era só lançado como uma Entrada comum. O campo `contaInvestimentoId`/a possibilidade de uma `ENTRADA` ter `ehInvestimento = true` continuam existindo no schema (não há necessidade de removê-los — outra transação já os usa, do lado do aporte) mas perdem toda superfície de uso a partir desta task; a tag "Resgate de investimento" (Visão mensal, bloco Entradas) só volta a aparecer pra lançamentos antigos que já tinham essa marcação.
+
+**Categoria — chips em vez de `Select`, e passa a persistir (Task 85):** mesmo padrão de chips da Conta. Diferente de Conta (que não persistia até a Task 80, e passa a persistir só com ela), Categoria **nunca** persistia — a partir desta task, junta-se a Tipo/Conta/Data no reset seletivo pós-envio (revisão do comportamento da Task 80): mantém o valor do lançamento anterior, porque lançamentos seguidos de uma mesma sequência tendem a repetir categoria (ex.: vários itens de Mercado na mesma sessão).
+
+**Valor + Parcelas — integrados, sem checkbox "Parcelado" (Task 85):** hoje "Parcelado" é um checkbox que revela dois campos à parte ("Nº de parcelas", "Valor da parcela"), duplicando o que seria só o campo Valor. Passa a ser um único campo Valor, sempre visível, com um **stepper de parcelas** (`−`/`+` flanqueando um número, mesmo padrão visual da navegação de dia abaixo) **embutido dentro do próprio campo** (canto direito) — décima entre quatro posições comparadas com o usuário via mock (cabeçalho acima do campo, mesma linha do campo, abaixo do campo, embutido — “embutido” venceu por ser o mais compacto, um elemento a menos na tela).
+- Só aparece quando Meio = Crédito (parcelamento continua exclusivo de cartão de crédito, Requisitos §3.2).
+- Começa em **1** — o mínimo, e o caso comum (compra não parcelada). A partir de **2**, o rótulo do campo muda de "Valor" pra **"Valor da parcela"**, e uma legenda nasce abaixo do campo com o total calculado em tempo real (`Nx de R$ X = R$ Y`, recalculado a cada dígito) — sem exigir conta de cabeça pra conferir o total da compra.
+- Parcelas ≥ 2 força Tipo = Saída (parcelamento não existe pra entrada nem investimento) e **trava o toggle de Tipo** (fica esmaecido, sem clique) enquanto ativo — evita uma combinação inválida por trás do campo.
+- Nenhuma mudança em `criarTransacaoParcelada` nem no algoritmo de geração de parcelas (§5.1) — só a decisão "isso é parcelado" migra de um checkbox explícito pra `parcelas > 1`.
+
+**Data — navegação rápida (Task 85):** ganha botões `‹`/`›` (dia anterior/seguinte) flanqueando o campo `<input type="date">`, mesmo padrão visual (não o mesmo componente) do seletor de período da Visão mensal (§8.3.1). Resolve a fricção de trocar de dia usando o seletor nativo do navegador várias vezes numa mesma sequência de lançamentos que avança dia a dia.
+
+**Foco automático pós-envio (Task 85):** ao salvar com sucesso, o foco do teclado volta pro campo Valor — hoje fica parado no botão "Lançar", exigindo um clique manual no campo antes de continuar digitando o próximo lançamento. Importante especialmente pra quem lança em sequência via teclado (Enter já submete o formulário a partir de `CampoValor`/Descrição, sem precisar do mouse no botão).
+
+**Reset seletivo pós-envio (revisão consolidada, Tasks 80 + 85):** Tipo, Conta, Categoria e Data mantêm o valor do lançamento anterior; Valor, Descrição e a quantidade de parcelas (volta a 1) resetam.
+
+**Sem menu avançado / accordion:** decisão explícita do usuário — nenhuma opção (Parcelas, Investimento) fica escondida atrás de um controle de expandir/recolher; tudo permanece no fluxo visível do formulário.
+
+**Recorrência (Task 87):** ver Requisitos §3, item 11 (revisado) — a funcionalidade sai por completo, sem substituto imediato. Detalhe técnico (schema, `lib/recorrencia.js`, Server Actions, `/transacoes`) no Resumo de rastreabilidade e nas tasks de spec-03.
 
 ### 8.3 Detalhamento da Visão mensal
 
@@ -711,7 +690,6 @@ Esses cinco pontos devem virar tasks próprias no spec-03 antes ou durante o mar
 | Editar parcela propaga para as restantes? | Sim, por padrão só a parcela; opção de propagar para as restantes (simétrico à exclusão) |
 | Arquitetura de navegação principal (áreas, menu lateral, barra inferior, ação global) | Seção 8.1 — shell em `layout.jsx`; ação "+ Nova transação" linka direto para `/lancamento`, sem etapas de pré-seleção |
 | Fluxo de criação de Conta e organização da tela `/contas` | Seção 8.2.3 — wizard de 2 etapas (tipo → formulário específico) + listagem agrupada por tipo |
-| Algoritmo de geração de ocorrências recorrentes | Seção 5.2 — `gerarOcorrenciasRecorrencia`, mais simples que parcelamento (data varia por ocorrência, sem cadeia de fatura) |
 
 ## 11. Pendências que continuam em aberto
 
@@ -726,22 +704,21 @@ Resolve a seção 3.3 dos Requisitos. Em caso de conflito com a seção 7 ou qua
 
 ### 12.1 Tabela enxuta
 
-5 colunas visíveis: Data efetiva, Descrição, Categoria, Conta, Valor. A coluna de data usa `dataEfetiva` (não `dataCompra`) e a tabela é ordenada por ela — é o campo que já determina `mesReferencia`/`anoReferencia` em toda a aplicação (cálculo de fatura, consolidação da Visão mensal, filtro de Mês/Ano da seção 12.3); numa compra parcelada, `dataCompra` é idêntica em todas as parcelas, então não serve para distinguir quando cada uma ocorre. As demais informações hoje em colunas (Tipo, Data do lançamento, Mês de referência, Parcela, Recorrência, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2). O rótulo "Data do lançamento" (não "Data da compra") é usado no modal por ser neutro para entrada, saída e investimento — o campo continua sendo `dataCompra` no schema.
+5 colunas visíveis: Data efetiva, Descrição, Categoria, Conta, Valor. A coluna de data usa `dataEfetiva` (não `dataCompra`) e a tabela é ordenada por ela — é o campo que já determina `mesReferencia`/`anoReferencia` em toda a aplicação (cálculo de fatura, consolidação da Visão mensal, filtro de Mês/Ano da seção 12.3); numa compra parcelada, `dataCompra` é idêntica em todas as parcelas, então não serve para distinguir quando cada uma ocorre. As demais informações hoje em colunas (Tipo, Data do lançamento, Mês de referência, Parcela, É investimento, Conta de investimento) migram para o modal de detalhe (seção 12.2). O rótulo "Data do lançamento" (não "Data da compra") é usado no modal por ser neutro para entrada, saída e investimento — o campo continua sendo `dataCompra` no schema.
 
 **Indicadores visuais compactos** (sem coluna própria), junto à Descrição ou ao Valor:
 - **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão mensal), Saída na cor padrão do texto.
 - **Parcela**: badge "X de Y" (mesmo estilo de tag usado para "Resgate de investimento" na Visão mensal — `rounded-full bg-muted px-2 py-0.5 text-xs`).
-- **Recorrência**: badge "X de Y ↻", mesmo estilo.
-- **Investimento**: badge "Aporte" (saída) ou "Resgate" (entrada).
+- **Investimento**: badge "Aporte" (saída) ou "Resgate" (entrada — só aparece em lançamentos antigos, já que a tela de lançamento não oferece mais essa marcação pra entrada, Task 86).
 
-Uma linha pode acumular mais de um badge (ex.: saída recorrente marcada como aporte tem badge de Recorrência **e** de Investimento) — badges quebram linha se não couberem lado a lado.
+Uma linha pode acumular mais de um badge (ex.: saída parcelada marcada como aporte tem badge de Parcela **e** de Investimento) — badges quebram linha se não couberem lado a lado. ~~Badge de Recorrência ("X de Y ↻")~~ — **removido (Task 87)**, junto com a funcionalidade.
 
 ### 12.2 Modal de detalhe (view + edição + exclusão unificadas)
 
 Clicar em qualquer ponto da linha (não um botão/ícone específico) abre um único `Dialog` com:
-- Todos os campos do registro, nos mesmos moldes do formulário de edição já existente (`EditarTransacaoConteudo`) — editáveis ou travados seguindo a mesma regra já definida para parcela/recorrência.
+- Todos os campos do registro, nos mesmos moldes do formulário de edição já existente (`EditarTransacaoConteudo`) — editáveis ou travados seguindo a mesma regra já definida para parcela.
 - Botão "Salvar" (reaproveita `editarTransacao`).
-- Botão destrutivo "Apagar", que troca o conteúdo do **mesmo modal** para a confirmação de exclusão já existente (incluindo a opção de propagar para parcelas/ocorrências restantes) — sem sobrepor um segundo overlay.
+- Botão destrutivo "Apagar", que troca o conteúdo do **mesmo modal** para a confirmação de exclusão já existente (incluindo a opção de propagar para as parcelas restantes) — sem sobrepor um segundo overlay.
 
 Substitui os dois componentes atuais `EditarTransacaoDialog` e `ApagarTransacaoDialog` por um único `DetalheTransacaoDialog`, com estado interno `modo: "detalhe" | "confirmarExclusao"`.
 

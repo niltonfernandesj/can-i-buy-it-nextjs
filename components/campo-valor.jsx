@@ -1,10 +1,14 @@
 "use client";
 
+import { forwardRef } from "react";
 import { formatarCentavosParaReais } from "@/lib/moeda";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function CampoValor({ id, label, valorCentavos, onChange, className = "", ariaLabel }) {
+export const CampoValor = forwardRef(function CampoValor(
+  { id, label, valorCentavos, onChange, className = "", ariaLabel, extra },
+  ref
+) {
   // Formata o valor exibido a cada tecla, então a posição do cursor dentro do
   // texto formatado não é confiável para saber "onde" um novo dígito entrou —
   // por isso os dígitos são acumulados numericamente (como uma calculadora,
@@ -34,17 +38,27 @@ export function CampoValor({ id, label, valorCentavos, onChange, className = "",
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {label && <Label htmlFor={id}>{label}</Label>}
-      <Input
-        id={id}
-        type="text"
-        inputMode="numeric"
-        required
-        aria-label={label ? undefined : ariaLabel}
-        value={formatarCentavosParaReais(valorCentavos)}
-        onKeyDown={handleKeyDown}
-        onPaste={(e) => e.preventDefault()}
-        onChange={() => {}}
-      />
+      <div className="relative">
+        <Input
+          ref={ref}
+          id={id}
+          type="text"
+          inputMode="numeric"
+          required
+          aria-label={label ? undefined : ariaLabel}
+          value={formatarCentavosParaReais(valorCentavos)}
+          onKeyDown={handleKeyDown}
+          onPaste={(e) => e.preventDefault()}
+          onChange={() => {}}
+          className={extra ? "pr-24" : undefined}
+        />
+        {/* Slot pra um controle embutido dentro do próprio campo (ex.: stepper
+            de parcelas em /lancamento, Design §8.2.4) — opcional, sem efeito
+            quando omitido. */}
+        {extra && (
+          <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{extra}</div>
+        )}
+      </div>
     </div>
   );
-}
+});

@@ -525,6 +525,53 @@ Mock em HTML interativo validado com o usuário antes da implementação. Design
 
 ---
 
+## M22 — Redução de fricção no lançamento de transações
+
+Três tasks resolvendo Requisitos §3 itens 2, 6, 8 e 11 (revisados) e Design §8.2.4, validadas com o usuário numa entrevista de requisitos + mock em HTML interativo (várias rodadas — mecanismo de alternância de Tipo/Meio, posição do stepper de parcelas, Tipo Investimento) antes de qualquer código. Motivação: o uso mais comum não é um lançamento isolado, é uma sequência de vários lançamentos de crédito em conjunto, olhando a fatura do cartão — cada clique evitável pesa multiplicado pela sequência. Ordem: reorganização geral primeiro (86 e 87 partem do formulário já reorganizado); Investimento e remoção de Recorrência depois, cada uma isolada por tocarem áreas de risco diferentes (schema, em Recorrência).
+
+**Task 85. Reorganização geral do formulário de lançamento**
+Puramente o formulário em si — sem tocar em Investimento (Task 86) nem em Recorrência (Task 87), que continuam exatamente como estão até suas próprias tasks. Design §8.2.4 (que descreve cada elemento fielmente ao mock validado com o usuário).
+
+- **Tipo e Meio viram toggles de um clique** (`lancamento-client.jsx`), substituindo o `Select` de Tipo e introduzindo Meio como campo novo — mesmo padrão de segmented control já usado nesta sessão (crédito/débito da despesa padrão, Tarefa 77). Meio esconde a opção Crédito e força Débito quando Tipo = Entrada (regra de negócio já vigente — "só existe entrada no débito" — hoje só implícita, sem nenhum feedback visual quando violada).
+- **Conta e Categoria viram chips** de um clique, substituindo os dois `Select`. Conta continua filtrada pelo Meio (equivalente ao filtro por tipo de conta já existente); trocar o Meio pré-seleciona o primeiro chip visível.
+- **Categoria passa a persistir** entre lançamentos — entra no reset seletivo já existente da Task 80 (Tipo/Conta/Data), que passa a incluir Categoria também.
+- **Valor e Parcelas se fundem num único campo:** o checkbox "Parcelado" e os campos separados "Nº de parcelas"/"Valor da parcela" saem. Nasce um stepper de parcelas (`−`/`+`) embutido dentro do próprio campo Valor (canto direito, via `position: relative`/`absolute`), visível só quando Meio = Crédito, começando em 1. `parcelas > 1`: rótulo do campo vira "Valor da parcela", nasce uma legenda abaixo do campo com o total calculado em tempo real (`Nx de R$ X = R$ Y`), força Tipo = Saída, e trava (desabilita, via `pointer-events: none` + opacidade reduzida) o toggle de Tipo enquanto ativo. **Nenhuma mudança** em `criarTransacaoParcelada` nem no algoritmo de `gerarParcelas` (Design §5.1) — só a decisão "isso é parcelado" migra do estado do checkbox pro estado do stepper (`parcelas > 1` no lugar de `form.parcelado`).
+- **Data ganha navegação rápida:** botões `‹`/`›` (dia anterior/seguinte) flanqueando o `<input type="date">`, mesmo padrão visual do seletor de período da Visão mensal (sem reaproveitar o componente em si, só o padrão visual — contextos diferentes).
+- **Ordem dos campos:** Tipo → Meio → Conta → Categoria → Valor (+ parcelas) → Descrição → Data → "Lançar" (Categoria muda de posição — hoje vem depois de Valor).
+- **Foco automático:** após salvar com sucesso, o foco do teclado volta pro campo Valor (hoje fica parado no botão "Lançar").
+- **Sem menu avançado:** nenhuma opção fica escondida atrás de um accordion/"Mais opções" — tudo permanece visível no fluxo do formulário (o bloco de Parcelado/Recorrente/Investimento que hoje existe dentro de um `<div className="rounded-md border p-4">` condicional sai dessa estrutura).
+- **Sem mudança em:** schema, Server Actions (além do já citado não-uso do parâmetro de recorrência, que sai só na Task 87), `/transacoes`, `/visao-mensal`.
+
+*(Checkpoint: critério de aceite revisado do item 2 — spec-01 §6. QA de interface: alternar Tipo/Meio/Conta/Categoria só de clique; lançar uma saída simples e confirmar reset seletivo (Valor/Descrição limpos, Tipo/Conta/Categoria/Data mantidos) e foco de volta no Valor; lançar uma compra parcelada (parcelas > 1) e confirmar o total calculado, o Tipo travado em Saída, e que `criarTransacaoParcelada` recebe os valores certos; navegar a Data pelos botões ‹ ›.)*
+
+---
+
+**Task 86. Tipo "Investimento" substitui o checkbox "É investimento"**
+Puramente de apresentação — **sem mudança de schema** (decisão do usuário: manter `TipoTransacao` como `ENTRADA | SAIDA`, gravando aporte exatamente como já é gravado hoje). Parte do formulário já reorganizado pela Task 85. Design §8.2.4.
+
+- **Tipo ganha uma terceira opção, "Investimento"** (ícone `PiggyBank`, mesmo do bloco Investimentos da Visão mensal), ao lado de Entrada/Saída no toggle. Selecioná-la: força Meio = Débito e esconde a opção Crédito (mesma mecânica já usada pra Entrada na Task 85); nasce um campo novo, **"Conta de destino"**, logo abaixo de Conta, com os mesmos chips que hoje ficam sob o checkbox "É investimento" — sempre visíveis nesse contexto, não atrás de mais uma marcação. O rótulo do campo "Conta" vira **"Conta de origem"** enquanto Tipo = Investimento (volta a "Conta" nos outros dois Tipos).
+- **Mapeamento interno:** Tipo = Investimento no formulário → `criarTransacao({ tipo: "SAIDA", ehInvestimento: true, contaId: <conta de origem>, contaInvestimentoId: <conta de destino>, ... })` — idêntico ao que o checkbox já produzia. Nenhuma Server Action muda de assinatura.
+- **Checkbox "É investimento" e seu campo condicional saem** do formulário — junto com o `marcarInvestimento`/estado `ehInvestimento` do form local (a informação agora vem do Tipo escolhido, não de uma marcação à parte).
+- **Resgate não ganha nada dedicado.** Fica sem superfície de uso — `ehInvestimento`/`contaInvestimentoId` numa transação `ENTRADA` continuam existindo no schema (usados pelo lado do aporte, não removíveis), mas a tela de lançamento não oferece mais essa marcação pra entrada. A tag "Resgate de investimento" (Visão mensal, bloco Entradas) só volta a aparecer pra lançamentos antigos que já tinham essa marcação — comportamento aceito explicitamente pelo usuário.
+
+*(Checkpoint: critério de aceite revisado do item 6 — spec-01 §6. QA de interface: escolher Tipo = Investimento, confirmar que "Conta"/"Conta de investimento" viram "Conta de origem"/"Conta de destino", lançar um aporte e confirmar no banco que gravou `tipo: SAIDA, ehInvestimento: true` com as duas contas corretas — idêntico ao que o checkbox antigo gravava; confirmar que uma Entrada comum não tem mais nenhuma opção de conta de investimento.)*
+
+---
+
+**Task 87. Remoção completa de Recorrência**
+A mais arriscada das três — schema, backend e telas. Sem substituto imediato (Requisitos §3, item 11, revisado). Design §5.2 e §8.2.4.
+
+- **Schema/migration:** remove `Transacao.numeroOcorrencia`, `totalOcorrencias`, `recorrenciaId` (+ `@@index([recorrenciaId])`) via `ALTER TABLE ... DROP COLUMN`. Confirmado com o usuário: sem recorrência no débito em produção (nada a preservar ali); no crédito, existem séries já lançadas, mas a única funcionalidade vinculada às três colunas é a tag "X de Y ↻" em `/transacoes` (Design §12.1) — o usuário aceita explicitamente perdê-la. As transações em si (valor, descrição, categoria, data, conta) **não são apagadas**, só a marcação de série.
+- **`lib/recorrencia.js`** — arquivo inteiro removido (`gerarOcorrenciasRecorrencia`, `proximaDataMensal`; `ultimoDiaDoMes` continua em `lib/parcelamento.js`, usada só por ele).
+- **`lib/actions/transacoes.js`:** `criarTransacaoRecorrente` removida por completo. `grupoDaTransacao` perde o ramo `recorrenciaId` (só considera `parcelamentoId` daqui em diante). `editarTransacao`/`apagarTransacao` simplificam — `propagarParaRestantes` só se aplica a parcelamento.
+- **`lancamento-client.jsx`:** checkbox "Recorrente" e campo "Quantidade de meses" saem (já não apareciam mais no crédito desde a revisão intermediária do mock desta sessão — agora saem também do débito, e o código é removido, não só escondido).
+- **`transacoes-client.jsx`:** remove a tag "X de Y ↻" (`t.numeroOcorrencia`), o texto "Ocorrência X de Y de uma entrada/saída recorrente..." no modal de edição, e o checkbox "Aplicar às ocorrências restantes" (`ehRecorrencia`) — só a variante de parcela desse texto/checkbox continua.
+- **Testes:** `lib/recorrencia.test.js` removido junto com o arquivo que testa.
+
+*(Checkpoint: critério de aceite revisado do item 11 (removido) — spec-01 §6. Migration aplicada e `npx prisma migrate status` confirmando sincronia; suite de testes completa (sem `lib/recorrencia.test.js`); QA de interface: `/lancamento` não oferece mais "Recorrente" em nenhum meio; `/transacoes` não exibe mais a tag "X de Y ↻" nem o texto/checkbox de propagação de recorrência, inclusive numa transação antiga que já era parte de uma série (a tag simplesmente não aparece mais, a transação continua editável/visível normalmente).)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -550,3 +597,4 @@ Mock em HTML interativo validado com o usuário antes da implementação. Design
 | M19 | Escopo item 2 revisado — formulário de lançamento mantém Tipo/Conta/Data ao salvar |
 | M20 | Correção — agrupamento por dia na Visão mensal herdava horário de lançamento antigo |
 | M21 | Escopo item 7 revisado — cada seção da Visão mensal em card, e acompanhamento de fatura por cartão em Saídas no crédito |
+| M22 | Escopo itens 2, 6, 8, 11 revisados — redução de fricção no lançamento (Tipo/Meio/Conta/Categoria em toggles e chips, parcelas integradas ao Valor), Tipo Investimento, e remoção completa de Recorrência |
