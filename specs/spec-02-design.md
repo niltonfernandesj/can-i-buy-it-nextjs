@@ -632,7 +632,7 @@ export function formatarDataAgrupamento(data) {
 Sempre 2 casas decimais (ex.: "R$ 8.500,00", "R$ 42,50"), centavos nunca ocultados mesmo quando zero. **Sem mudança necessária em `lib/moeda.js`**: `formatarReais`/`formatarCentavosParaReais` já usam `toLocaleString` com `style: "currency", currency: "BRL"`, que já formata com 2 casas decimais fixas por padrão — basta reaproveitá-las nos componentes da Visão mensal.
 
 #### 8.3.12 Mês sem movimentações / estados vazios dos blocos
-Quando o período não tiver nenhuma movimentação em nenhum dos 4 blocos, a Visão mensal mantém sua estrutura padrão (sem estado vazio geral adicional). Cada bloco permanece visível, mostrando R$ 0,00 e uma mensagem contextual (ex.: "Nenhuma entrada neste mês.", "Nenhuma saída no débito neste mês.", "Nenhuma saída no crédito neste mês.", "Nenhum investimento neste mês."). Blocos vazios não são ocultados.
+Quando o período não tiver nenhuma movimentação em nenhum dos 4 blocos, a Visão mensal mantém sua estrutura padrão (sem estado vazio geral adicional). Cada bloco permanece visível, mostrando R$ 0,00 e uma mensagem contextual (ex.: "Nenhuma entrada neste mês.", "Nenhuma saída adicional no débito neste mês." — "adicional" porque a checklist de despesas padrão (Task 79, §13.6) já ocupa o bloco mesmo sem lançamento algum agrupado por dia —, "Nenhuma saída no crédito neste mês.", "Nenhum investimento neste mês."). Blocos vazios não são ocultados.
 
 #### 8.3.13 Destaque do dia atual
 Quando o período visualizado é o mês atual e existe agrupamento na data atual, esse dia recebe destaque visual sutil (indicador pequeno ou ajuste discreto de tipografia) — sem virar card nem fundo dominante. Não exibido para outros períodos.
