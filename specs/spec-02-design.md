@@ -609,8 +609,10 @@ Continua filtrado pelo mês de referência da fatura (seção 6); agrupado pelo 
 #### 8.3.6 Identidade visual dos blocos
 Mesma estrutura/padrão de leitura nos quatro blocos, diferenciados por ícone próprio e cor de destaque discreta associada ao tipo — usada só em elementos pontuais (ícones/indicadores), não em fundos totalmente coloridos.
 
-#### 8.3.7 Estrutura visual contínua
-Os quatro blocos são seções abertas da página (não cards independentes), separadas por espaçamento vertical e divisores sutis — como um extrato contínuo. Cabeçalho de cada bloco: ícone + nome + valor total consolidado na mesma linha (ex.: "▪ ENTRADAS R$ 8.500,00"). No mobile: ícone+título à esquerda, valor total à direita, mesma linha.
+#### 8.3.7 Estrutura visual dos blocos (revisado — Task 82)
+Os quatro blocos passam a ser **cards independentes** — borda (`border`) e cantos arredondados (`rounded-lg`), o mesmo `Card` do shadcn/ui já usado nos três indicadores do resumo (§8.3.2) — em vez de seções abertas separadas só por divisores sutis (`divide-y`), como era antes. O espaçamento vertical entre os cards (`gap-6`, mesmo valor já usado no `grid` do resumo) substitui o `divide-y` como elemento de separação — não há mais um "extrato contínuo", cada bloco é visualmente uma unidade própria. Cabeçalho de cada bloco, inalterado: ícone + nome + valor total consolidado na mesma linha (ex.: "▪ ENTRADAS R$ 8.500,00"), clicável para expandir/recolher. No mobile: ícone+título à esquerda, valor total à direita, mesma linha.
+
+Validado com o usuário via mock em HTML interativo antes da task — a alternância "Por dia"/"Por cartão" do §8.3.16 foi decidida no mesmo mock, mas é tarefa separada (Task 83): esta seção (8.3.7) é só o container visual, sem mudança de comportamento.
 
 Dentro de um bloco expandido, os valores padrão daquele meio vêm **antes** dos lançamentos agrupados por dia, separados deles por um divisor: receita padrão no bloco Entradas (§13.5) e despesas padrão no bloco Saídas no débito (§13.6, a partir da Task 79). Saídas no crédito não tem essa lista — a despesa padrão de crédito continua sendo um teto agregado, exibido na linha "Estimado restante" ao final do bloco.
 
@@ -648,6 +650,22 @@ Visualização consolidada por Conta de investimento: total aportado no mês no 
 
 #### 8.3.15 Tratamento de textos longos no detalhamento
 Descrições no detalhamento diário ocupam uma única linha, truncadas com reticências quando excedem o espaço (ex.: "Supermercado Extra Contagem... R$ 420,00"). Categoria e valor mantêm posicionamento fixo. Sem quebra automática em múltiplas linhas (`truncate` do Tailwind resolve isso diretamente).
+
+#### 8.3.16 Alternância "Por dia" / "Por cartão" — Saídas no crédito (Task 83)
+Resolve Requisitos 3.1 (bullet "Alternância de visão no bloco Saídas no crédito"). Apoia a **conferência manual** dos lançamentos do app contra o valor da fatura mostrado pelo banco — por isso o foco é o **total por cartão** em destaque, com a listagem de lançamentos como apoio pra achar onde está a diferença quando os totais não batem. Validado com o usuário via mock em HTML interativo (três mecanismos de alternância comparados lado a lado, com dados fictícios) antes desta task.
+
+**Mecanismo de alternância — abas, construídas à mão (sem nova dependência):** duas abas, "Por dia" e "Por cartão", no topo do corpo do bloco (abaixo do cabeçalho, só visível quando o bloco está expandido). Escolhida por preferência visual do usuário entre três opções comparadas no mock — as descartadas foram segmented control (toggle de dois botões) e select/dropdown (exige clique extra só pra ver as opções, desnecessário numa escolha binária sempre visível). O projeto **não tem** o componente `Tabs` do shadcn/ui instalado (nenhum `@radix-ui/react-tabs` no `package.json`) — como os outros controles simples já construídos à mão nesta base (ícones-botão da Task 75, checklist da Task 79), a alternância é dois `<button>` com `aria-selected`/`role="tab"` e uma borda inferior condicional (`border-b-2`) pro ativo, sem puxar uma dependência nova pra uma escolha binária. Troca de aba é só estado local (`useState`) no Client Component — sem navegação, sem re-fetch.
+
+**Visão "Por dia" (padrão, selecionada ao expandir o bloco):** comportamento atual, inalterado — `DetalheDiario` agrupando por dia, Popover no desktop/Sheet no mobile (§8.3.4).
+
+**Visão "Por cartão":** substitui o agrupamento por dia por uma lista de **subgrupos, um por cartão de crédito com lançamento no mês de referência exibido** — cartões sem movimentação no período não geram subgrupo (lista mais enxuta; a conferência é por cartão que teve gasto, não um checklist de "todo cartão cadastrado"). Cada subgrupo:
+- **Cabeçalho do subgrupo:** ícone de cartão de crédito (mesmo ícone do cabeçalho do bloco — `CreditCard`, `lucide-react` — porém em `text-muted-foreground`, não na cor de destaque do bloco; o vermelho fica reservado pro ícone do título, evitando repetir o mesmo destaque em cada subgrupo) + nome do cartão (`Conta.nome`), e o **total do cartão naquele mês** em destaque à direita (`font-semibold`, mesmo peso visual do total do bloco).
+- **Lançamentos do subgrupo:** uma linha por transação — descrição, data da compra (`DD/MM`, sem ano — mesma economia visual do agrupamento por dia) e valor — em ordem cronológica **crescente** (mesma convenção já usada em `orderBy: dataCompra: "asc"` no agrupamento por dia). Sem sub-agrupamento por dia dentro do subgrupo — é uma lista plana, o ponto é ver todos os lançamentos daquele cartão em sequência, não redescobrir agrupamento por data.
+- **Divisor tracejado** (`border-t border-dashed`) entre subgrupos consecutivos — mesmo tracejado já usado em outras separações "internas" de bloco (ex.: despesa padrão vs. agrupamento por dia no débito, §13.6).
+
+**Fonte dos dados:** nenhuma busca nova — a visão "Por cartão" reagrupa, no cliente, os mesmos dados já buscados por `buscarSaidasCredito` (mesmo mês de referência, já ordenados por `dataCompra`). Reagrupar por `transacao.conta.nome`/`conta.id` em vez de por dia é suficiente; `buscarSaidasCredito` já faz `include: { conta: true }`, então o nome do cartão já vem junto.
+
+**Linha "Estimado restante" (§16.2):** aparece igual nas duas visões, ao final do bloco, fora da área que alterna — não é reagrupada por cartão (continua sendo o teto agregado de todos os cartões, Requisitos 3.5).
 
 ### 8.4 Mapeamento sugerido de componentes
 

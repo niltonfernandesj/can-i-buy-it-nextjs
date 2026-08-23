@@ -640,7 +640,7 @@ function BlocoPorDia({
   const [expandido, setExpandido] = useState(false);
 
   return (
-    <section className="flex flex-col gap-4 py-6 first:pt-0 last:pb-0">
+    <Card className="flex flex-col gap-4 p-6">
       <CabecalhoBloco
         Icone={Icone}
         cor={cor}
@@ -685,7 +685,7 @@ function BlocoPorDia({
           )}
         </>
       )}
-    </section>
+    </Card>
   );
 }
 
@@ -701,7 +701,7 @@ function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
   const [expandido, setExpandido] = useState(false);
 
   return (
-    <section className="flex flex-col gap-2 py-6 first:pt-0 last:pb-0">
+    <Card className="flex flex-col gap-2 p-6">
       <CabecalhoBloco
         Icone={Icone}
         cor={cor}
@@ -734,7 +734,7 @@ function BlocoInvestimentos({ Icone, cor, total, investimentos }) {
             );
           })
         ))}
-    </section>
+    </Card>
   );
 }
 
@@ -810,7 +810,7 @@ export function VisaoMensalClient({
           disponivel={disponivel}
         />
 
-        <div className="flex flex-col divide-y divide-border mt-8">
+        <div className="flex flex-col gap-6 mt-8">
           <BlocoPorDia
             titulo="Entradas"
             Icone={ArrowDownCircle}

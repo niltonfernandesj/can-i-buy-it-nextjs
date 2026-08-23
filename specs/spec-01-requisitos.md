@@ -94,6 +94,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   2. **Investimentos** — total bruto aportado no mês, **separado por Conta de investimento** (não inclui resgates, que aparecem no bloco Entradas).
   3. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
   4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
+- Cada um dos quatro blocos é exibido como um **card independente** — borda e cantos arredondados, mesmo tratamento visual dos cards do resumo financeiro do mês (revisado, Task 82; substitui o layout anterior de seções abertas separadas só por divisores sutis).
 - Nos blocos 1, 2 e 3, as transações são **agrupadas e exibidas por dia** dentro do mês filtrado.
 - Quando aplicável (ver seção 3.5), os **valores padrão** entram nos blocos Entradas, Saídas no débito e Saídas no crédito como uma linha própria, **visualmente distinta dos lançamentos reais**. A distinção não é a mesma nos três blocos — segue a diferença de natureza da seção 3.5:
   - Em **Saídas no débito** e **Saídas no crédito**, a linha representa uma **estimativa** (teto ainda não consumido) — o tratamento visual deve comunicar incerteza, e a linha vem **depois** dos lançamentos reais do dia.
@@ -104,6 +105,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - A atribuição de uma compra no crédito à fatura correta é calculada a partir da **data da compra** e do **dia de fechamento** do cartão vinculado (algoritmo exato a ser detalhado na fase de Design).
   - Dentro do bloco "Saídas no crédito" de um mês de referência filtrado, os gastos são **agrupados pelo dia da compra original**, mas **exibidos dentro do mês de referência da fatura** à qual foram atribuídos — não no mês da data da compra.
   - **Racional:** o objetivo da tela é mostrar, para um mês filtrado, o que de fato precisa ser pago naquele mês (valor da fatura), e não o que foi gasto no crédito naquele mês. Por isso a filtragem/agrupamento por mês segue sempre o mês de referência (vencimento da fatura), mesmo que o agrupamento por dia dentro do bloco use a data original da compra.
+- **Alternância de visão no bloco Saídas no crédito (Task 83):** o usuário pode alternar entre **por dia** (padrão, comportamento acima, inalterado) e **por cartão** — nesta segunda opção, os lançamentos do mês de referência aparecem organizados em subgrupos, um por cartão de crédito com movimentação naquele mês (cartões sem lançamento no período não aparecem), cada subgrupo com um **total próprio em destaque** e a lista de seus lançamentos (descrição, data da compra, valor) em ordem cronológica crescente — sem agrupar por dia dentro do subgrupo. Existe pra apoiar a **conferência manual** dos lançamentos registrados no app contra o valor mostrado pelo banco na fatura de um cartão específico. A linha de estimativa ("Estimado restante") não muda entre as duas visões.
 
 ### 3.2 Especificação — Lançamento de compras parceladas no crédito
 

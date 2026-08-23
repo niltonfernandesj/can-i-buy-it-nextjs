@@ -489,6 +489,31 @@ Bug reportado pelo usuário — investigado, causa raiz confirmada por reproduç
 
 ---
 
+## M21 — Acompanhamento de fatura por cartão na Visão mensal
+
+Duas tasks entregando a funcionalidade descrita em Requisitos 3.1 (revisado) e Design §8.3.7/§8.3.16, validadas com o usuário numa entrevista de requisitos + mock em HTML interativo (duas rodadas: mecanismo de alternância, depois o card por seção) antes de qualquer código. Ordem de dependência: o container visual (card por seção) primeiro, a funcionalidade nova (alternância por cartão) depois — a Task 83 já assume que "Saídas no crédito" é um card.
+
+**Task 82. Cada seção da Visão mensal vira um card independente**
+Puramente visual — **sem mudança de comportamento, dado ou lógica**. Design §8.3.7 revisado.
+
+- **`visao-mensal-client.jsx`:** o container `<div className="flex flex-col divide-y divide-border mt-8">` que hoje envolve os quatro blocos (`BlocoPorDia`×3 + `BlocoInvestimentos`) é substituído por `<div className="flex flex-col gap-6 mt-8">` (mesmo `gap-6` já usado no grid do resumo, seção 8.3.2). Cada bloco (`BlocoPorDia`, `BlocoInvestimentos`) passa a renderizar sua própria `<section>` como um `Card` do shadcn/ui (`components/ui/card.jsx`, já usado no resumo) em vez do `<section className="flex flex-col gap-4 py-6 first:pt-0 last:pb-0">` atual — cabeçalho (`CabecalhoBloco`) e corpo continuam com a mesma estrutura interna, só a casca visual muda (borda + `rounded-lg` + padding do `Card`/`CardContent`, no lugar do `divide-y`/`py-6`).
+- **Sem mudança em:** `CabecalhoBloco`, `ListaReceitaPadrao`, `ListaDespesaPadrao`, `DetalheDiario`, `LinhaEstimado`, nenhuma Server Action, nenhuma query. É troca de wrapper, não de conteúdo.
+
+*(Checkpoint: critério de aceite revisado da Visão mensal — spec-01 §6 (novo bullet "cada bloco é um card independente"). QA de interface: confirmar visualmente os quatro blocos como cards distintos (borda + espaçamento entre eles, sem `divide-y`), expandir/recolher cada um, e conferir que nenhum dado/total mudou — é regressão pura de layout.)*
+
+---
+
+**Task 83. Alternância "Por dia" / "Por cartão" no bloco Saídas no crédito**
+A funcionalidade em si: apoiar a conferência manual dos lançamentos do app contra a fatura do banco. Design §8.3.16 (que descreve cada elemento fielmente ao mock validado com o usuário).
+
+- **`visao-mensal-client.jsx`:** o corpo do bloco "Saídas no crédito" ganha duas abas construídas à mão ("Por dia" / "Por cartão", sem nova dependência — Design §8.3.16), estado local (`useState`) controlando qual vista está ativa, default "Por dia". A vista "Por dia" é o `DetalheDiario` já existente, sem mudança. A vista "Por cartão" é um componente novo (`ListaPorCartao` ou nome equivalente) que reagrupa as mesmas `saidasCredito` já recebidas via prop — **sem nova busca** — por `transacao.conta.id`/`conta.nome`, omitindo cartões sem lançamento no mês. Cada subgrupo: cabeçalho com ícone `CreditCard` (`text-muted-foreground`, não a cor de destaque do bloco) + nome do cartão + total do subgrupo em destaque; lista de lançamentos (descrição, `DD/MM`, valor) em ordem crescente por `dataCompra`, sem agrupar por dia; divisor tracejado entre subgrupos consecutivos.
+- **`LinhaEstimado` ("Estimado restante"):** permanece fora da área que alterna, ao final do bloco, idêntica nas duas vistas — não reagrupada por cartão.
+- **Sem mudança em:** `buscarSaidasCredito` (já traz `conta` via `include`), `comporMes`, nenhuma Server Action, nenhum schema.
+
+*(Checkpoint: critério de aceite da seção 3.1 revisada — spec-01 §6. QA de interface: alternar entre as duas abas e conferir que os totais por cartão somam o total do bloco; um cartão sem lançamento no mês não aparece na vista "Por cartão"; a ordem cronológica dentro de um subgrupo; e que "Estimado restante" não muda ao trocar de aba.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -513,3 +538,4 @@ Bug reportado pelo usuário — investigado, causa raiz confirmada por reproduç
 | M18 | Escopo item 12 revisado — consolidação de despesa padrão no débito e acompanhamento de pagamentos (spec-01 §3.5 revisado e §3.9) |
 | M19 | Escopo item 2 revisado — formulário de lançamento mantém Tipo/Conta/Data ao salvar |
 | M20 | Correção — agrupamento por dia na Visão mensal herdava horário de lançamento antigo |
+| M21 | Escopo item 7 revisado — cada seção da Visão mensal em card, e acompanhamento de fatura por cartão em Saídas no crédito |
