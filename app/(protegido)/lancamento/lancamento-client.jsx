@@ -90,8 +90,8 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
   );
 }
 
-const BOTAO_ICONE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border text-muted-foreground hover:text-foreground";
-const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded border text-sm font-semibold text-muted-foreground hover:text-foreground";
+const BOTAO_ICONE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground hover:text-foreground";
+const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground";
 
 const FORM_INICIAL = {
   tipo: "SAIDA",
