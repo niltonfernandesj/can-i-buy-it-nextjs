@@ -146,7 +146,10 @@ export function LancamentoClient({ contas }) {
     }
 
     setSucesso("Lançamento salvo com sucesso.");
-    setForm(FORM_INICIAL);
+    // Tipo, Conta e Data tendem a se repetir entre lançamentos consecutivos
+    // (ex.: várias compras seguidas no mesmo cartão, no mesmo dia) — só esses
+    // três sobrevivem ao reset (Task 80).
+    setForm({ ...FORM_INICIAL, tipo: form.tipo, contaId: form.contaId, dataCompra: form.dataCompra });
   }
 
   return (

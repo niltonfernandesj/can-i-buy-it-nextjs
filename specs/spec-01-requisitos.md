@@ -34,6 +34,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Tela para registrar transações de **entrada** (receita) e **saída** (despesa).
    - Campos: valor, data, descrição, tipo (entrada/saída), categoria.
    - Transações são atribuídas ao usuário que as criou, mas visíveis a todos.
+   - Após salvar um lançamento com sucesso, o formulário limpa a maioria dos campos, mas mantém **Tipo, Conta e Data** preenchidos — os três campos mais prováveis de se repetir entre lançamentos consecutivos (ex.: registrar várias compras seguidas no mesmo cartão, no mesmo dia — revisado, Task 80).
 3. **Edição e exclusão**
    - Qualquer transação já lançada pode ser editada ou apagada livremente (sem histórico de alterações no MVP).
 4. **Categorias**

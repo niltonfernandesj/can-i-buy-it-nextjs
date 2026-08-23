@@ -466,6 +466,16 @@ A superfície da funcionalidade: consolidar, editar, desfazer e acompanhar o que
 
 *(Checkpoint: critérios de aceite da seção 3.9 — spec-01 §6. QA de interface obrigatório, cobrindo: consolidar um item e ver o lançamento sair do agrupamento por dia mas aparecer em /transações; editar o valor consolidado; apagar o lançamento e ver o item voltar a pendente; apagar o mesmo lançamento por /transações e confirmar o mesmo efeito; consolidar por R$ 0 e confirmar que nenhuma transação foi criada; data fora do mês rejeitada; e um mês encerrado exibindo "não registrado" sem somar ao total.)*
 
+## M19 — Lançamento: persistência de Tipo/Conta/Data após salvar
+
+**Task 80. Formulário de lançamento mantém Tipo, Conta e Data ao salvar**
+Reduz a repetição ao lançar várias transações seguidas com a mesma conta/data (ex.: várias compras no mesmo cartão, no mesmo dia). Requisitos item 2 (revisado), Design §8.1 (revisado).
+
+- **`lancamento-client.jsx`:** `handleSubmit`, ao concluir com sucesso, deixa de resetar pra `FORM_INICIAL` fixo — passa a resetar pro padrão preservando `tipo`, `contaId` e `dataCompra` do estado atual (os demais campos, incluindo checkboxes de investimento/parcelado/recorrente e seus campos dependentes, voltam ao padrão).
+- Nenhuma mudança de validação ou nas Server Actions — é só o valor inicial do próximo preenchimento.
+
+*(Checkpoint: critério de aceite do item 2 — spec-01 §6. QA de interface: salvar um lançamento e confirmar que Tipo/Conta/Data continuam preenchidos, e que valor/categoria/descrição/checkboxes voltam ao padrão.)*
+
 ---
 
 ## Resumo de rastreabilidade
@@ -490,3 +500,4 @@ A superfície da funcionalidade: consolidar, editar, desfazer e acompanhar o que
 | M16 | Escopo itens 12, 13, 14 (valores padrão, projeção de 12 meses, simulação) |
 | M17 | Escopo item 10 (navegação agrupada em Dados e Ajustes) |
 | M18 | Escopo item 12 revisado — consolidação de despesa padrão no débito e acompanhamento de pagamentos (spec-01 §3.5 revisado e §3.9) |
+| M19 | Escopo item 2 revisado — formulário de lançamento mantém Tipo/Conta/Data ao salvar |
