@@ -619,6 +619,115 @@ function ListaDespesaPadrao({
   );
 }
 
+function formatarDiaMes(data) {
+  const d = new Date(data);
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dia}/${mes}`;
+}
+
+// Alternância "Por dia" / "Por cartão" (Design §8.3.16) — abas construídas à
+// mão, sem puxar @radix-ui/react-tabs pra uma escolha binária sempre visível.
+function TogglePorCartao({ vista, onMudar }) {
+  const opcoes = [
+    { valor: "dia", rotulo: "Por dia" },
+    { valor: "cartao", rotulo: "Por cartão" },
+  ];
+
+  return (
+    <div className="flex gap-5 border-b" role="tablist">
+      {opcoes.map((opcao) => (
+        <button
+          key={opcao.valor}
+          type="button"
+          role="tab"
+          aria-selected={vista === opcao.valor}
+          onClick={() => onMudar(opcao.valor)}
+          className={cn(
+            "-mb-px border-b-2 pb-2.5 text-sm font-medium transition-colors",
+            vista === opcao.valor
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {opcao.rotulo}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Reagrupa os mesmos grupos por dia (já buscados por buscarSaidasCredito) por
+// cartão — sem busca nova. Cartões sem lançamento no mês não geram subgrupo.
+function agruparPorCartao(gruposPorDia) {
+  const porCartao = new Map();
+
+  for (const grupo of gruposPorDia) {
+    for (const transacao of grupo.transacoes) {
+      const chave = transacao.conta.id;
+      if (!porCartao.has(chave)) {
+        porCartao.set(chave, { contaId: chave, nome: transacao.conta.nome, transacoes: [] });
+      }
+      porCartao.get(chave).transacoes.push(transacao);
+    }
+  }
+
+  return Array.from(porCartao.values())
+    .map((cartao) => ({
+      ...cartao,
+      transacoes: [...cartao.transacoes].sort(
+        (a, b) => new Date(a.dataCompra) - new Date(b.dataCompra)
+      ),
+    }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+// Visão "Por cartão" do bloco Saídas no crédito (Design §8.3.16) — apoia a
+// conferência manual dos lançamentos do app contra a fatura do banco: total
+// do cartão em destaque, lançamentos em ordem cronológica como apoio.
+function ListaPorCartao({ grupos, mensagemVazia }) {
+  const porCartao = agruparPorCartao(grupos);
+
+  if (porCartao.length === 0) {
+    return <p className="text-sm text-muted-foreground">{mensagemVazia}</p>;
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {porCartao.map((cartao) => {
+        const totalCartao = cartao.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
+        return (
+          <div
+            key={cartao.contaId}
+            className="flex flex-col gap-2 border-t border-dashed pt-4 first:border-t-0 first:pt-0"
+          >
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-sm font-semibold">
+                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
+                {cartao.nome}
+              </span>
+              <span className="text-sm font-semibold tabular-nums">
+                {formatarReais(totalCartao)}
+              </span>
+            </div>
+            {cartao.transacoes.map((transacao) => (
+              <div key={transacao.id} className="flex items-baseline justify-between pl-5 text-sm">
+                <span className="flex min-w-0 items-baseline gap-2">
+                  <span className="truncate">{transacao.descricao}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {formatarDiaMes(transacao.dataCompra)}
+                  </span>
+                </span>
+                <span className="shrink-0 pl-3 tabular-nums">{formatarReais(transacao.valor)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function BlocoPorDia({
   titulo,
   Icone,
@@ -634,10 +743,12 @@ function BlocoPorDia({
   itensDespesaPadraoDebito,
   mesEncerrado,
   contasCorrentes,
+  ehSaidasCredito = false,
   mes,
   ano,
 }) {
   const [expandido, setExpandido] = useState(false);
+  const [vistaCredito, setVistaCredito] = useState("dia");
 
   return (
     <Card className="flex flex-col gap-4 p-6">
@@ -667,7 +778,12 @@ function BlocoPorDia({
               contasCorrentes={contasCorrentes}
             />
           )}
-          {grupos.length === 0 ? (
+          {ehSaidasCredito && (
+            <TogglePorCartao vista={vistaCredito} onMudar={setVistaCredito} />
+          )}
+          {ehSaidasCredito && vistaCredito === "cartao" ? (
+            <ListaPorCartao grupos={grupos} mensagemVazia={mensagemVazia} />
+          ) : grupos.length === 0 ? (
             <p className="text-sm text-muted-foreground">{mensagemVazia}</p>
           ) : (
             grupos.map((grupo) => (
@@ -853,6 +969,7 @@ export function VisaoMensalClient({
             estimado={composicaoCredito.estimado}
             grupos={saidasCredito}
             mensagemVazia="Nenhuma saída no crédito neste mês."
+            ehSaidasCredito
           />
         </div>
       </div>
