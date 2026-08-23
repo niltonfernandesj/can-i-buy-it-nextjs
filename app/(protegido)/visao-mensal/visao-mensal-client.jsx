@@ -599,8 +599,8 @@ function ListaDespesaPadrao({
   if (itens.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 border-b border-dashed pb-2">
-      <p className="text-xs text-muted-foreground">Despesas padrão</p>
+    <div className="flex flex-col gap-2 border-b border-dashed pb-4">
+      <p className="text-xs text-muted-foreground mb-1">Despesas padrão</p>
       {itens.map((item) => (
         <LinhaItemDespesaPadrao
           key={item.id}
@@ -647,7 +647,7 @@ function TogglePorCartao({ vista, onMudar }) {
             "-mb-px border-b-2 pb-2.5 text-sm font-medium transition-colors",
             vista === opcao.valor
               ? "border-foreground text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           {opcao.rotulo}
@@ -666,7 +666,11 @@ function agruparPorCartao(gruposPorDia) {
     for (const transacao of grupo.transacoes) {
       const chave = transacao.conta.id;
       if (!porCartao.has(chave)) {
-        porCartao.set(chave, { contaId: chave, nome: transacao.conta.nome, transacoes: [] });
+        porCartao.set(chave, {
+          contaId: chave,
+          nome: transacao.conta.nome,
+          transacoes: [],
+        });
       }
       porCartao.get(chave).transacoes.push(transacao);
     }
@@ -676,7 +680,7 @@ function agruparPorCartao(gruposPorDia) {
     .map((cartao) => ({
       ...cartao,
       transacoes: [...cartao.transacoes].sort(
-        (a, b) => new Date(a.dataCompra) - new Date(b.dataCompra)
+        (a, b) => new Date(a.dataCompra) - new Date(b.dataCompra),
       ),
     }))
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -695,7 +699,10 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
   return (
     <div className="flex flex-col gap-4">
       {porCartao.map((cartao) => {
-        const totalCartao = cartao.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
+        const totalCartao = cartao.transacoes.reduce(
+          (soma, t) => soma + Number(t.valor),
+          0,
+        );
         return (
           <div
             key={cartao.contaId}
@@ -711,14 +718,19 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
               </span>
             </div>
             {cartao.transacoes.map((transacao) => (
-              <div key={transacao.id} className="flex items-baseline justify-between pl-5 text-sm">
+              <div
+                key={transacao.id}
+                className="flex items-baseline justify-between pl-5 text-sm"
+              >
                 <span className="flex min-w-0 items-baseline gap-2">
                   <span className="truncate">{transacao.descricao}</span>
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {formatarDiaMes(transacao.dataCompra)}
                   </span>
                 </span>
-                <span className="shrink-0 pl-3 tabular-nums">{formatarReais(transacao.valor)}</span>
+                <span className="shrink-0 pl-3 tabular-nums">
+                  {formatarReais(transacao.valor)}
+                </span>
               </div>
             ))}
           </div>
