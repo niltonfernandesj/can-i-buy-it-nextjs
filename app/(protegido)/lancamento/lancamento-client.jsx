@@ -10,7 +10,7 @@ import {
   PiggyBank,
   Wallet,
 } from "lucide-react";
-import { criarTransacao, criarTransacaoParcelada, criarTransacaoRecorrente } from "@/lib/actions/transacoes";
+import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
 import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,6 @@ import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 
 function hojeISO() {
@@ -104,8 +103,6 @@ const FORM_INICIAL = {
   descricao: "",
   dataCompra: hojeISO(),
   contaInvestimentoId: "",
-  recorrente: false,
-  numeroMeses: "3",
 };
 
 export function LancamentoClient({ contas }) {
@@ -127,26 +124,18 @@ export function LancamentoClient({ contas }) {
   }
 
   const ehCartao = form.meio === "CREDITO";
-  const ehContaCorrente = form.meio === "DEBITO";
   const ehParcelado = form.numeroParcelas > 1;
-
-  // Saída e Investimento (aporte, sempre uma saída de conta corrente por
-  // trás) podem ser recorrentes em qualquer meio; entrada recorrente só é
-  // permitida em conta corrente.
-  const recorrenteDisponivel = form.tipo === "ENTRADA" ? ehContaCorrente : true;
 
   function selecionarMeio(meio) {
     const contaAindaValida =
       contas.find((c) => c.id === form.contaId)?.tipo ===
       (meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
-    const recorrenteAindaValido = form.tipo === "ENTRADA" ? meio === "DEBITO" : true;
 
     setForm({
       ...form,
       meio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(meio)[0]?.id ?? "",
       numeroParcelas: meio === "CREDITO" ? form.numeroParcelas : 1,
-      recorrente: form.recorrente && recorrenteAindaValido,
     });
   }
 
@@ -156,14 +145,12 @@ export function LancamentoClient({ contas }) {
     const contaAindaValida =
       contas.find((c) => c.id === form.contaId)?.tipo ===
       (novoMeio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
-    const recorrenteAindaValido = tipo === "ENTRADA" ? novoMeio === "DEBITO" : true;
 
     setForm({
       ...form,
       tipo,
       meio: novoMeio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
-      recorrente: form.recorrente && recorrenteAindaValido,
       contaInvestimentoId: tipo === "INVESTIMENTO" ? form.contaInvestimentoId : "",
     });
   }
@@ -186,15 +173,6 @@ export function LancamentoClient({ contas }) {
     });
   }
 
-  function marcarRecorrente(marcado) {
-    setForm({
-      ...form,
-      recorrente: marcado,
-      // Recorrente e Parcelado são mutuamente exclusivos.
-      numeroParcelas: marcado ? 1 : form.numeroParcelas,
-    });
-  }
-
   async function handleSubmit(e) {
     e.preventDefault();
     setErro("");
@@ -214,18 +192,6 @@ export function LancamentoClient({ contas }) {
           dataCompra: form.dataCompra,
           valorParcela: form.valorCentavos / 100,
           numeroParcelas: form.numeroParcelas,
-        })
-      : form.recorrente
-      ? await criarTransacaoRecorrente({
-          tipo: tipoReal,
-          descricao: form.descricao,
-          categoria: form.categoria,
-          contaId: form.contaId,
-          dataCompra: form.dataCompra,
-          valor: form.valorCentavos / 100,
-          numeroMeses: form.numeroMeses,
-          ehInvestimento,
-          contaInvestimentoId: ehInvestimento ? form.contaInvestimentoId : undefined,
         })
       : await criarTransacao({
           tipo: tipoReal,
@@ -374,28 +340,6 @@ export function LancamentoClient({ contas }) {
               </button>
             </div>
           </div>
-
-          {!ehParcelado && recorrenteDisponivel && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox id="recorrente" checked={form.recorrente} onCheckedChange={marcarRecorrente} />
-                <Label htmlFor="recorrente">Recorrente</Label>
-              </div>
-              {form.recorrente && (
-                <div className="flex flex-col gap-2 pl-6">
-                  <Label htmlFor="numeroMeses">Quantidade de meses</Label>
-                  <Input
-                    id="numeroMeses"
-                    type="number"
-                    min={2}
-                    required
-                    value={form.numeroMeses}
-                    onChange={(e) => setForm({ ...form, numeroMeses: e.target.value })}
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           {erro && <p className="text-sm text-destructive">{erro}</p>}
           {sucesso && <p className="text-sm text-entrada">{sucesso}</p>}

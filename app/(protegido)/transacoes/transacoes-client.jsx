@@ -73,11 +73,6 @@ const COLUNAS_BASE = [
               {t.numeroParcela} de {t.totalParcelas}
             </BadgeTransacao>
           )}
-          {t.numeroOcorrencia && (
-            <BadgeTransacao>
-              {t.numeroOcorrencia} de {t.totalOcorrencias} ↻
-            </BadgeTransacao>
-          )}
           {t.ehInvestimento && <BadgeTransacao>{t.tipo === "SAIDA" ? "Aporte" : "Resgate"}</BadgeTransacao>}
         </span>
       );
@@ -326,7 +321,7 @@ function CamposCompletos({ form, setForm, contas }) {
   );
 }
 
-function ConfirmarExclusao({ transacao, ehParcela, ehRecorrencia, ehLinhaBloqueada, onVoltar, onApagado }) {
+function ConfirmarExclusao({ transacao, ehParcela, ehLinhaBloqueada, onVoltar, onApagado }) {
   const [carregando, setCarregando] = useState(false);
 
   async function apagar(propagarParaRestantes) {
@@ -346,10 +341,6 @@ function ConfirmarExclusao({ transacao, ehParcela, ehRecorrencia, ehLinhaBloquea
       <p className="text-sm text-muted-foreground">
         {ehParcela &&
           `Esta é a parcela ${transacao.numeroParcela} de ${transacao.totalParcelas}. Apagar só esta parcela, ou também as parcelas restantes desta compra?`}
-        {ehRecorrencia &&
-          `Esta é a ocorrência ${transacao.numeroOcorrencia} de ${transacao.totalOcorrencias} de uma ${
-            transacao.tipo === "ENTRADA" ? "entrada recorrente" : "saída recorrente"
-          }. Apagar só esta ocorrência, ou também as ocorrências restantes desta recorrência?`}
         {!ehLinhaBloqueada && "Esta ação não pode ser desfeita."}
       </p>
 
@@ -372,13 +363,8 @@ function ConfirmarExclusao({ transacao, ehParcela, ehRecorrencia, ehLinhaBloquea
 
 function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
   const ehParcela = transacao.parcelamentoId !== null;
-  const ehRecorrencia = transacao.recorrenciaId !== null;
-  const ehLinhaBloqueada = ehParcela || ehRecorrencia;
-  const podePropagar = ehParcela
-    ? transacao.numeroParcela < transacao.totalParcelas
-    : ehRecorrencia
-    ? transacao.numeroOcorrencia < transacao.totalOcorrencias
-    : false;
+  const ehLinhaBloqueada = ehParcela;
+  const podePropagar = ehParcela ? transacao.numeroParcela < transacao.totalParcelas : false;
 
   const [modo, setModo] = useState("detalhe"); // "detalhe" | "confirmarExclusao"
   const [form, setForm] = useState({
@@ -400,7 +386,6 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
       <ConfirmarExclusao
         transacao={transacao}
         ehParcela={ehParcela}
-        ehRecorrencia={ehRecorrencia}
         ehLinhaBloqueada={ehLinhaBloqueada}
         onVoltar={() => setModo("detalhe")}
         onApagado={onApagado}
@@ -454,14 +439,6 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
         </p>
       )}
 
-      {ehRecorrencia && (
-        <p className="text-sm text-muted-foreground">
-          Ocorrência {transacao.numeroOcorrencia} de {transacao.totalOcorrencias} de uma{" "}
-          {transacao.tipo === "ENTRADA" ? "entrada recorrente" : "saída recorrente"} — conta, data
-          e tipo não são editáveis numa ocorrência.
-        </p>
-      )}
-
       {!ehLinhaBloqueada && <CamposCompletos form={form} setForm={setForm} contas={contas} />}
 
       <CampoValor
@@ -507,11 +484,7 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
             checked={form.propagarParaRestantes}
             onCheckedChange={(v) => setForm({ ...form, propagarParaRestantes: v })}
           />
-          <Label htmlFor="edit-propagar">
-            {ehParcela
-              ? "Aplicar às parcelas restantes desta compra"
-              : "Aplicar às ocorrências restantes desta recorrência"}
-          </Label>
+          <Label htmlFor="edit-propagar">Aplicar às parcelas restantes desta compra</Label>
         </div>
       )}
 
