@@ -32,6 +32,9 @@ export const metadata = {
 
 export const viewport = {
   themeColor: "#131316",
+  // Sem viewport-fit=cover, env(safe-area-inset-*) devolve zero e o
+  // tratamento de área segura abaixo não teria efeito algum (Design §19.4).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {

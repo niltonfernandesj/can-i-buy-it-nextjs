@@ -86,7 +86,13 @@ function BarraInferiorMobile({ pathname }) {
   const ativoAjustes = GRUPO_AJUSTES.some((d) => pathname.startsWith(d.href));
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t bg-background md:hidden">
+    <nav
+      // Instalado, o app vai até a borda da tela: sem o inset inferior a barra
+      // fica sob o indicador de home, bem onde estão os alvos mais tocados
+      // ("Dados", "Nova", "Ajustes"). Os insets laterais protegem o modo
+      // paisagem, onde o notch invade a lateral (Design §19.4).
+      className="fixed inset-x-0 bottom-0 z-50 flex items-stretch border-t bg-background pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden"
+    >
       <Link
         href="/visao-mensal"
         className={cn(
@@ -151,7 +157,7 @@ export function NavegacaoPrincipal() {
     <>
       <BarraLateralDesktop pathname={pathname} />
 
-      <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-end border-b bg-background px-4 py-2 md:hidden">
+      <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-end border-b bg-background px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top))] md:hidden">
         <MenuUsuario align="end" />
       </header>
 
