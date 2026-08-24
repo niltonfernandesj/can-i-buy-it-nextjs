@@ -43,7 +43,7 @@ const MEIOS = [
 // dropdown (Design §8.2.4). Estado selecionado em alto contraste
 // (bg-primary/text-primary-foreground), não uma variação sutil sobre
 // bg-muted — testado com o usuário via mock, contraste baixo demais.
-function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado }) {
+function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado, ocultarIconeNoMobile }) {
   return (
     <div className="flex gap-0.5 rounded-md bg-muted p-0.5">
       {opcoes.map((opcao) => (
@@ -65,11 +65,14 @@ function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado }) {
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {/* Ícone só a partir de sm: medido que com ele "Investimento" não
-              cabe em nenhuma largura de celular, nem reduzindo a fonte a 11px
-              — é o ícone, não o texto, que estoura. O rótulo carrega o
-              significado sozinho; o ícone é reforço visual onde há espaço. */}
-          <opcao.Icone className="hidden h-3.5 w-3.5 shrink-0 sm:block" />
+          {/* ocultarIconeNoMobile só é usado no toggle de Tipo: medido que
+              com o ícone "Investimento" não cabe em nenhuma largura de
+              celular, nem reduzindo a fonte a 11px — é o ícone, não o texto,
+              que estoura. O rótulo carrega o significado sozinho. Toggles de
+              duas opções curtas (Meio) têm espaço de sobra e mantêm o ícone. */}
+          <opcao.Icone
+            className={cn("h-3.5 w-3.5 shrink-0", ocultarIconeNoMobile && "hidden sm:block")}
+          />
           <span className="truncate">{opcao.rotulo}</span>
         </button>
       ))}
@@ -258,7 +261,13 @@ export function LancamentoClient({ contas }) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>Tipo</Label>
-            <ToggleSegmentado opcoes={TIPOS} valorAtual={form.tipo} onSelecionar={selecionarTipo} desabilitado={ehParcelado} />
+            <ToggleSegmentado
+              opcoes={TIPOS}
+              valorAtual={form.tipo}
+              onSelecionar={selecionarTipo}
+              desabilitado={ehParcelado}
+              ocultarIconeNoMobile
+            />
           </div>
 
           <div className="flex flex-col gap-2">
