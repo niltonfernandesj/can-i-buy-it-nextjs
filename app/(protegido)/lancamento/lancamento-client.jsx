@@ -141,7 +141,10 @@ export function LancamentoClient({ contas, categorias }) {
     return contasParaSelecao.filter((c) => c.tipo === tipoConta);
   }
 
+  // Estorno (spec-01 §3.11) é Entrada no crédito — e não existe parcelado, daí
+  // o stepper de parcelas depender também do Tipo, não só do Meio.
   const ehCartao = form.meio === "CREDITO";
+  const podeParcelar = ehCartao && form.tipo !== "ENTRADA";
   const ehParcelado = form.numeroParcelas > 1;
 
   function selecionarMeio(meio) {
@@ -158,8 +161,11 @@ export function LancamentoClient({ contas, categorias }) {
   }
 
   function selecionarTipo(tipo) {
-    // Só existe entrada e investimento no débito — troca o meio automaticamente.
-    const novoMeio = tipo === "ENTRADA" || tipo === "INVESTIMENTO" ? "DEBITO" : form.meio;
+    // Só Investimento força o meio (aporte sempre parte da conta corrente).
+    // Entrada preserva o Meio corrente desde o M27: numa sequência de
+    // lançamentos no cartão, alternar Saída → Entrada pra registrar um estorno
+    // não deve pular pro débito e perder o cartão já selecionado.
+    const novoMeio = tipo === "INVESTIMENTO" ? "DEBITO" : form.meio;
     const contaAindaValida =
       contas.find((c) => c.id === form.contaId)?.tipo ===
       (novoMeio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
@@ -170,6 +176,9 @@ export function LancamentoClient({ contas, categorias }) {
       meio: novoMeio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
       contaInvestimentoId: tipo === "INVESTIMENTO" ? form.contaInvestimentoId : "",
+      // Entrada não parcela: volta a 1 pra não carregar um parcelamento
+      // pendente de uma saída lançada antes na mesma sequência.
+      numeroParcelas: tipo === "SAIDA" ? form.numeroParcelas : 1,
     });
   }
 
@@ -279,7 +288,7 @@ export function LancamentoClient({ contas, categorias }) {
             <Label>Meio</Label>
             <ToggleSegmentado
               opcoes={
-                form.tipo === "ENTRADA" || form.tipo === "INVESTIMENTO"
+                form.tipo === "INVESTIMENTO"
                   ? MEIOS.filter((m) => m.valor === "DEBITO")
                   : MEIOS
               }
@@ -325,7 +334,7 @@ export function LancamentoClient({ contas, categorias }) {
               valorCentavos={form.valorCentavos}
               onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
               extra={
-                ehCartao && (
+                podeParcelar && (
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => ajustarParcelas(-1)} aria-label="Menos uma parcela" className={BOTAO_PARCELA}>
                       −
