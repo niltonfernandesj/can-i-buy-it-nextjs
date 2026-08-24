@@ -710,6 +710,88 @@ function agruparPorCartao(gruposPorDia) {
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
+// Subgrupo de um cartão na visão "Por cartão" — recolhível, no mesmo padrão
+// de CabecalhoBloco: a linha inteira é o gatilho, com o total à direita e um
+// ChevronDown que gira. Estado local por cartão, então recolher um não afeta
+// os outros. Começa **expandido**, ao contrário dos blocos: quem chega aqui
+// já gastou dois cliques (expandir o bloco, trocar de aba) e o pedido foi
+// poder recolher, não esconder de saída.
+function GrupoCartao({ cartao }) {
+  const [expandido, setExpandido] = useState(true);
+
+  // Total líquido: o banco também lança o estorno dentro da fatura do cartão,
+  // e um total que o ignorasse nunca bateria com o extrato — que é justamente
+  // pra que esta visão existe (Design §8.3.16). Fica no cabeçalho, então
+  // continua visível com o subgrupo recolhido.
+  const totalCartao = cartao.transacoes.reduce(
+    (soma, t) => soma + valorComSinal(t),
+    0,
+  );
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-dashed pt-4 first:border-t-0 first:pt-0">
+      <button
+        type="button"
+        onClick={() => setExpandido((valor) => !valor)}
+        aria-expanded={expandido}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+          <CreditCard className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{cartao.nome}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-2 pl-3">
+          <span
+            className={cn(
+              "text-sm font-semibold tabular-nums",
+              classeValor(totalCartao),
+            )}
+          >
+            {formatarReais(totalCartao)}
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform",
+              expandido && "rotate-180",
+            )}
+          />
+        </span>
+      </button>
+      {expandido &&
+        cartao.transacoes.map((transacao) => {
+          const valor = valorComSinal(transacao);
+          return (
+            <div
+              key={transacao.id}
+              className="flex items-baseline justify-between pl-5 text-sm"
+            >
+              <span className="flex min-w-0 items-baseline gap-2">
+                <span className="truncate">{transacao.descricao}</span>
+                {transacao.numeroParcela && (
+                  <TagParcela
+                    numeroParcela={transacao.numeroParcela}
+                    totalParcelas={transacao.totalParcelas}
+                  />
+                )}
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {formatarDiaMes(transacao.dataCompra)}
+                </span>
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 pl-3 tabular-nums",
+                  classeValor(valor),
+                )}
+              >
+                {formatarReais(valor)}
+              </span>
+            </div>
+          );
+        })}
+    </div>
+  );
+}
+
 // Visão "Por cartão" do bloco Saídas no crédito (Design §8.3.16) — apoia a
 // conferência manual dos lançamentos do app contra a fatura do banco: total
 // do cartão em destaque, lançamentos em ordem cronológica como apoio.
@@ -722,66 +804,9 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {porCartao.map((cartao) => {
-        // Total líquido: o banco também lança o estorno dentro da fatura do
-        // cartão, e um total que o ignorasse nunca bateria com o extrato —
-        // que é justamente pra que esta visão existe (Design §8.3.16).
-        const totalCartao = cartao.transacoes.reduce(
-          (soma, t) => soma + valorComSinal(t),
-          0,
-        );
-        return (
-          <div
-            key={cartao.contaId}
-            className="flex flex-col gap-2 border-t border-dashed pt-4 first:border-t-0 first:pt-0"
-          >
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-sm font-semibold">
-                <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
-                {cartao.nome}
-              </span>
-              <span
-                className={cn(
-                  "text-sm font-semibold tabular-nums",
-                  classeValor(totalCartao),
-                )}
-              >
-                {formatarReais(totalCartao)}
-              </span>
-            </div>
-            {cartao.transacoes.map((transacao) => {
-              const valor = valorComSinal(transacao);
-              return (
-                <div
-                  key={transacao.id}
-                  className="flex items-baseline justify-between pl-5 text-sm"
-                >
-                  <span className="flex min-w-0 items-baseline gap-2">
-                    <span className="truncate">{transacao.descricao}</span>
-                    {transacao.numeroParcela && (
-                      <TagParcela
-                        numeroParcela={transacao.numeroParcela}
-                        totalParcelas={transacao.totalParcelas}
-                      />
-                    )}
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatarDiaMes(transacao.dataCompra)}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 pl-3 tabular-nums",
-                      classeValor(valor),
-                    )}
-                  >
-                    {formatarReais(valor)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
+      {porCartao.map((cartao) => (
+        <GrupoCartao key={cartao.contaId} cartao={cartao} />
+      ))}
     </div>
   );
 }
