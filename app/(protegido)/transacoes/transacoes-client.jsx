@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import { editarTransacao, apagarTransacao } from "@/lib/actions/transacoes";
 import { formatarReais } from "@/lib/moeda";
+import { ehEstorno } from "@/lib/estorno";
 import { formatarDataCurta, formatarMesReferencia, MESES } from "@/lib/datas";
 import { TIPO_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
@@ -75,6 +76,10 @@ const COLUNAS_BASE = [
             </BadgeTransacao>
           )}
           {t.ehInvestimento && <BadgeTransacao>{t.tipo === "SAIDA" ? "Aporte" : "Resgate"}</BadgeTransacao>}
+          {/* Necessário aqui e só aqui (Design §12.1): nesta tela o valor de
+              um estorno é "+ R$ …" em verde, idêntico ao de um salário, e a
+              única pista seria a coluna Conta trazer o nome de um cartão. */}
+          {ehEstorno(t) && <BadgeTransacao>Estorno</BadgeTransacao>}
         </span>
       );
     },
