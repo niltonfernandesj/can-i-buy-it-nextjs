@@ -795,6 +795,104 @@ Só se manifesta depois de instalado, quando o app passa a ocupar a tela inteira
 
 ---
 
+## M27 — Estorno no crédito
+
+Resolve Requisitos §3.11 (novo), §3.1 revisado (bloco Entradas só no débito; valores negativos), §3.3 revisado (indicador de estorno) e §3.5 revisado (estorno não devolve teto). Design §6, §8.2.4, §8.3.2, §8.3.16, §8.3.17 (novo), §12.1, §13.3, §13.4.
+
+**Sem migration e sem mudança de Server Action.** Um estorno é uma `Transacao` de `tipo: ENTRADA` com `contaId` de um cartão — já representável, e `criarTransacao` já aceita a combinação (Design §8.2.4). O marco é regra de composição + apresentação.
+
+**A ordem das tasks importa.** A tela de Lançamento vem **por último**, de propósito: até ela, não há como criar um estorno pela interface, então cada task intermediária entrega uma camada correta sem expor um estado meio-pronto ao usuário. As tasks 97-98 mexem só em funções puras/queries e não pedem QA de interface; as 99-103 pedem.
+
+Decisões do usuário registradas antes da primeira task, todas validadas em mock: (1) estorno **não** devolve teto de despesa padrão no crédito; (2) agregado negativo sai em verde com sinal em **todos** os níveis; (3) tag "Estorno" só em `/transacoes`; (4) não existe estorno parcelado.
+
+---
+
+**Task 97. `comporMes`: estorno sai de Entradas e abate o crédito**
+
+Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. Design §13.3.
+
+- `ehEstorno(t)` local à função: `t.tipo === "ENTRADA" && t.conta.tipo === "CARTAO_CREDITO"`.
+- `entradaReal` passa a excluir estornos.
+- `comporCredito` ganha o termo `estornos`, subtraído **só** de `real` (e portanto de `total`). O `consumidor` continua bruto, então `estimado` não muda — é a decisão do usuário sobre o teto (Requisitos §3.5).
+- `real` e `total` do crédito podem ficar negativos; nada é truncado em zero.
+- Casos 25-32 de §13.4 adicionados a `lib/projecao.test.js`. O caso 29 (`disponivel` sobe exatamente o valor do estorno) é o que trava a contagem dupla, e o 27 (estimado inalterado) é o que trava a decisão do teto.
+
+*(Checkpoint: `npm run lint` + `npm run test` + build. Sem Playwright — não há tela nova. A Projeção herda a regra sem tocar em `projecao/page.jsx`, já que consome `comporMes`.)*
+
+---
+
+**Task 98. Camada de dados: helper de sinal e queries dos dois blocos**
+
+`lib/estorno.js` (novo), `lib/estorno.test.js` (novo) e `lib/consolidacao.js`. Design §6 e §8.3.17.
+
+- `lib/estorno.js` com `ehEstorno(transacao)` e `valorComSinal(transacao)` — módulo sem `import { db }`, justamente pra poder ser importado por Client Component (ao contrário de `lib/consolidacao.js`).
+- `buscarEntradas` ganha `conta: { tipo: "CONTA_CORRENTE" }` no `where`.
+- `buscarSaidasCredito` perde o filtro `tipo: "SAIDA"`, passando a trazer estornos junto.
+- `lib/estorno.test.js` cobrindo: saída em cartão → positivo; entrada em cartão → negativo; entrada em conta corrente → positivo (o caso que garante que o helper é seguro no bloco Entradas); transação sem `conta` carregada → não quebra.
+
+*(Checkpoint: lint + test + build. Sem Playwright. Estado intermediário conhecido e aceito: a partir desta task o bloco de crédito já recebe estornos, mas ainda os soma como positivos — as tasks 99-100 resolvem, e nada disso é alcançável pelo usuário antes da 103.)*
+
+---
+
+**Task 99. Saídas no crédito, visão "Por dia": soma com sinal e verde no negativo**
+
+`app/(protegido)/visao-mensal/visao-mensal-client.jsx` (`somarGrupo`) e `components/visao-mensal/detalhe-diario.jsx`. Design §8.3.17.
+
+- `somarGrupo` passa a somar por `valorComSinal` — vale pros três blocos agrupados por dia, e é seguro nos outros dois porque só estorno é negativo.
+- `ListaTransacoes` (dentro do popover/sheet): valor de cada linha por `valorComSinal`, e `text-entrada` quando negativo.
+- Total do dia dentro do popover/sheet e `LinhaResumoDia` (linha fechada): mesma regra de cor.
+- `formatarReais` já emite `-R$ …` — nenhum sinal montado à mão.
+
+*(Checkpoint: QA de interface. Cenário com um dia de total positivo, um dia contendo estorno e um dia de total negativo. Asserções sobre `textContent()` dos totais e `getComputedStyle().color` das linhas — a cor é computável, não vai a screenshot. `:visible` desde a primeira tentativa: a tela tem popover desktop e sheet mobile simultâneos no DOM.)*
+
+---
+
+**Task 100. Saídas no crédito, visão "Por cartão": total líquido por cartão**
+
+`ListaPorCartao`, em `visao-mensal-client.jsx`. Design §8.3.16 e §8.3.17.
+
+- `totalCartao` soma por `valorComSinal`.
+- Linha do estorno com valor negativo e `text-entrada`; posição cronológica e ausência de tag inalteradas.
+- Cor do total do cartão pela mesma regra, quando negativo.
+
+*(Checkpoint: QA de interface na aba "Por cartão", com dois cartões — um só com gastos, outro com gasto e estorno — confirmando por asserção que o total do segundo é o líquido, e que a soma dos dois bate com o `real` do cabeçalho do bloco.)*
+
+---
+
+**Task 101. Agregados negativos em verde no cabeçalho do bloco e no resumo**
+
+`CabecalhoBloco` e `CardResumo`, em `visao-mensal-client.jsx`. Design §8.3.17.
+
+Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100 não alcançam: o total no cabeçalho de um bloco e os cards Entradas/Saídas/Disponível do topo. Condição única `valor < 0 → text-entrada`, sem o componente precisar saber por que ficou negativo.
+
+*(Checkpoint: QA de interface com um mês de crédito líquido negativo, assertando cor e texto no cabeçalho do bloco e no card de Saídas. O card Disponível já podia ser negativo antes desta task por outros motivos — verificar que ele passa a seguir a mesma regra é parte do escopo.)*
+
+---
+
+**Task 102. `/transacoes`: badge "Estorno"**
+
+`app/(protegido)/transacoes/transacoes-client.jsx`. Design §12.1.
+
+- Badge "Estorno" ao lado da descrição quando `ehEstorno(t)`, no mesmo `BadgeTransacao` já usado por parcela e investimento.
+- Coluna Valor **inalterada**: continua `+ R$ …` em `text-entrada`. Mudar o sinal aqui contradiria o tipo do registro — a composição da fatura é da Visão mensal.
+
+*(Checkpoint: QA de interface filtrando a tabela pela descrição exclusiva do registro de QA antes de qualquer asserção — a tela mistura dados reais e de teste. Confirmar badge presente no estorno e ausente numa entrada em conta corrente.)*
+
+---
+
+**Task 103. Lançamento: Meio Crédito liberado para Entrada**
+
+`app/(protegido)/lancamento/lancamento-client.jsx`. Design §8.2.4. **Última do marco** — é ela que torna o estorno alcançável.
+
+- O toggle de Meio passa a oferecer Crédito e Débito com Tipo = Entrada (hoje filtra pra Débito). Investimento continua forçando Débito.
+- `selecionarTipo` deixa de embutir "Entrada ⇒ Débito"; Entrada preserva o Meio corrente e a lógica de pré-seleção de conta já existente cuida do resto.
+- Stepper de parcelas ganha a condição `Tipo !== "ENTRADA"` além de `Meio === "CREDITO"`.
+- Nenhuma Server Action muda de assinatura.
+
+*(Checkpoint: QA de interface + **confirmação no banco**. Lançar um estorno pela tela e ler a linha via Prisma: `tipo: ENTRADA`, `contaId` do cartão, `ehInvestimento: false`, `parcelamentoId: null` e `mesReferencia`/`anoReferencia` batendo com o que `calcularFatura` daria pra aquela data e aquele cartão — incluindo um caso com data **posterior ao fechamento**, que deve cair na fatura seguinte. Depois, navegar até a Visão mensal do mês de referência e assertar o efeito ponta a ponta: bloco Entradas sem o estorno, crédito abatido, Disponível somando o valor uma vez só. Apagar as linhas de QA por `usuarioId` ao final.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -825,3 +923,4 @@ Só se manifesta depois de instalado, quando o app passa a ocupar a tela inteira
 | M24 | Correção — toggle de Tipo estourava a largura da coluna no mobile após ganhar a terceira opção na Task 86 |
 | M25 | Escopo item 4 revisado — categorias deixam de ser lista fixa em código e viram entidade gerenciável pelo usuário, com cor e desativação (spec-01 §3.10) |
 | M26 | Requisitos não funcionais — instalação na tela inicial do iPhone (spec-01 §4), sem offline e sem push |
+| M27 | Escopo item 2 revisado — estorno no crédito (spec-01 §3.11), com os ajustes decorrentes na Visão mensal (§3.1), na tabela de transações (§3.3) e na regra do teto de despesa padrão no crédito (§3.5) |

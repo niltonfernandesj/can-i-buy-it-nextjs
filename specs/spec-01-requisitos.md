@@ -36,6 +36,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Transações são atribuídas ao usuário que as criou, mas visíveis a todos.
    - Após salvar um lançamento com sucesso, o formulário limpa a maioria dos campos, mas mantém **Tipo, Conta, Categoria e Data** preenchidos — os campos mais prováveis de se repetir entre lançamentos consecutivos (ex.: registrar várias compras seguidas no mesmo cartão, no mesmo dia, na mesma categoria — revisado, Task 80 e Task 85).
    - **Tipo (revisado — Task 86):** o usuário escolhe entre três opções — **Entrada**, **Saída** ou **Investimento** — pra reduzir a fricção de marcar um aporte, hoje uma marcação secundária (checkbox) sobre Saída. A escolha de Tipo continua determinando internamente se a transação é uma entrada ou uma saída (seção 6, abaixo) — "Investimento" nesta tela sempre corresponde a uma saída (aporte); não há opção equivalente pra resgate, que continua sendo lançado como uma Entrada comum (seção 6).
+   - **Entrada no crédito — estorno (M27):** a combinação Tipo = Entrada + Meio = Crédito passa a ser permitida, e representa um **estorno** (devolução, cancelamento de cobrança, crédito concedido pelo banco). Não é receita: abate da fatura do cartão. Ver especificação detalhada na seção 3.11 abaixo.
 3. **Edição e exclusão**
    - Qualquer transação já lançada pode ser editada ou apagada livremente (sem histórico de alterações no MVP).
 4. **Categorias** (revisado — M25)
@@ -95,10 +96,10 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 - **No mobile**, além dos botões de seta e do seletor de mês/ano, o usuário pode trocar de mês arrastando horizontalmente (swipe) em qualquer ponto da tela: deslizar para a esquerda avança para o próximo mês, para a direita volta ao mês anterior.
 - Ao trocar de mês via swipe, a tela deve exibir uma transição visual (fade + slide na direção do gesto) entre o conteúdo do mês anterior e o do novo mês carregado, dando feedback imediato ao usuário.
 - Os dados devem ser exibidos em **quatro blocos consolidados e separados**, nesta ordem de exibição:
-  1. **Entradas (receitas)** — inclui entradas regulares e resgates de investimento, rotulados de forma distinta (ex: tag "Resgate de investimento") para não se confundirem com renda regular.
+  1. **Entradas (receitas)** — inclui entradas regulares e resgates de investimento, rotulados de forma distinta (ex: tag "Resgate de investimento") para não se confundirem com renda regular. **Somente entradas no débito** (revisado — M27): uma entrada vinculada a Cartão de crédito é um estorno e não aparece aqui, nem como linha, nem no total do bloco (seção 3.11).
   2. **Investimentos** — total bruto aportado no mês, **separado por Conta de investimento** (não inclui resgates, que aparecem no bloco Entradas).
   3. **Saídas no débito** — saídas vinculadas a Conta corrente, **exceto** as marcadas como investimento (aportes não contam como gasto).
-  4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito.
+  4. **Saídas no crédito** — saídas vinculadas a Cartão de crédito, **menos os estornos** do mês de referência (revisado — M27), que aparecem dentro deste bloco com valor negativo (seção 3.11).
 - Cada um dos quatro blocos é exibido como um **card independente** — borda e cantos arredondados, mesmo tratamento visual dos cards do resumo financeiro do mês (revisado, Task 82; substitui o layout anterior de seções abertas separadas só por divisores sutis).
 - Nos blocos 1, 2 e 3, as transações são **agrupadas e exibidas por dia** dentro do mês filtrado.
 - Quando aplicável (ver seção 3.5), os **valores padrão** entram nos blocos Entradas, Saídas no débito e Saídas no crédito como uma linha própria, **visualmente distinta dos lançamentos reais**. A distinção não é a mesma nos três blocos — segue a diferença de natureza da seção 3.5:
@@ -112,6 +113,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - **Racional:** o objetivo da tela é mostrar, para um mês filtrado, o que de fato precisa ser pago naquele mês (valor da fatura), e não o que foi gasto no crédito naquele mês. Por isso a filtragem/agrupamento por mês segue sempre o mês de referência (vencimento da fatura), mesmo que o agrupamento por dia dentro do bloco use a data original da compra.
 - **Alternância de visão no bloco Saídas no crédito (Task 83):** o usuário pode alternar entre **por dia** (padrão, comportamento acima, inalterado) e **por cartão** — nesta segunda opção, os lançamentos do mês de referência aparecem organizados em subgrupos, um por cartão de crédito com movimentação naquele mês (cartões sem lançamento no período não aparecem), cada subgrupo com um **total próprio em destaque** e a lista de seus lançamentos (descrição, data da compra, valor) em ordem cronológica crescente — sem agrupar por dia dentro do subgrupo. Existe pra apoiar a **conferência manual** dos lançamentos registrados no app contra o valor mostrado pelo banco na fatura de um cartão específico. A linha de estimativa ("Estimado restante") não muda entre as duas visões.
 - **Tag de parcela no crédito (Task 84):** um lançamento que pertence a um parcelamento exibe a mesma tag já usada em `/transacoes` ("X de X") ao lado da descrição — tanto no detalhamento por dia (dentro do popover/sheet do dia) quanto na visão por cartão.
+- **Valores negativos (M27):** com estornos, um agregado desta tela pode ficar negativo — o total de um dia, o total de um cartão, o total do bloco Saídas no crédito, os cards de resumo do topo. Em **qualquer** desses casos o valor é exibido com sinal negativo e em verde (a mesma cor de entrada), a mesma regra aplicada ao estorno individual. Não há arredondamento para zero nem inversão de sinal em nenhum nível de agregação.
 
 ### 3.2 Especificação — Lançamento de compras parceladas no crédito
 
@@ -136,7 +138,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   4. Conta (nome/apelido)
   5. Valor
 - **Data efetiva**, não Data da compra: é a data que determina o mês/fatura em que a transação realmente é cobrada. Numa compra parcelada, a Data da compra é a mesma em todas as parcelas — só a Data efetiva distingue quando cada parcela ocorre.
-- Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X") e marcação de investimento. ~~Recorrência ("X de X")~~ — **removido (Task 87)**, junto com a funcionalidade em si.
+- Cada linha usa **indicadores visuais compactos** (sem coluna própria) para comunicar, quando aplicável: tipo (entrada/saída), parcela ("X de X"), marcação de investimento e **estorno (M27)**. ~~Recorrência ("X de X")~~ — **removido (Task 87)**, junto com a funcionalidade em si.
+- **Indicador de estorno (M27):** um estorno é uma entrada como qualquer outra nesta tela — mesmo sinal "+", mesma cor —, o que o tornaria indistinguível de um salário sem uma marcação própria. Por isso ele recebe indicador, **diferente da Visão mensal**, onde o valor negativo em verde já o distingue sozinho. O valor continua exibido com sinal "+", coerente com o tipo do registro: esta tela lista transações, não compõe a fatura.
 - Clicar em qualquer ponto da linha abre um **modal com o detalhe completo do registro** — todas as informações hoje em colunas (Tipo, Data do lançamento, Mês de referência **por extenso**, Parcela, É investimento, Conta de investimento vinculada) — e as ações de **editar e apagar**, reaproveitando as regras já definidas nas seções 2.3 (edição/exclusão livre) e 3.2 (parcelas: apagar isolada vs. apagar as restantes).
 - **Filtros:** uma busca geral por descrição, mais filtros específicos por Conta, Categoria e Mês/Ano de referência — substitui o filtro por coluna individual usado até então.
 - Deve haver **paginação ou scroll** conforme o volume de dados crescer (detalhe de implementação, a definir no Design).
@@ -173,6 +176,7 @@ As duas listas **não seguem a mesma regra** — receita padrão é um lançamen
 - Se o real ultrapassar a estimativa, **vale o real** — a estimativa apenas deixa de somar.
 - **Consomem a estimativa:** gastos avulsos e **ocorrências de recorrência** — ambos representam o gasto corrente e previsível que a tabela modela.
 - **Não consomem, somam por cima:** **parcelas**. Uma parcela é o compromisso pontual de uma compra específica, não parte do gasto do dia a dia — é exatamente o que o usuário quer ver somado à sua média.
+- **Estorno não devolve teto (M27).** Um estorno abate o **real** do crédito, mas **não** entra no cálculo da estimativa: o teto continua sendo consumido pelo valor bruto dos gastos que o consomem, como se o estorno não existisse. Decisão explícita do usuário entre as duas alternativas: a rejeitada tratava o estorno como um avulso negativo, devolvendo teto e mantendo o total do mês inalterado enquanto a fatura não fechasse. Consequência da regra adotada: **estornar reduz o total do mês imediatamente**, mesmo com a fatura aberta.
 - A estimativa vale até o **fechamento mais tardio** entre os cartões cadastrados para aquele mês de referência. Depois disso a fatura está fechada, todos os gastos já ocorreram, e só o real vale.
 
 **Despesas padrão no débito — previsão fixa por item (revisado — Task 78):**
@@ -245,6 +249,36 @@ Resolve o item 4 revisado. Tela própria em `/categorias`, no mesmo agrupamento 
 - **Excluir** só é permitido quando a categoria **não tem nenhum uso** — nenhuma transação e nenhum valor padrão apontando para ela. Havendo uso, a exclusão é bloqueada com uma mensagem que explica o motivo e aponta o caminho: desativar.
 - **Cor** vem de uma **paleta fixa** definida no tema, não de um seletor livre. Motivo: cores arbitrárias sobre o fundo escuro produzem combinações ilegíveis, e a paleta do app perderia coerência (ver Design §16 e §18.4).
 - A cor é usada para **identificação visual rápida** nas listagens de transação — não carrega significado próprio (não indica receita/despesa nem gravidade).
+
+### 3.11 Especificação — Estorno no crédito (M27)
+
+Um **estorno** é dinheiro que volta para o cartão de crédito: devolução de produto, cancelamento de cobrança, crédito concedido pelo banco, cashback lançado na fatura. Antes desta especificação não havia como registrá-lo — a tela de lançamento forçava toda Entrada para o débito, e lançar a devolução como uma entrada em conta corrente inflava a renda do mês e deixava a fatura maior do que ela de fato era.
+
+**O que é, no modelo de dados:** uma transação de tipo **Entrada** vinculada a uma **Conta do tipo Cartão de crédito**. Não há tipo novo, campo novo nem marcação secundária — a combinação Entrada + cartão *é* o estorno. Todo estorno tem descrição, categoria, valor e data como qualquer lançamento; o valor é informado **positivo**, e o sinal negativo é dado pelo tipo, exatamente como no resto da aplicação.
+
+**Lançamento:**
+- Na tela de Lançamento, escolher Tipo = Entrada passa a oferecer os dois Meios (Crédito e Débito), em vez de forçar Débito.
+- Com Meio = Crédito, as contas oferecidas são os cartões de crédito.
+- **Não existe estorno parcelado.** O controle de parcelas, hoje visível sempre que o Meio é Crédito, some quando o Tipo é Entrada.
+- Nada na tela nomeia "estorno": a combinação já é autoexplicativa pra quem lança.
+
+**Mês de referência:** o mesmo cálculo de qualquer lançamento no cartão (seção 3.1) — a partir da data do estorno e do dia de fechamento do cartão. Consequência aceita e desejada: um estorno registrado depois do fechamento entra na fatura **seguinte**, que é o comportamento real do banco.
+
+**Efeito nos totais (Visão mensal e Projeção):**
+- O estorno **não** entra em Entradas. Se entrasse ali *e* abatesse do crédito, o mesmo valor seria contado duas vezes e o Disponível do mês subiria pelo dobro do estorno.
+- O estorno **abate das Saídas no crédito** do seu mês de referência, reduzindo o valor real do bloco.
+- O estorno **não devolve teto** de despesa padrão no crédito (seção 3.5).
+- Um estorno maior que os gastos do período é permitido: o total do bloco fica negativo e o Disponível do mês aumenta na mesma medida.
+
+**Exibição na Visão mensal:**
+- **Visão por dia:** o estorno subtrai do total do dia em que ocorreu, e aparece no detalhamento (popover/sheet) com sinal negativo e em verde.
+- **Visão por cartão:** o estorno é listado junto ao cartão a que está vinculado, em ordem cronológica como os demais lançamentos, também com valor negativo e em verde; o total do cartão já vem líquido.
+- **Sem tag própria** em nenhuma das duas visões — o valor negativo em verde já distingue o estorno de um gasto. (Em `/transacoes` a regra é outra, seção 3.3.)
+- Agregados negativos seguem a regra da seção 3.1: sinal e cor verde em qualquer nível.
+
+**Cancelamento de compra parcelada não é estorno.** Quando o parcelamento inteiro é cancelado, o caminho continua sendo apagar as parcelas ("apagar esta e as restantes", seção 3.2) — não lançar um estorno por cima. O estorno existe para a devolução em que a cobrança original permanece na fatura e o crédito entra ao lado dela.
+
+**Estorno não é valor padrão.** Não há estorno recorrente nem item de estorno na lista de valores padrão (seção 3.5) — é sempre um lançamento pontual.
 
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
@@ -405,6 +439,22 @@ Resolve o item 4 revisado. Tela própria em `/categorias`, no mesmo agrupamento 
 - [ ] No desktop, a barra lateral exibe os cinco destinos, com os dois grupos separados por um divisor.
 - [ ] A aplicação é exibida em tema escuro, com todos os elementos legíveis sobre o novo fundo.
 - [ ] A aplicação está publicada e acessível via Vercel.
+
+Estorno no crédito (M27, seção 3.11):
+
+- [ ] Na tela de Lançamento, escolher Tipo = Entrada oferece os dois Meios (Crédito e Débito), e escolher Crédito oferece os cartões de crédito como Conta.
+- [ ] Com Tipo = Entrada, o controle de quantidade de parcelas não aparece, mesmo com Meio = Crédito.
+- [ ] Um estorno lançado num cartão cai no mês de referência calculado pelo dia de fechamento daquele cartão, igual a uma compra na mesma data.
+- [ ] Um estorno **não** aparece no bloco Entradas da Visão mensal — nem como linha, nem somado ao total do bloco.
+- [ ] Um estorno reduz o total do bloco Saídas no crédito do seu mês de referência, no valor exato do estorno.
+- [ ] Um estorno **não** altera o valor "Estimado restante" do bloco Saídas no crédito: a estimativa continua calculada sobre o valor bruto dos gastos que consomem o teto.
+- [ ] O Disponível do mês aumenta exatamente o valor do estorno — não o dobro.
+- [ ] Na visão "Por dia", o estorno subtrai do total do dia, e aparece no popover/sheet daquele dia com sinal negativo e em verde.
+- [ ] Um dia cujo total fique negativo exibe o total com sinal negativo e em verde, tanto na linha do dia quanto no total dentro do popover/sheet.
+- [ ] Na visão "Por cartão", o estorno aparece listado sob o cartão vinculado, em ordem cronológica, com valor negativo e em verde, e o total do cartão já vem líquido.
+- [ ] Um total de cartão, de bloco ou de card de resumo que fique negativo é exibido com sinal negativo e em verde.
+- [ ] Em `/transacoes`, um estorno exibe um indicador próprio ao lado da descrição, distinguindo-o de uma entrada comum.
+- [ ] A Projeção reflete o estorno no mês de referência correto, pelas mesmas regras da Visão mensal.
 
 ## 7. Perguntas em aberto / decisões futuras
 

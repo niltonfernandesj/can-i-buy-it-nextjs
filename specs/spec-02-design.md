@@ -448,10 +448,10 @@ Esta seção descrevia `gerarOcorrenciasRecorrencia` (`lib/recorrencia.js`, arqu
 
 Tradução direta da seção 3.1 dos Requisitos em queries. A ordem abaixo já reflete a ordem de exibição definida na seção 8.3.3 (Entradas → Investimentos → Saídas no débito → Saídas no crédito):
 
-- **Entradas:** `WHERE tipo = ENTRADA AND mesReferencia = X AND anoReferencia = Y` → cada linha checa `ehInvestimento` para exibir a tag "Resgate de investimento".
+- **Entradas:** `WHERE tipo = ENTRADA AND conta.tipo = CONTA_CORRENTE AND mesReferencia = X AND anoReferencia = Y` → cada linha checa `ehInvestimento` para exibir a tag "Resgate de investimento". O filtro por `conta.tipo` entra no M27 (Requisitos 3.1 revisado, 3.11): sem ele, um estorno — que é uma `ENTRADA` num cartão — apareceria aqui **e** no bloco de crédito.
 - **Investimentos:** `WHERE tipo = SAIDA AND ehInvestimento = true AND mesReferencia = X AND anoReferencia = Y`, agrupado (`GROUP BY`) por `contaInvestimentoId`, somando `valor`.
 - **Saídas no débito:** `WHERE tipo = SAIDA AND conta.tipo = CONTA_CORRENTE AND ehInvestimento = false AND mesReferencia = X AND anoReferencia = Y`.
-- **Saídas no crédito:** `WHERE tipo = SAIDA AND conta.tipo = CARTAO_CREDITO AND mesReferencia = X AND anoReferencia = Y`, agrupado por `dataCompra`.
+- **Saídas no crédito:** `WHERE conta.tipo = CARTAO_CREDITO AND mesReferencia = X AND anoReferencia = Y`, agrupado por `dataCompra`. O filtro `tipo = SAIDA` **cai** no M27: o bloco passa a trazer os dois tipos, e o sinal de cada linha é resolvido na exibição (`valorComSinal`, §8.3.17) — uma `ENTRADA` aqui é um estorno e entra negativa. Nenhuma outra query muda de forma: um estorno é uma transação comum, com `mesReferencia` calculado pela mesma regra de fatura da seção 4.
 
 Essas quatro queries alimentam os quatro blocos da Visão mensal (seção 8.3); a apresentação (agrupamento por dia, popover de detalhamento, estados vazios etc.) é especificada na seção 8.
 
@@ -525,10 +525,12 @@ Motivação: o uso mais comum não é um lançamento isolado, é uma **sequênci
 **Comportamento em telas estreitas (Task 89).** Os botões precisam de `min-w-0`: como itens flex, o default `min-width: auto` os impede de encolher abaixo do próprio conteúdo, e com três rótulos o grupo transbordava a coluna à direita — já a partir de 390px de viewport, não só em telas pequenas. O rótulo fica num `<span>` truncável para degradar com reticências em vez de vazar. **Os ícones aparecem só a partir de `sm:` — e apenas neste toggle**, via a prop `ocultarIconeNoMobile`: medido que é o ícone, não o tamanho da fonte, que impede "Investimento" de caber em largura de celular — com ele o rótulo trunca em 320/360/375/390px mesmo a 11px; sem ele cabe inteiro a 12px a partir de 360px. O toggle de **Meio**, que usa o mesmo componente, **mantém os ícones em toda largura**: com dois rótulos curtos (Crédito/Débito) há espaço de sobra, verificado sem truncamento inclusive a 320px. A supressão é opt-in justamente para não penalizar quem não tem o problema. A 320px (iPhone SE de 1ª geração) o rótulo ainda trunca, com o layout íntegro — limite aceito, já que evitá-lo exigiria encurtar o texto do rótulo.
 
 **Meio — campo novo, mesmo padrão de toggle (Task 85):** Crédito/Débito, ícones `CreditCard`/`Wallet` (mesmos já usados em `TIPO_CONTA_ICONES`, `lib/contas.js`). Filtra os chips de Conta abaixo. A opção Crédito **some** (não fica só desabilitada) quando:
-- Tipo = Entrada — só existe entrada no débito (regra de negócio já vigente, agora explícita na UI: antes o formulário aceitava criar uma entrada em conta de cartão sem nenhum aviso).
-- Tipo = Investimento (Task 86) — aporte sempre parte da conta corrente.
+- ~~Tipo = Entrada — só existe entrada no débito.~~ **Revertido no M27:** entrada no crédito passa a ser um caso legítimo (estorno, Requisitos 3.11), e o toggle volta a oferecer as duas opções com Tipo = Entrada. Escolher Crédito filtra os chips de Conta pros cartões, como em qualquer outro Tipo.
+- Tipo = Investimento (Task 86) — aporte sempre parte da conta corrente. Aqui o Meio continua sendo forçado pra Débito ao trocar de Tipo.
 
-Nos dois casos, Meio é forçado pra Débito automaticamente ao trocar de Tipo.
+**Troca de Tipo no M27.** `selecionarTipo` deixa de embutir a regra "Entrada ⇒ Débito" — só Investimento força o Meio. Entrada preserva o Meio corrente, e a conta pré-selecionada segue a mesma lógica que já existe (mantém a conta atual se ela ainda pertence ao Meio, senão cai no primeiro chip visível). Efeito colateral desejado: numa sequência de lançamentos no cartão, alternar Saída → Entrada pra registrar um estorno não faz o formulário pular pro débito e perder o cartão selecionado.
+
+**Sem mudança em Server Action (M27).** `criarTransacao`/`validarTransacao` já aceitam `tipo: ENTRADA` com conta de cartão, e `calcularReferencia` já roteia qualquer transação de cartão por `calcularFatura` (§4) — o estorno cai na fatura pela própria data, como uma compra. As travas existentes seguem valendo sem ajuste: `ehInvestimento` continua exigindo conta corrente (um estorno nunca vira aporte/resgate) e `criarTransacaoParcelada` continua exclusiva de `SAIDA` em cartão. A task de UI é de apresentação; o QA é que precisa **confirmar no banco** que a linha nasce com `tipo: ENTRADA`, `contaId` do cartão e o `mesReferencia` da fatura correta.
 
 **Conta — chips em vez de `Select` (Task 85):** filtrados pelo Meio selecionado; trocar o Meio já pré-seleciona o primeiro chip visível, sem deixar o campo vazio. Rótulo do campo vira **"Conta de origem"** quando Tipo = Investimento (Task 86) — em qualquer outro Tipo, continua "Conta".
 
@@ -541,7 +543,7 @@ Nos dois casos, Meio é forçado pra Débito automaticamente ao trocar de Tipo.
 **Categoria — chips em vez de `Select`, e passa a persistir (Task 85):** mesmo padrão de chips da Conta. Diferente de Conta (que não persistia até a Task 80, e passa a persistir só com ela), Categoria **nunca** persistia — a partir desta task, junta-se a Tipo/Conta/Data no reset seletivo pós-envio (revisão do comportamento da Task 80): mantém o valor do lançamento anterior, porque lançamentos seguidos de uma mesma sequência tendem a repetir categoria (ex.: vários itens de Mercado na mesma sessão).
 
 **Valor + Parcelas — integrados, sem checkbox "Parcelado" (Task 85):** hoje "Parcelado" é um checkbox que revela dois campos à parte ("Nº de parcelas", "Valor da parcela"), duplicando o que seria só o campo Valor. Passa a ser um único campo Valor, sempre visível, com um **stepper de parcelas** (`−`/`+` flanqueando um número, mesmo padrão visual da navegação de dia abaixo) **embutido dentro do próprio campo** (canto direito) — décima entre quatro posições comparadas com o usuário via mock (cabeçalho acima do campo, mesma linha do campo, abaixo do campo, embutido — “embutido” venceu por ser o mais compacto, um elemento a menos na tela).
-- Só aparece quando Meio = Crédito (parcelamento continua exclusivo de cartão de crédito, Requisitos §3.2).
+- Só aparece quando Meio = Crédito (parcelamento continua exclusivo de cartão de crédito, Requisitos §3.2) **e Tipo ≠ Entrada** (M27) — não existe estorno parcelado (Requisitos 3.11). Sem essa segunda condição, liberar o Meio Crédito pra Entrada faria o stepper reaparecer num contexto em que ele não tem significado.
 - Começa em **1** — o mínimo, e o caso comum (compra não parcelada). A partir de **2**, o rótulo do campo muda de "Valor" pra **"Valor da parcela"**, e uma legenda nasce abaixo do campo com o total calculado em tempo real (`Nx de R$ X = R$ Y`, recalculado a cada dígito) — sem exigir conta de cabeça pra conferir o total da compra.
 - Parcelas ≥ 2 força Tipo = Saída (parcelamento não existe pra entrada nem investimento) e **trava o toggle de Tipo** (fica esmaecido, sem clique) enquanto ativo — evita uma combinação inválida por trás do campo.
 - Nenhuma mudança em `criarTransacaoParcelada` nem no algoritmo de geração de parcelas (§5.1) — só a decisão "isso é parcelado" migra de um checkbox explícito pra `parcelas > 1`.
@@ -574,7 +576,7 @@ Ir para mês anterior/próximo; clicar no período exibido abre um seletor dedic
 **Transição visual do swipe:** ao trocar de mês via swipe, o conteúdo abaixo do seletor de período (cards de resumo + os quatro blocos) é remontado com `key={`${mes}-${ano}`}`, disparando uma animação de entrada via `tailwindcss-animate` — a mesma biblioteca já usada em `Dialog`/`Sheet`, sem nova dependência: `animate-in fade-in slide-in-from-right-8 duration-200` para o próximo mês (swipe à esquerda), ou `slide-in-from-left-8` para o mês anterior (swipe à direita). A direção é guardada num `ref` interno a `VisaoMensalClient`, setado no handler de swipe antes de navegar. Como a troca de `searchParams` não desmonta `VisaoMensalClient` (mesmo a rota tendo `loading.jsx`, só as props são atualizadas), o `ref` sobrevive até o próximo render — sua leitura acontece diretamente durante a renderização, para computar a classe do `key` recém-trocado, e um `useEffect` dependente de `mes`/`ano` só limpa o `ref` depois, por higiene. Sem animação no carregamento inicial da página nem nas trocas de mês pelas setas ou pelo seletor de mês/ano — escopo restrito ao gesto de swipe. **Efeito colateral aceito:** como a remontagem reinicia o estado local de cada componente filho, as seções expandidas (Entradas/Investimentos/Saídas no débito/Saídas no crédito) voltam a ficar colapsadas a cada troca de mês via swipe.
 
 #### 8.3.2 Resumo financeiro do mês
-Três indicadores: **Entradas** (soma de todas as entradas do mês, incluindo resgates); **Saídas** (soma das Saídas no débito e das Saídas no crédito do mês de referência); **Disponível** (Entradas − Saídas no débito − Saídas no crédito − Investimentos). O bloco Investimentos entra na conta porque representa dinheiro comprometido (aportado) no mês, ainda que não seja um gasto por categoria — resgates não são subtraídos de novo aqui, pois já estão embutidos em Entradas. Cards apenas informativos no MVP (não são atalhos/links/expansores). No mobile: os três cards empilham em uma única coluna (uma card por linha, largura total) — evita corte de valores grandes ou negativos, já que nenhum card divide a largura com outro. A partir do breakpoint `md`, volta ao grid de 3 colunas lado a lado. Sem rolagem horizontal.
+Três indicadores: **Entradas** (soma das entradas do mês, incluindo resgates e **excluindo estornos** — M27, §8.3.17); **Saídas** (soma das Saídas no débito e das Saídas no crédito do mês de referência, esta última já líquida dos estornos); **Disponível** (Entradas − Saídas no débito − Saídas no crédito − Investimentos). O bloco Investimentos entra na conta porque representa dinheiro comprometido (aportado) no mês, ainda que não seja um gasto por categoria — resgates não são subtraídos de novo aqui, pois já estão embutidos em Entradas. Cards apenas informativos no MVP (não são atalhos/links/expansores). No mobile: os três cards empilham em uma única coluna (uma card por linha, largura total) — evita corte de valores grandes ou negativos, já que nenhum card divide a largura com outro. A partir do breakpoint `md`, volta ao grid de 3 colunas lado a lado. Sem rolagem horizontal.
 
 *(Os nomes dos indicadores são: Entradas, Saídas, Disponível — o antigo "Saldo" passa a se chamar "Disponível"; os outros dois nomes não mudam.)*
 
@@ -654,9 +656,44 @@ Resolve Requisitos 3.1 (bullet "Alternância de visão no bloco Saídas no créd
 
 **Fonte dos dados:** nenhuma busca nova — a visão "Por cartão" reagrupa, no cliente, os mesmos dados já buscados por `buscarSaidasCredito` (mesmo mês de referência, já ordenados por `dataCompra`). Reagrupar por `transacao.conta.nome`/`conta.id` em vez de por dia é suficiente; `buscarSaidasCredito` já faz `include: { conta: true }`, então o nome do cartão já vem junto.
 
+**Estornos (M27):** entram nesta visão como qualquer outro lançamento do cartão — mesma posição cronológica, sem subgrupo próprio e sem tag —, com o valor negativo em verde e somando com sinal no total do cartão (§8.3.17). É o comportamento que a visão precisa ter pra continuar servindo ao seu propósito: o banco também lança o crédito dentro da fatura do cartão, e um total que ignorasse o estorno nunca bateria com o extrato. Um cartão cujo total fique negativo no mês segue a mesma regra de cor dos demais agregados.
+
 **Linha "Estimado restante" (§16.2):** aparece igual nas duas visões, ao final do bloco, fora da área que alterna — não é reagrupada por cartão (continua sendo o teto agregado de todos os cartões, Requisitos 3.5).
 
 **Tag de parcela (Task 84):** cada linha de lançamento no subgrupo ganha a mesma tag pill de `/transacoes` ("X de Y") ao lado da descrição quando `t.numeroParcela` existe — mesmo tratamento visual do detalhamento por dia (§8.3.4), pra a marcação de parcela não depender de qual visão está ativa.
+
+#### 8.3.17 Estornos no crédito — sinal, cor e agregação (M27)
+
+Resolve Requisitos 3.11 e o bullet "Valores negativos" de 3.1. Validado com o usuário via mock em HTML antes das tasks.
+
+**Um helper puro, uma regra.** O sinal não pode nascer espalhado por cada componente — vira um módulo novo, `lib/estorno.js`, sem dependência de `db` (ao contrário de `lib/consolidacao.js`) justamente pra poder ser importado por Client Components:
+
+```javascript
+/** Estorno: entrada lançada num cartão de crédito (Requisitos 3.11). */
+export function ehEstorno(transacao) {
+  return transacao.tipo === "ENTRADA" && transacao.conta?.tipo === "CARTAO_CREDITO";
+}
+
+/**
+ * Valor da transação com o sinal que ela tem dentro do bloco em que aparece.
+ * Só estorno é negativo: uma entrada em conta corrente (bloco Entradas) e
+ * qualquer saída seguem positivas, então a função é segura de usar em
+ * qualquer um dos três blocos agrupados por dia.
+ */
+export function valorComSinal(transacao) {
+  return ehEstorno(transacao) ? -Number(transacao.valor) : Number(transacao.valor);
+}
+```
+
+**Onde o sinal se aplica.** Toda soma que hoje faz `Number(t.valor)` sobre uma lista que pode conter estorno passa a usar `valorComSinal`: `somarGrupo` (total do dia, `visao-mensal-client.jsx`), o total do dia dentro de `ListaTransacoes` (`detalhe-diario.jsx`) e o total por cartão em `ListaPorCartao`. `comporMes` **não** usa o helper — lá a regra é outra (§13.3): o estorno é subtraído do crédito num termo próprio, e o total do bloco vem de `composicaoCredito.total`, não da soma dos grupos por dia.
+
+**Cor.** Um valor negativo é exibido em `text-entrada` (o verde já usado no bloco Entradas), com o sinal vindo do próprio `formatarReais`, que já emite `-R$ 1,00` para números negativos — sem string montada à mão. A regra vale em **todos** os níveis de agregação, sem exceção: linha do estorno, total do dia (linha fechada e dentro do popover/sheet), total do cartão, total no cabeçalho do bloco e valor dos cards de resumo. Um valor ≥ 0 mantém a cor que já tinha hoje.
+
+Ter uma condição só — `valor < 0 → text-entrada` — evita a variante em que o componente precisa saber *por que* ficou negativo. O verde aqui não significa "receita", significa "a favor do usuário", que é o que um agregado negativo dentro de um bloco de saída quer dizer.
+
+**Sem tag na Visão mensal.** Nem no popover/sheet, nem na visão por cartão. O valor negativo em verde já é a marcação — decisão do usuário no mock, e coerente com §8.3.4, onde `renderTag` é reservado a informação que o valor não carrega (resgate, parcela). Em `/transacoes` a decisão é a oposta (§12.1), porque lá o valor de um estorno é `+ R$ …` em verde, igual ao de um salário.
+
+**Estado vazio.** As mensagens de §8.3.12 não mudam. Um mês só com estorno tem grupos por dia no bloco de crédito, então nunca cai no estado vazio; e o bloco Entradas exibindo "Nenhuma entrada adicional neste mês." com um estorno no mês é o comportamento correto — ele não é uma entrada.
 
 ### 8.4 Mapeamento sugerido de componentes
 
@@ -718,6 +755,7 @@ Resolve a seção 3.3 dos Requisitos. Em caso de conflito com a seção 7 ou qua
 - **Tipo**: sinal (+/-) prefixado ao Valor; Entrada em `text-emerald-600` (mesmo tom já usado no bloco Entradas da Visão mensal), Saída na cor padrão do texto.
 - **Parcela**: badge "X de Y" (mesmo estilo de tag usado para "Resgate de investimento" na Visão mensal — `rounded-full bg-muted px-2 py-0.5 text-xs`).
 - **Investimento**: badge "Aporte" (saída) ou "Resgate" (entrada — só aparece em lançamentos antigos, já que a tela de lançamento não oferece mais essa marcação pra entrada, Task 86).
+- **Estorno (M27)**: badge "Estorno" quando `ehEstorno(t)` (§8.3.17). Necessário aqui e **só** aqui: nesta tela o Valor de um estorno é `+ R$ …` em `text-entrada`, exatamente igual ao de um salário, e a única pista seria a coluna Conta trazer o nome de um cartão. O sinal e a cor **não** mudam — a coluna reflete o tipo do registro, e é a Visão mensal que compõe a fatura (§8.3.17).
 
 Uma linha pode acumular mais de um badge (ex.: saída parcelada marcada como aporte tem badge de Parcela **e** de Investimento) — badges quebram linha se não couberem lado a lado. ~~Badge de Recorrência ("X de Y ↻")~~ — **removido (Task 87)**, junto com a funcionalidade.
 
@@ -817,9 +855,13 @@ function comporMes({
   const ehParcela = (t) => t.parcelamentoId !== null;
   const doMesFiltro = (c) => c.mesReferencia === mesReferencia && c.anoReferencia === anoReferencia;
 
+  // Estorno: entrada lançada num cartão (Requisitos 3.11). Não é receita —
+  // sai de Entradas e abate o real do crédito.
+  const ehEstorno = (t) => t.tipo === "ENTRADA" && t.conta.tipo === "CARTAO_CREDITO";
+
   // --- Entradas: real + receita padrão (por item, com consolidação do mês
   // substituindo o valor genérico quando existir — Requisitos 3.8, §13.5) ---
-  const entradaReal = somar(doMes.filter((t) => t.tipo === "ENTRADA"));
+  const entradaReal = somar(doMes.filter((t) => t.tipo === "ENTRADA" && !ehEstorno(t)));
   const receitasDoMes = consolidacoesReceita.filter(doMesFiltro);
   const entradaPadrao = valoresPadrao
     .filter((v) => v.tipo === "ENTRADA")
@@ -837,13 +879,20 @@ function comporMes({
     const parcelas   = somar(doMeio.filter(ehParcela));            // somam por cima
     const consumidor = somar(doMeio.filter((t) => !ehParcela(t))); // avulsos + recorrências
 
+    // Estornos do mês (Requisitos 3.11): abatem o real, e SÓ o real. Não
+    // entram no cálculo do estimado — decisão explícita do usuário: estornar
+    // não devolve teto (Requisitos 3.5). Por isso `consumidor` continua bruto
+    // e `estornos` só aparece no `real`/`total`.
+    const estornos = somar(doMes.filter(ehEstorno));
+
     const teto = somar(
       valoresPadrao.filter((v) => v.tipo === "SAIDA" && v.meio === "CREDITO")
     );
     const aindaEstimavel = creditoAindaEstimavel(mesReferencia, anoReferencia, cartoes, hoje);
     const estimado = aindaEstimavel ? Math.max(0, teto - consumidor) : 0;
 
-    return { real: parcelas + consumidor, estimado, total: parcelas + consumidor + estimado };
+    const real = parcelas + consumidor - estornos; // pode ser negativo
+    return { real, estimado, total: real + estimado };
   }
 
   // --- Saídas no débito: previsão fixa por item, resolvida por consolidação
@@ -892,6 +941,8 @@ function comporMes({
 Pontos que merecem atenção:
 
 - **Investimentos nunca são estimados.** Não há valor padrão de aporte; o bloco reflete apenas o que foi lançado.
+- **Estorno entra em um lugar só (M27).** `ehEstorno` é a mesma condição usada nas duas pontas — subtrai de `entradaReal` e de `credito.real`. Tratá-lo em só uma delas produziria o erro clássico: contado como receita **e** como abatimento, o Disponível subiria o dobro do estorno. A checagem depende de `t.conta.tipo`, então **toda chamada a `comporMes` precisa passar transações com `conta` incluída** — as duas telas já fazem `include: { conta: true }`, e `comporCredito`/`comporDebito` já dependiam disso antes do M27.
+- **`credito.real` e `credito.total` podem ser negativos.** Um mês com mais estorno que gasto no cartão é legítimo (Requisitos 3.11) e nada é truncado em zero: o `Math.max(0, …)` existente protege só o `estimado`, que é outra coisa. O `disponivel` sobe na mesma medida, que é o resultado correto.
 - **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
 - **A mesma função serve as duas telas.** A Visão mensal chama `comporMes` para um único mês; a Projeção chama para doze. Não há duas implementações da regra.
@@ -931,6 +982,17 @@ Casos adicionados na Task 78, cobrindo a virada do débito para previsão por it
 22. Consolidação de despesa num **outro** mês → não vaza para o mês composto; o item continua previsto.
 23. Mês passado com item de despesa no débito não consolidado → estimado zero (`debitoAindaEstimavel` falso), mas o lançamento real do mês continua somando.
 24. Item de despesa padrão no **crédito** → nunca é afetado pelas consolidações de despesa; segue a regra de teto do caso 2.
+
+Casos adicionados no M27, cobrindo o estorno no crédito (Requisitos 3.11):
+
+25. Estorno no mês → **não** soma em `entradas.real` (o bloco Entradas ignora entradas em cartão).
+26. Estorno no mês → abate `credito.real` no valor exato, e `credito.total` cai junto.
+27. Estorno no mês com teto de despesa padrão no crédito ainda estimável → `credito.estimado` **inalterado**; a estimativa segue calculada sobre o valor bruto dos avulsos, sem descontar o estorno (é a decisão do usuário — o inverso, se algum dia for revisto, quebra este teste de propósito).
+28. Estorno maior que os gastos do cartão no mês → `credito.real` negativo, sem truncar em zero; `credito.estimado` continua ≥ 0.
+29. Estorno num mês → `disponivel` sobe **exatamente** o valor do estorno (guarda contra a contagem dupla).
+30. Entrada em conta corrente no mesmo mês de um estorno → a entrada soma em `entradas.real` e o estorno não; os dois não se misturam.
+31. Estorno num mês com fatura já fechada em todos os cartões (`creditoAindaEstimavel` falso) → `estimado` zero, `real` já com o estorno abatido.
+32. Estorno num **outro** mês de referência → não vaza para o mês composto, nem em entradas nem em crédito.
 
 ### 13.5 Consolidação mensal de receita padrão
 
