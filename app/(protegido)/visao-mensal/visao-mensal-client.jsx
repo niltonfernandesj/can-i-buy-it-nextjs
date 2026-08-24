@@ -713,11 +713,12 @@ function agruparPorCartao(gruposPorDia) {
 // Subgrupo de um cartão na visão "Por cartão" — recolhível, no mesmo padrão
 // de CabecalhoBloco: a linha inteira é o gatilho, com o total à direita e um
 // ChevronDown que gira. Estado local por cartão, então recolher um não afeta
-// os outros. Começa **expandido**, ao contrário dos blocos: quem chega aqui
-// já gastou dois cliques (expandir o bloco, trocar de aba) e o pedido foi
-// poder recolher, não esconder de saída.
+// os outros. Começa **recolhido**, como os blocos: a aba abre mostrando a
+// lista de cartões e seus totais, que é o que a conferência contra a fatura
+// usa primeiro; os lançamentos de um cartão vêm a um clique, quando o total
+// não bate.
 function GrupoCartao({ cartao }) {
-  const [expandido, setExpandido] = useState(true);
+  const [expandido, setExpandido] = useState(false);
 
   // Total líquido: o banco também lança o estorno dentro da fatura do cartão,
   // e um total que o ignorasse nunca bateria com o extrato — que é justamente
