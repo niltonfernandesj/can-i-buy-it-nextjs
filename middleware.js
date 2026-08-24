@@ -16,5 +16,12 @@ export default withAuth({
 });
 
 export const config = {
-  matcher: ["/((?!api/auth|login|_next/static|_next/image|favicon.ico).*)"],
+  // manifest.webmanifest, apple-touch-icon e icon-* precisam ficar de fora da
+  // proteção (Design §19.3): protegidos, o navegador recebe um redirecionamento
+  // para /login com corpo HTML no lugar do arquivo, e a instalação na tela
+  // inicial falha **em silêncio**, sem erro visível. Liberar é seguro — são
+  // arquivos estáticos, sem dado algum do usuário.
+  matcher: [
+    "/((?!api/auth|login|_next/static|_next/image|favicon.ico|manifest.webmanifest|apple-touch-icon|icon-).*)",
+  ],
 };

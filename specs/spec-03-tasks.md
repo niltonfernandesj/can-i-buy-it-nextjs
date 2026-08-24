@@ -770,12 +770,14 @@ Resolve o requisito de instalabilidade da spec-01 §4; Design §19. Escopo restr
 Alvo é **iPhone**, por Safari e por Chrome — que no iOS roda sobre WebKit e herda o mesmo comportamento. Isso descarta de saída o prompt automático de instalação (`beforeinstallprompt` é de Chromium e nunca dispara no iOS): instalar é sempre manual, pelo menu Compartilhar.
 
 **Task 95. Manifest, ícones e liberação no middleware**
+✅ **Concluída** — commit `05254e5`
 As três coisas numa task só porque, separadas, produziriam um estado quebrado: manifest sem ícone não instala, e qualquer um dos dois bloqueado pelo middleware falha em silêncio. Design §19.1–19.3.
 
 - **Ícones**, gerados a partir de uma fonte única: `apple-touch-icon` 180×180 **opaco** (iOS compõe fundo branco sob transparência, o que num tema escuro criaria moldura branca), mais 192 e 512 para o manifest.
 - **`app/manifest.js`** com `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color`/`theme_color` vindos dos tokens do tema (§16.1) e os ícones acima.
 - **Meta tags do iOS** no `layout.jsx`: `apple-touch-icon` (o que o iPhone de fato lê — ele **ignora** os `icons` do manifest), `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style` e `theme-color`. Mantidas junto com o `display` do manifest, não no lugar dele (Design §19.2).
 - **`middleware.js`** libera `manifest.webmanifest` e os ícones. Sem isso o navegador recebe um redirecionamento para `/login` no lugar do manifest e a instalação falha sem mensagem alguma.
+- **Renomeação do app**, que esta task não tem como evitar — o manifest precisa de `name` e `short_name`. Passa a ser **"Pode Comprá?"**, abreviado **"Pó Comprá?"** sob o ícone (spec-01 §4), no manifest e no `title` do `layout.jsx`. A funcionalidade de simulação perde o apelido `("Can I Buy It?")`, que só existia para ecoar o nome antigo do app — mantê-lo sugeriria que só aquela tela é o "Pode Comprá?". **Repositório e pacote não mudam:** renomear o repositório alteraria a URL do remote e a integração de deploy, risco desproporcional para um nome que ninguém vê.
 
 *(Checkpoint: requisito de instalabilidade — spec-01 §4. QA por asserção: `/manifest.webmanifest` responde 200 com `Content-Type` de manifest e **não** 3xx para o login, tanto autenticado quanto **deslogado**; o JSON traz os campos obrigatórios; cada ícone declarado responde 200, tem as dimensões prometidas e o apple-touch-icon é opaco — verificar o canal alfa, não confiar no arquivo estar certo; as meta tags do iOS aparecem no HTML servido.)*
 

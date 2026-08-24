@@ -85,7 +85,7 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
 13. **Projeção de 12 meses**
     - Tela dedicada que consolida os 12 meses seguintes, combinando lançamentos reais, compromissos já assumidos (parcelas e recorrências) e os valores padrão.
     - Ver especificação detalhada na seção 3.6 abaixo.
-14. **Simulação de compra ("Can I Buy It?")**
+14. **Simulação de compra**
     - Na tela de Projeção, o usuário simula uma compra parcelada no crédito e vê o impacto imediato nos 12 meses.
     - Ver especificação detalhada na seção 3.7 abaixo.
 
@@ -195,7 +195,7 @@ Em ambos os meios, a composição de despesas de cada mês degrada naturalmente 
 - A Visão mensal (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
 - Cada mês da lista funciona como **link** para a Visão mensal filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão mensal.
 
-### 3.7 Especificação — Simulação de compra ("Can I Buy It?")
+### 3.7 Especificação — Simulação de compra
 
 - Disponível **apenas** na tela de Projeção (3.6).
 - O usuário informa: **cartão de crédito**, **data da compra**, **valor** e **quantidade de parcelas**. Não há campo de descrição.
@@ -274,6 +274,7 @@ Resolve o item 4 revisado. Tela própria em `/categorias`, no mesmo agrupamento 
 - **Stack sugerida:** Next.js (full-stack) + banco de dados leve (SQLite via Prisma/Drizzle) + NextAuth (ou equivalente) para autenticação. A ser confirmado na fase de Design.
 - **Hospedagem:** Vercel (plano hobby/gratuito).
 - **Responsividade:** deve funcionar bem em desktop e mobile (uso familiar no dia a dia, provavelmente via celular).
+- **Nome de exibição (M26):** a aplicação chama-se **"Pode Comprá?"**, com a forma abreviada **"Pó Comprá?"** para o rótulo sob o ícone na tela inicial (o iOS corta por volta de 12 caracteres; a abreviada tem 10 e cabe inteira, com a interrogação). O nome do repositório e do pacote **não** acompanham a mudança — renomear o repositório alteraria a URL do remote e a integração de deploy, risco desproporcional para um nome que ninguém vê.
 - **Instalável como app (M26):** a aplicação pode ser adicionada à tela inicial do iPhone e, aberta dali, roda **sem a barra do navegador**, com ícone e nome próprios. Confirmado com o usuário que o uso é **só em iPhone**, por Safari e por Chrome (que no iOS roda sobre WebKit, então herda o mesmo comportamento).
   - **Sem funcionamento offline** — decisão explícita do usuário. Sem rede, a aplicação mostra o erro do navegador, como hoje. Motivo: guardar dado financeiro em cache no aparelho traz risco de exibir saldo desatualizado sem aviso e de deixar rastro no dispositivo, e o ganho não compensa para um app usado sempre com conexão.
   - **Sem notificações push** — não há caso de uso definido; a infraestrutura (chaves, inscrições, gatilho agendado) ficaria parada. Pode ser acrescentada depois sem refazer o que este marco entrega.

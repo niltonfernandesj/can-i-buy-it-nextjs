@@ -1398,7 +1398,11 @@ O uso é **só em iPhone**. Todo navegador no iOS — inclusive o Chrome — é 
 
 ### 19.2 Manifest e metadados
 
-`app/manifest.js` (rota de metadados do Next 14, que serve `/manifest.webmanifest`), com `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color` e `theme_color` alinhados aos tokens do tema escuro (§16.1), mais os `icons` de 192 e 512.
+`app/manifest.js` (rota de metadados do Next 14, que serve `/manifest.webmanifest`), com `name: "Pode Comprá?"`, `short_name: "Pó Comprá?"`, `start_url`, `display: "standalone"`, `background_color` e `theme_color` alinhados aos tokens do tema escuro (§16.1), mais os `icons` de 192 e 512.
+
+**Os ícones vêm de uma arte única** (`icone-fonte.png`, na raiz), processada por `scripts/gera-icones.mjs`: troca do fundo quase preto original pelo `#1B1B1F` dos cards, recorte centrado no conteúdo (as cédulas puxam o eixo à esquerda, então centralizar pela imagem entortaria o personagem) elevando a ocupação de 70,7% para 80%, e redução por halving sucessivo — reduzir de 1108 para 180 num passo só serrilha a linha do contorno. O script fica versionado para que os PNGs não sejam binários sem procedência.
+
+**`apple-mobile-web-app-status-bar-style` fica em `black`, não `black-translucent`.** O translúcido faz o conteúdo passar por baixo da barra de status, o que exige o tratamento de área segura da §19.4 — trocar antes disso colocaria o cabeçalho sob o relógio. Reavaliar na Task 96.
 
 No `layout.jsx`, além do `<link rel="manifest">` que o Next injeta a partir do arquivo acima:
 
