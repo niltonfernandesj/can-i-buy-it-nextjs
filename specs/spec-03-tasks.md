@@ -763,6 +763,35 @@ Só depois que as Tasks 92 e 93 estiverem em produção e verificadas. Design §
 
 ---
 
+## M26 — Instalação como app na tela inicial (PWA instalável)
+
+Resolve o requisito de instalabilidade da spec-01 §4; Design §19. Escopo restrito ao app instalável: **sem service worker, sem offline, sem push** (decisões do usuário registradas nos Requisitos).
+
+Alvo é **iPhone**, por Safari e por Chrome — que no iOS roda sobre WebKit e herda o mesmo comportamento. Isso descarta de saída o prompt automático de instalação (`beforeinstallprompt` é de Chromium e nunca dispara no iOS): instalar é sempre manual, pelo menu Compartilhar.
+
+**Task 95. Manifest, ícones e liberação no middleware**
+As três coisas numa task só porque, separadas, produziriam um estado quebrado: manifest sem ícone não instala, e qualquer um dos dois bloqueado pelo middleware falha em silêncio. Design §19.1–19.3.
+
+- **Ícones**, gerados a partir de uma fonte única: `apple-touch-icon` 180×180 **opaco** (iOS compõe fundo branco sob transparência, o que num tema escuro criaria moldura branca), mais 192 e 512 para o manifest.
+- **`app/manifest.js`** com `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color`/`theme_color` vindos dos tokens do tema (§16.1) e os ícones acima.
+- **Meta tags do iOS** no `layout.jsx`: `apple-touch-icon` (o que o iPhone de fato lê — ele **ignora** os `icons` do manifest), `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style` e `theme-color`. Mantidas junto com o `display` do manifest, não no lugar dele (Design §19.2).
+- **`middleware.js`** libera `manifest.webmanifest` e os ícones. Sem isso o navegador recebe um redirecionamento para `/login` no lugar do manifest e a instalação falha sem mensagem alguma.
+
+*(Checkpoint: requisito de instalabilidade — spec-01 §4. QA por asserção: `/manifest.webmanifest` responde 200 com `Content-Type` de manifest e **não** 3xx para o login, tanto autenticado quanto **deslogado**; o JSON traz os campos obrigatórios; cada ícone declarado responde 200, tem as dimensões prometidas e o apple-touch-icon é opaco — verificar o canal alfa, não confiar no arquivo estar certo; as meta tags do iOS aparecem no HTML servido.)*
+
+---
+
+**Task 96. Área segura em modo standalone**
+Só se manifesta depois de instalado, quando o app passa a ocupar a tela inteira e a moldura do navegador deixa de reservar espaço para a barra de status e o indicador de home. Design §19.4.
+
+- `viewport-fit=cover` no viewport.
+- `env(safe-area-inset-top)` no cabeçalho mobile e `env(safe-area-inset-bottom)` na barra de navegação inferior (§15.3) — os dois elementos `fixed` que hoje encostariam nas bordas do sistema.
+- Sem tratamento, a barra inferior fica sob o indicador de home, que é exatamente onde estão os alvos de toque mais usados ("Nova", "Dados", "Ajustes").
+
+*(Checkpoint: QA por asserção simulando o recorte — aplicar valores de `safe-area-inset` e confirmar que o preenchimento dos dois elementos fixos responde, e que sem eles nada regride no navegador comum, onde os insets valem zero. A conferência final do recorte real fica no iPhone do usuário, ver Design §19.5.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -792,3 +821,4 @@ Só depois que as Tasks 92 e 93 estiverem em produção e verificadas. Design §
 | M23 | Requisitos não funcionais — tema escuro (spec-01 §4), complementando o M15: widgets nativos do navegador coerentes com o tema |
 | M24 | Correção — toggle de Tipo estourava a largura da coluna no mobile após ganhar a terceira opção na Task 86 |
 | M25 | Escopo item 4 revisado — categorias deixam de ser lista fixa em código e viram entidade gerenciável pelo usuário, com cor e desativação (spec-01 §3.10) |
+| M26 | Requisitos não funcionais — instalação na tela inicial do iPhone (spec-01 §4), sem offline e sem push |

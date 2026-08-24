@@ -274,6 +274,9 @@ Resolve o item 4 revisado. Tela própria em `/categorias`, no mesmo agrupamento 
 - **Stack sugerida:** Next.js (full-stack) + banco de dados leve (SQLite via Prisma/Drizzle) + NextAuth (ou equivalente) para autenticação. A ser confirmado na fase de Design.
 - **Hospedagem:** Vercel (plano hobby/gratuito).
 - **Responsividade:** deve funcionar bem em desktop e mobile (uso familiar no dia a dia, provavelmente via celular).
+- **Instalável como app (M26):** a aplicação pode ser adicionada à tela inicial do iPhone e, aberta dali, roda **sem a barra do navegador**, com ícone e nome próprios. Confirmado com o usuário que o uso é **só em iPhone**, por Safari e por Chrome (que no iOS roda sobre WebKit, então herda o mesmo comportamento).
+  - **Sem funcionamento offline** — decisão explícita do usuário. Sem rede, a aplicação mostra o erro do navegador, como hoje. Motivo: guardar dado financeiro em cache no aparelho traz risco de exibir saldo desatualizado sem aviso e de deixar rastro no dispositivo, e o ganho não compensa para um app usado sempre com conexão.
+  - **Sem notificações push** — não há caso de uso definido; a infraestrutura (chaves, inscrições, gatilho agendado) ficaria parada. Pode ser acrescentada depois sem refazer o que este marco entrega.
 - **Tema visual:** a aplicação adota um **tema escuro único**, sem alternância claro/escuro e sem seguir a preferência do sistema. Todas as cores devem vir do sistema de tokens — incluindo as cores semânticas hoje cravadas na paleta clara (entradas, investimentos, saídas no débito, saídas no crédito e o destaque do seletor de período) — e o contraste de cada elemento sobre o novo fundo precisa ser revisado, não apenas herdado.
 - **Segurança:** a aplicação hospeda dados financeiros reais de uma família numa URL pública. Portanto:
   - Nenhuma rota que crie usuários pode ser exposta (seção 2).

@@ -1380,3 +1380,46 @@ A cor aparece como **marcador** (ponto ou pílula) ao lado do nome da categoria:
 ### 18.5 Tela `/categorias`
 
 Entra no agrupamento de navegação de Contas e Valores padrão (§8.1). Estrutura segue o padrão já estabelecido por `/contas` e `/valores-padrao`: listagem em `Card`, formulário de criação inline, edição e exclusão por linha, Server Actions em `lib/actions/categorias.js` com `revalidatePath` para `/categorias` e para **todas as telas que exibem categoria** — `/lancamento`, `/transacoes`, `/visao-mensal` e `/valores-padrao`. Omitir alguma reproduz o bug de cache já ocorrido com contas (§8.5).
+
+## 19. Instalação como app na tela inicial (PWA — M26)
+
+Resolve o requisito de instalabilidade da spec-01 §4. Escopo deliberadamente restrito ao **app instalável**: sem service worker, sem cache de dados, sem push.
+
+**Service worker não é requisito de instalação** — a especificação exige manifest, ícones, `start_url`, `display` e origem HTTPS; o service worker só entra quando se quer comportamento offline, que aqui está fora de escopo por decisão do usuário. Ou seja, o que este marco entrega é um PWA instalável completo, não uma versão pela metade.
+
+### 19.1 O alvo é WebKit, não Chromium
+
+O uso é **só em iPhone**. Todo navegador no iOS — inclusive o Chrome — é obrigado a usar WebKit, então o comportamento é o do Safari em qualquer um deles. Consequências que mudam o desenho:
+
+- **Não existe prompt automático de instalação.** `beforeinstallprompt` é de Chromium e nunca dispara no iOS. A instalação é sempre manual: Compartilhar → Adicionar à Tela de Início. Não há o que implementar para "oferecer" a instalação; no máximo, instruir.
+- **iOS ignora o campo `icons` do manifest** para o ícone da tela inicial e usa exclusivamente `<link rel="apple-touch-icon">`, 180×180. Sem essa tag, o ícone sai em branco ou como um recorte da página. Os `icons` do manifest continuam declarados (padrão da spec, e servem ao desktop), mas **não** são o que o iPhone lê.
+- **O ícone precisa ser opaco.** iOS compõe **fundo branco** sob qualquer transparência — num app de tema escuro, um PNG com fundo transparente ganharia uma moldura branca. O ícone traz o próprio fundo, na cor do tema.
+- Instalar pelo Chrome no iOS funciona a partir do iOS 16.4/17, pelo mesmo menu Compartilhar.
+
+### 19.2 Manifest e metadados
+
+`app/manifest.js` (rota de metadados do Next 14, que serve `/manifest.webmanifest`), com `name`, `short_name`, `start_url`, `display: "standalone"`, `background_color` e `theme_color` alinhados aos tokens do tema escuro (§16.1), mais os `icons` de 192 e 512.
+
+No `layout.jsx`, além do `<link rel="manifest">` que o Next injeta a partir do arquivo acima:
+
+- `apple-touch-icon` (180×180, opaco) — o que o iOS de fato usa;
+- `apple-mobile-web-app-capable` e `apple-mobile-web-app-status-bar-style` — o caminho legado da Apple para modo standalone e cor da barra de status. Declarados **junto** com o `display: "standalone"` do manifest, não no lugar dele: as versões de iOS em uso divergem em qual dos dois respeitam, e manter os dois é defensivo e sem custo;
+- `theme-color` correspondente ao fundo da aplicação.
+
+### 19.3 A armadilha do middleware
+
+`middleware.js` protege tudo que não esteja explicitamente liberado — hoje `api/auth`, `login`, `_next/static`, `_next/image` e `favicon.ico`. **O manifest e os ícones caem nessa rede**: o navegador pediria `/manifest.webmanifest`, receberia um redirecionamento para `/login` com corpo HTML, e a instalação falharia **em silêncio**, sem erro visível.
+
+O matcher precisa liberar `manifest.webmanifest`, `icon-*`, `apple-touch-icon*` — e a liberação é segura: são arquivos estáticos sem dado algum do usuário.
+
+### 19.4 Área segura em modo standalone
+
+Instalado, o app ocupa a tela inteira, **inclusive sob a barra de status e sob o indicador de home** — a moldura do navegador, que hoje reserva esse espaço, deixa de existir. A navegação mobile atual usa `fixed inset-x-0 top-0` (cabeçalho) e `fixed inset-x-0 bottom-0` (barra inferior, §15.3): sem tratamento, o cabeçalho fica parcialmente sob o relógio e a barra inferior sob o indicador de home, que é justamente onde ficam os alvos de toque mais usados.
+
+A correção é `viewport-fit=cover` no viewport mais `env(safe-area-inset-*)` no preenchimento desses dois elementos fixos. É um problema que **só se manifesta depois de instalado** — não aparece testando no navegador.
+
+### 19.5 O que dá para verificar e o que não dá
+
+Verificável por asserção, sem o aparelho: o manifest responde `200` com `Content-Type` de manifest (e **não** um redirecionamento para o login), os campos obrigatórios estão presentes, cada ícone declarado existe e tem as dimensões e a opacidade prometidas, e as meta tags do iOS estão no HTML servido.
+
+**Não** verificável aqui: o gesto de Adicionar à Tela de Início, a aparência real do ícone no springboard e o recorte da área segura no aparelho do usuário. Isso depende de um iPhone real e fica como confirmação dele.
