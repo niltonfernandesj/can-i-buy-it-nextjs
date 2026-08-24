@@ -68,6 +68,16 @@ module.exports = {
   			'saida-debito': 'var(--saida-debito)',
   			'saida-credito': 'var(--saida-credito)',
   			estimado: 'var(--estimado)',
+  			// Régua do percentual do disponível (Design §14.4). O componente usa
+  			// um mapa literal de classe, não `text-disponivel-${faixa}` — nome
+  			// montado em runtime é descartado pelo JIT (mesma regra de §18.4).
+  			disponivel: {
+  				otimo: 'var(--disponivel-otimo)',
+  				bom: 'var(--disponivel-bom)',
+  				atencao: 'var(--disponivel-atencao)',
+  				baixo: 'var(--disponivel-baixo)',
+  				critico: 'var(--disponivel-critico)'
+  			},
   			periodo: {
   				DEFAULT: 'var(--periodo-bg)',
   				foreground: 'var(--periodo-fg)'

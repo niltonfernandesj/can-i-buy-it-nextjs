@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatarReais } from "@/lib/moeda";
+import { percentualDoDisponivel, faixaDoPercentual } from "@/lib/disponivel";
 import { MESES } from "@/lib/datas";
 import { gerarParcelas } from "@/lib/parcelamento";
 import { cn } from "@/lib/utils";
@@ -198,27 +199,78 @@ function Indicador({ Icone, cor, valor, titulo }) {
   );
 }
 
+// Mapa literal, não `text-disponivel-${faixa}`: o JIT do Tailwind só gera a
+// classe se encontrar a string inteira no código-fonte — nome montado em tempo
+// de execução é descartado na build e o rótulo sairia sem cor (mesma armadilha
+// de CLASSE_COR_CATEGORIA, Design §18.4).
+const CLASSE_FAIXA_DISPONIVEL = {
+  otimo: "text-disponivel-otimo",
+  bom: "text-disponivel-bom",
+  atencao: "text-disponivel-atencao",
+  baixo: "text-disponivel-baixo",
+  critico: "text-disponivel-critico",
+};
+
+// "Com destaque" nas duas pontas da régua (Requisitos §3.12) é peso da fonte,
+// não um sexto tom — o degradê tem cinco cores.
+const FAIXAS_COM_DESTAQUE = ["otimo", "critico"];
+
+// Quanto o disponível representa das entradas do mês (Design §14.4). Some
+// quando não há base de cálculo — mês sem receita padrão e sem entrada
+// lançada; dividir por zero não daria número exibível.
+function PercentualDoDisponivel({ disponivel, entradas }) {
+  const percentual = percentualDoDisponivel(disponivel, entradas);
+  if (percentual === null) return null;
+
+  // A faixa sai do valor JÁ arredondado, não do exato: 39,65% é exibido como
+  // "40%", e classificar pelo exato pintaria de lima um número que a régua diz
+  // ser verde com destaque — a cor contradiria o número na tela.
+  const arredondado = Math.round(percentual);
+  const faixa = faixaDoPercentual(arredondado);
+
+  return (
+    <span
+      className={cn(
+        // font-normal explícito: o <p> que envolve o valor é font-semibold, e
+        // sem isto o rótulo herda o peso e todas as faixas saem com destaque.
+        "text-xs font-normal tabular-nums",
+        CLASSE_FAIXA_DISPONIVEL[faixa],
+        FAIXAS_COM_DESTAQUE.includes(faixa) && "font-semibold",
+      )}
+    >
+      {arredondado}%
+    </span>
+  );
+}
+
 // Design §14.3: o resultado simulado precisa ser distinguível do valor base —
 // delta ao lado do número (ex.: "R$ 1.140 → R$ 840") em vez de só o novo total.
-function DisponivelComDelta({ disponivel, disponivelSimulado, simulado }) {
+function DisponivelComDelta({ disponivel, disponivelSimulado, simulado, entradas }) {
+  // Com simulação ativa o percentual acompanha o valor simulado — o número que
+  // passa a valer — e aparece uma vez só (Requisitos §3.12).
+  const disponivelExibido = simulado ? disponivelSimulado : disponivel;
+
   return (
     <div>
       <p className="mb-0.5 text-[9.5px] font-bold uppercase tracking-[0.07em] text-muted-foreground">
         Disponível
       </p>
-      {!simulado ? (
-        <p className={cn("text-xl font-semibold tabular-nums", disponivel < 0 && "text-destructive")}>
-          {formatarReais(disponivel)}
-        </p>
-      ) : (
-        <p className="text-xl font-semibold tabular-nums">
-          <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
-          {" → "}
-          <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
-            {formatarReais(disponivelSimulado)}
+      <p className="flex items-baseline gap-2 text-xl font-semibold tabular-nums md:justify-end">
+        {!simulado ? (
+          <span className={cn(disponivel < 0 && "text-destructive")}>
+            {formatarReais(disponivel)}
           </span>
-        </p>
-      )}
+        ) : (
+          <span>
+            <span className={cn(disponivel < 0 && "text-destructive")}>{formatarReais(disponivel)}</span>
+            {" → "}
+            <span className={cn(disponivelSimulado < 0 && "text-destructive")}>
+              {formatarReais(disponivelSimulado)}
+            </span>
+          </span>
+        )}
+        <PercentualDoDisponivel disponivel={disponivelExibido} entradas={entradas} />
+      </p>
     </div>
   );
 }
@@ -247,6 +299,7 @@ function LinhaMes({ mes }) {
               disponivel={mes.disponivel}
               disponivelSimulado={mes.disponivelSimulado}
               simulado={mes.simulado}
+              entradas={mes.entradas.total}
             />
           </div>
         </CardContent>

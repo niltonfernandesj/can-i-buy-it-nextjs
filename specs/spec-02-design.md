@@ -1175,11 +1175,13 @@ export function faixaDoPercentual(percentual) {
 
 `faixaDoPercentual` não trata negativo em separado: qualquer valor abaixo de 5 — inclusive negativo — é `critico`, que é exatamente a regra dos Requisitos.
 
+**A faixa é calculada sobre o percentual arredondado**, não sobre o exato — `faixaDoPercentual(Math.round(percentual))`. O componente exibe o arredondado, e classificar pelo exato faria a cor contradizer o número: um mês com 39,65% mostra `40%` e sairia em verde-lima, enquanto a régua dos Requisitos diz que 40% é verde com destaque. Encontrado no QA da Task 105, num mês real da janela.
+
 **Tokens (§16.1).** Cinco tokens semânticos novos, `--disponivel-otimo` … `--disponivel-critico`. Quatro reaproveitam valores hexadecimais que já existem na paleta, mas ganham nome próprio em vez de a UI referenciar `--categoria-lima` ou `--saida-credito` — a régua não é uma categoria nem um meio de pagamento, e o alias explícito deixa uma futura recalibragem tocar num lugar só. Só `--disponivel-critico` (`#F43F5E`) é um valor novo.
 
 **Mapa explícito de classe, não interpolação.** Mesma armadilha já registrada em `CLASSE_COR_CATEGORIA` (§18.4): o JIT do Tailwind só gera a classe se encontrar a string literal no código-fonte, então `text-disponivel-${faixa}` sairia sem cor na build. O componente usa um objeto literal `{ otimo: "text-disponivel-otimo", ... }`.
 
-**Anatomia do rótulo:** `text-xs` (12px contra os 20px do valor) e `font-normal`, exceto nas faixas `otimo` e `critico`, que levam `font-semibold` — é assim que "com destaque" dos Requisitos se materializa, sem um sexto tom. Fica na mesma linha do valor, alinhado pela linha de base (`items-baseline`), à direita dele no desktop e logo após ele no mobile — o container do Disponível já inverte o alinhamento por breakpoint (`md:text-right`), então o rótulo acompanha sem regra própria.
+**Anatomia do rótulo:** `text-xs` (12px contra os 20px do valor) e **`font-normal` explícito** — o `<p>` que envolve o valor é `font-semibold`, e sem a declaração o rótulo herda o peso e *todas* as faixas saem com destaque, anulando a distinção (bug encontrado no QA da Task 105), exceto nas faixas `otimo` e `critico`, que levam `font-semibold` — é assim que "com destaque" dos Requisitos se materializa, sem um sexto tom. Fica na mesma linha do valor, alinhado pela linha de base (`items-baseline`), à direita dele no desktop e logo após ele no mobile — o container do Disponível já inverte o alinhamento por breakpoint (`md:text-right`), então o rótulo acompanha sem regra própria.
 
 **Com simulação ativa** (§14.3), o percentual é calculado sobre `disponivelSimulado` e aparece **uma vez só**, ao fim da linha "antes → depois". Dois percentuais numa linha que já tem dois valores em R$ passariam de qualquer largura útil no mobile.
 

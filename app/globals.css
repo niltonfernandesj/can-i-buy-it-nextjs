@@ -67,6 +67,16 @@ body {
     --periodo-fg: #A5B4FC;
     --estimado: #8C8C96;
 
+    /* Régua do percentual do disponível na Projeção (Design §14.4). Quatro
+       repetem hexadecimais já presentes na paleta, mas ganham nome próprio: a
+       régua não é categoria nem meio de pagamento, e o alias deixa uma
+       recalibragem futura tocar num lugar só. Só o crítico é valor novo. */
+    --disponivel-otimo: #4ADE80;
+    --disponivel-bom: #A3E635;
+    --disponivel-atencao: #FBBF24;
+    --disponivel-baixo: #FB7185;
+    --disponivel-critico: #F43F5E;
+
     /* Paleta de categorias (Design §18.4) — o banco guarda o slug, não o
        hexadecimal, pra que uma revisão de tema mude tudo de uma vez em vez
        de deixar hex órfãos nas linhas. Toda a família -400 do Tailwind, a

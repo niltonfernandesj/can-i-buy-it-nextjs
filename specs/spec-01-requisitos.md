@@ -302,6 +302,7 @@ Na tela de Projeção, o valor **Disponível** de cada mês é um número absolu
 | Abaixo de 5% | Vermelho, com destaque |
 
 - Os limites são **inclusivos no piso**: exatamente 40% já é a primeira faixa, exatamente 25% é a segunda, e assim por diante.
+- A faixa é decidida pelo **percentual já arredondado**, o mesmo que aparece na tela. Classificar pelo valor exato criaria contradição visível na fronteira: 39,65% é exibido como `40%`, e a régua diz que 40% é verde com destaque — pintar de verde-lima faria a cor desmentir o número. (Ajuste feito durante a implementação, ao ver o caso acontecer num mês real.)
 - "Com destaque" nas duas pontas é **peso da fonte**, não um sexto tom — o degradê tem cinco cores, e as extremidades ganham reforço tipográfico.
 
 **Casos de borda:**
