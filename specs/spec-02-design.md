@@ -857,7 +857,7 @@ function comporMes({
 
   // Estorno: entrada lançada num cartão (Requisitos 3.11). Não é receita —
   // sai de Entradas e abate o real do crédito.
-  const ehEstorno = (t) => t.tipo === "ENTRADA" && t.conta.tipo === "CARTAO_CREDITO";
+  const ehEstorno = (t) => t.tipo === "ENTRADA" && t.conta?.tipo === "CARTAO_CREDITO";
 
   // --- Entradas: real + receita padrão (por item, com consolidação do mês
   // substituindo o valor genérico quando existir — Requisitos 3.8, §13.5) ---
@@ -941,7 +941,7 @@ function comporMes({
 Pontos que merecem atenção:
 
 - **Investimentos nunca são estimados.** Não há valor padrão de aporte; o bloco reflete apenas o que foi lançado.
-- **Estorno entra em um lugar só (M27).** `ehEstorno` é a mesma condição usada nas duas pontas — subtrai de `entradaReal` e de `credito.real`. Tratá-lo em só uma delas produziria o erro clássico: contado como receita **e** como abatimento, o Disponível subiria o dobro do estorno. A checagem depende de `t.conta.tipo`, então **toda chamada a `comporMes` precisa passar transações com `conta` incluída** — as duas telas já fazem `include: { conta: true }`, e `comporCredito`/`comporDebito` já dependiam disso antes do M27.
+- **Estorno entra em um lugar só (M27).** `ehEstorno` é a mesma condição usada nas duas pontas — subtrai de `entradaReal` e de `credito.real`. Tratá-lo em só uma delas produziria o erro clássico: contado como receita **e** como abatimento, o Disponível subiria o dobro do estorno. A checagem depende do tipo da conta, e usa **encadeamento opcional** (`t.conta?.tipo`): as duas telas já fazem `include: { conta: true }`, mas até o M27 `comporCredito`/`comporDebito` só liam a conta de **saídas** — uma entrada sem a relação carregada nunca quebrava. Sem o `?.`, a composição do mês inteiro passa a estourar nesse caso; com ele, a entrada é tratada como entrada comum, que é o comportamento histórico.
 - **`credito.real` e `credito.total` podem ser negativos.** Um mês com mais estorno que gasto no cartão é legítimo (Requisitos 3.11) e nada é truncado em zero: o `Math.max(0, …)` existente protege só o `estimado`, que é outra coisa. O `disponivel` sobe na mesma medida, que é o resultado correto.
 - **A fórmula do `disponivel` é a mesma da seção 8.3.2** (Entradas − Crédito − Débito − Investimentos), agora aplicada sobre totais compostos em vez de apenas reais.
 - **Cada bloco devolve `real` e `estimado` separados**, e não só o total — é isso que permite às telas exibirem a distinção visual exigida pelos Requisitos 3.1 e 3.6.
