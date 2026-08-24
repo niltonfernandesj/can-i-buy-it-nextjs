@@ -52,7 +52,7 @@ export default async function VisaoMensalPage({ searchParams }) {
     buscarInvestimentos(mes, ano),
     db.transacao.findMany({
       where: { mesReferencia: mes, anoReferencia: ano },
-      include: { conta: true, categoriaNova: true },
+      include: { conta: true, categoria: true },
     }),
     db.valorPadrao.findMany(),
     db.consolidacaoReceitaPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),

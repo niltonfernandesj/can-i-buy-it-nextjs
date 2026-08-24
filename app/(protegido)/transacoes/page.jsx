@@ -4,7 +4,7 @@ import { TransacoesClient } from "./transacoes-client";
 export default async function TransacoesPage() {
   const [transacoesRaw, contas, categorias] = await Promise.all([
     db.transacao.findMany({
-      include: { conta: true, contaInvestimento: true, categoriaNova: true },
+      include: { conta: true, contaInvestimento: true, categoria: true },
       orderBy: { dataEfetiva: "desc" },
     }),
     db.conta.findMany({ orderBy: { criadoEm: "asc" } }),

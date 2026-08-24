@@ -132,7 +132,7 @@ function LinhaValorPadrao({ item, ehDespesa, onEditar, onApagar }) {
         <p className="text-sm font-medium">{item.descricao}</p>
         <p className="text-xs text-muted-foreground">
           {formatarReais(item.valor)}
-          {ehDespesa && ` · ${MEIO_LABELS[item.meio]} · ${item.categoriaNova?.nome ?? "—"}`}
+          {ehDespesa && ` · ${MEIO_LABELS[item.meio]} · ${item.categoria?.nome ?? "—"}`}
         </p>
       </div>
       <div className="flex items-center gap-1">
@@ -218,8 +218,8 @@ function ListaValoresPadrao({
                 // A categoria já gravada entra na lista mesmo se inativa, pra
                 // que editar só o valor não force trocar a categoria junto.
                 categorias={
-                  item.categoriaNova && !item.categoriaNova.ativa
-                    ? [...categorias, item.categoriaNova]
+                  item.categoria && !item.categoria.ativa
+                    ? [...categorias, item.categoria]
                     : categorias
                 }
                 valorInicial={{

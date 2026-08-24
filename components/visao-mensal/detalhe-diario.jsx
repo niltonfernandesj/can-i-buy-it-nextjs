@@ -46,7 +46,7 @@ function ListaTransacoes({ transacoes, total, renderTag }) {
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <CategoriaComCor
-              categoria={t.categoriaNova}
+              categoria={t.categoria}
               className="text-xs text-muted-foreground"
             />
             <span>{formatarReais(t.valor)}</span>

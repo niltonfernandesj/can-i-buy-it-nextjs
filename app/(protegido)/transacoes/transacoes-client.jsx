@@ -84,7 +84,7 @@ const COLUNAS_BASE = [
     header: "Categoria",
     accessorFn: (row) => row.categoriaId,
     filterFn: "equals",
-    cell: (info) => <CategoriaComCor categoria={info.row.original.categoriaNova} />,
+    cell: (info) => <CategoriaComCor categoria={info.row.original.categoria} />,
   },
   {
     id: "conta",

@@ -3,7 +3,7 @@ import { ValoresPadraoClient } from "./valores-padrao-client";
 
 export default async function ValoresPadraoPage() {
   const [valoresPadrao, categorias] = await Promise.all([
-    db.valorPadrao.findMany({ orderBy: { criadoEm: "asc" }, include: { categoriaNova: true } }),
+    db.valorPadrao.findMany({ orderBy: { criadoEm: "asc" }, include: { categoria: true } }),
     // Ativas pro formulário; a categoria já gravada num item, ainda que
     // inativa, é reinserida no client (Design §18.3).
     db.categoria.findMany({ where: { ativa: true }, orderBy: { criadoEm: "asc" } }),
