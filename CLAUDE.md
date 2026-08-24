@@ -105,3 +105,16 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 - Server Components para leitura de dados; Server Actions para mutações (sem rotas de API REST separadas, salvo `/api/auth`).
 - Nomenclatura de variáveis/campos em português, conforme os specs (`dataCompra`, `mesReferencia`, `ehInvestimento`, etc.) — mantenha consistência com o schema Prisma do Design.
 - Commits: um por task concluída, mensagem no formato `Task N: <resumo curto>`.
+- **Marcação de conclusão no `spec-03-tasks.md`:** depois de commitar uma task, acrescente logo abaixo do título dela a linha:
+
+  ```
+  ✅ **Concluída** — commit `<hash curto>`
+  ```
+
+  E marque o título do marco com `✅` no fim quando **todas** as tasks dele estiverem concluídas (ex.: `## M25 — Categorias gerenciáveis pelo usuário ✅`).
+
+  Regras que fazem a marcação valer alguma coisa:
+  - **O hash vem do `git log`, nunca de memória.** É o que liga a spec ao código que a implementou; um hash plausível mas inventado destrói justamente essa utilidade. Havendo dúvida, confira com `git log --format="%h %s" | grep "Task N"`.
+  - **Um commit que cobre um intervalo** (`Tasks 75-79: ...`) marca todas as tasks do intervalo, cada uma com o mesmo hash.
+  - **Task sem commit associado** — operacional, como a Task 34 (deploy e smoke test manual) — é marcada sem hash, explicitando o motivo. Não invente um commit para preencher a lacuna.
+  - Marque **só o que foi de fato concluído**. Uma task planejada mas não implementada fica sem marcação, ainda que as vizinhas estejam marcadas.
