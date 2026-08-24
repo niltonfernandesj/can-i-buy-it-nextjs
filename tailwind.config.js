@@ -5,6 +5,10 @@ module.exports = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    // lib/ também precisa ser varrido: mapas de classe literal vivem aqui
+    // (ex.: CLASSE_COR_CATEGORIA em lib/categorias.js). Sem esta linha o JIT
+    // não encontra bg-categoria-* e os marcadores saem sem cor.
+    "./lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
   	extend: {

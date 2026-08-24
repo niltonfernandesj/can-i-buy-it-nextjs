@@ -10,13 +10,15 @@ import {
   Wallet,
   SlidersHorizontal,
   Settings,
+  Tags,
   Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MenuUsuario } from "@/components/navegacao/menu-usuario";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-// Design §15.1 — dois grupos semânticos, cinco destinos.
+// Design §15.1 — dois grupos semânticos, seis destinos (Categorias entrou
+// em Ajustes na Task 91).
 const GRUPO_DADOS = [
   { href: "/visao-mensal", label: "Visão mensal", Icone: LayoutDashboard },
   { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
@@ -25,6 +27,7 @@ const GRUPO_DADOS = [
 
 const GRUPO_AJUSTES = [
   { href: "/contas", label: "Contas", Icone: Wallet },
+  { href: "/categorias", label: "Categorias", Icone: Tags },
   { href: "/valores-padrao", label: "Valores padrão", Icone: SlidersHorizontal },
 ];
 
@@ -55,7 +58,7 @@ function BarraLateralDesktop({ pathname }) {
         Nova transação
       </Link>
 
-      {/* Design §15.2 — os cinco destinos simultâneos, divisor entre grupos,
+      {/* Design §15.2 — os seis destinos simultâneos, divisor entre grupos,
           sem rótulos de grupo (o agrupamento é só visual). */}
       <nav className="flex flex-col gap-1">
         {GRUPO_DADOS.map((d) => (
@@ -75,7 +78,7 @@ function BarraLateralDesktop({ pathname }) {
 }
 
 // Design §15.3 — três alvos: Dados (esquerda), Nova (centro, destaque),
-// Ajustes (direita, abre um Sheet inferior com os dois destinos do grupo).
+// Ajustes (direita, abre um Sheet inferior com os três destinos do grupo).
 function BarraInferiorMobile({ pathname }) {
   const [ajustesAberto, setAjustesAberto] = useState(false);
 
