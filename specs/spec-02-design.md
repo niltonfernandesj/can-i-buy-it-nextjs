@@ -691,6 +691,8 @@ export function valorComSinal(transacao) {
 
 Ter uma condição só — `valor < 0 → text-entrada` — evita a variante em que o componente precisa saber *por que* ficou negativo. O verde aqui não significa "receita", significa "a favor do usuário", que é o que um agregado negativo dentro de um bloco de saída quer dizer.
 
+**Exceção única: o card Disponível** (descoberta ao implementar a Task 101, não prevista quando a regra foi decidida). Ele não é um agregado de saída — é o resultado do mês, e negativo ali significa **déficit**, contra o usuário. Aplicar o verde diria o oposto do que aconteceu, então ele continua na cor padrão, como já era antes do M27 (onde ele podia ficar negativo por gasto acima da renda, sem estorno algum). A regra vale para os agregados que compõem saída: linha do estorno, total do dia, total do cartão, cabeçalho do bloco e o card **Saídas**.
+
 **Sem tag na Visão mensal.** Nem no popover/sheet, nem na visão por cartão. O valor negativo em verde já é a marcação — decisão do usuário no mock, e coerente com §8.3.4, onde `renderTag` é reservado a informação que o valor não carrega (resgate, parcela). Em `/transacoes` a decisão é a oposta (§12.1), porque lá o valor de um estorno é `+ R$ …` em verde, igual ao de um salário.
 
 **Estado vazio.** As mensagens de §8.3.12 não mudam. Um mês só com estorno tem grupos por dia no bloco de crédito, então nunca cai no estado vazio; e o bloco Entradas exibindo "Nenhuma entrada adicional neste mês." com um estorno no mês é o comportamento correto — ele não é uma entrada.

@@ -113,7 +113,8 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
   - **Racional:** o objetivo da tela é mostrar, para um mês filtrado, o que de fato precisa ser pago naquele mês (valor da fatura), e não o que foi gasto no crédito naquele mês. Por isso a filtragem/agrupamento por mês segue sempre o mês de referência (vencimento da fatura), mesmo que o agrupamento por dia dentro do bloco use a data original da compra.
 - **Alternância de visão no bloco Saídas no crédito (Task 83):** o usuário pode alternar entre **por dia** (padrão, comportamento acima, inalterado) e **por cartão** — nesta segunda opção, os lançamentos do mês de referência aparecem organizados em subgrupos, um por cartão de crédito com movimentação naquele mês (cartões sem lançamento no período não aparecem), cada subgrupo com um **total próprio em destaque** e a lista de seus lançamentos (descrição, data da compra, valor) em ordem cronológica crescente — sem agrupar por dia dentro do subgrupo. Existe pra apoiar a **conferência manual** dos lançamentos registrados no app contra o valor mostrado pelo banco na fatura de um cartão específico. A linha de estimativa ("Estimado restante") não muda entre as duas visões.
 - **Tag de parcela no crédito (Task 84):** um lançamento que pertence a um parcelamento exibe a mesma tag já usada em `/transacoes` ("X de X") ao lado da descrição — tanto no detalhamento por dia (dentro do popover/sheet do dia) quanto na visão por cartão.
-- **Valores negativos (M27):** com estornos, um agregado desta tela pode ficar negativo — o total de um dia, o total de um cartão, o total do bloco Saídas no crédito, os cards de resumo do topo. Em **qualquer** desses casos o valor é exibido com sinal negativo e em verde (a mesma cor de entrada), a mesma regra aplicada ao estorno individual. Não há arredondamento para zero nem inversão de sinal em nenhum nível de agregação.
+- **Valores negativos (M27):** com estornos, um agregado desta tela pode ficar negativo — o total de um dia, o total de um cartão, o total do bloco Saídas no crédito, o card de resumo Saídas. Em **qualquer** desses casos o valor é exibido com sinal negativo e em verde (a mesma cor de entrada), a mesma regra aplicada ao estorno individual. Não há arredondamento para zero nem inversão de sinal em nenhum nível de agregação.
+- **Exceção — o card Disponível** continua na cor padrão quando negativo. Ele não é um agregado de saída: negativo ali significa **déficit no mês**, contra o usuário, o oposto do que o verde comunica nos demais. (Ajuste feito durante a implementação; a decisão original dizia "todos os agregados", sem separar esse caso.)
 
 ### 3.2 Especificação — Lançamento de compras parceladas no crédito
 
@@ -452,7 +453,8 @@ Estorno no crédito (M27, seção 3.11):
 - [ ] Na visão "Por dia", o estorno subtrai do total do dia, e aparece no popover/sheet daquele dia com sinal negativo e em verde.
 - [ ] Um dia cujo total fique negativo exibe o total com sinal negativo e em verde, tanto na linha do dia quanto no total dentro do popover/sheet.
 - [ ] Na visão "Por cartão", o estorno aparece listado sob o cartão vinculado, em ordem cronológica, com valor negativo e em verde, e o total do cartão já vem líquido.
-- [ ] Um total de cartão, de bloco ou de card de resumo que fique negativo é exibido com sinal negativo e em verde.
+- [ ] Um total de cartão, de bloco Saídas no crédito ou do card de resumo Saídas que fique negativo é exibido com sinal negativo e em verde.
+- [ ] O card Disponível negativo continua na cor padrão, sem verde — é déficit, não crédito a favor.
 - [ ] Em `/transacoes`, um estorno exibe um indicador próprio ao lado da descrição, distinguindo-o de uma entrada comum.
 - [ ] A Projeção reflete o estorno no mês de referência correto, pelas mesmas regras da Visão mensal.
 

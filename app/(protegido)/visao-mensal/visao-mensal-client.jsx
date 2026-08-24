@@ -146,7 +146,9 @@ function CardResumo({ titulo, real, estimado, total, ehReceitaPadrao }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-xl font-semibold">{formatarReais(total)}</p>
+        <p className={cn("text-xl font-semibold", classeValor(total))}>
+          {formatarReais(total)}
+        </p>
         <SubtextoComposicao
           real={real}
           estimado={estimado}
@@ -179,6 +181,10 @@ function Resumo({ entradas, saidas, disponivel }) {
             Disponível
           </CardTitle>
         </CardHeader>
+        {/* Disponível é a única exceção à regra de cor (Design §8.3.17): aqui
+            negativo é déficit, contra o usuário — o oposto do que o verde
+            comunica nos agregados de saída. Segue na cor padrão, como antes
+            do M27, onde ele já podia ser negativo por outros motivos. */}
         <CardContent className="text-xl font-semibold">
           {formatarReais(disponivel)}
         </CardContent>
@@ -202,7 +208,9 @@ function CabecalhoBloco({ Icone, cor, titulo, total, expandido, onToggle }) {
         </h2>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold">{formatarReais(total)}</span>
+        <span className={cn("text-sm font-semibold", classeValor(total))}>
+          {formatarReais(total)}
+        </span>
         <ChevronDown
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform",
