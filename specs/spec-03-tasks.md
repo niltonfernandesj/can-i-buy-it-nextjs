@@ -16,6 +16,8 @@ Cada tarefa abaixo é pequena o suficiente para ser implementada e revisada isol
 
 As tarefas estão agrupadas em marcos (M1–M7); a ordem entre marcos importa (cada um depende do anterior), mas dentro de um marco algumas tarefas podem ser paralelizadas se você preferir.
 
+**Marcação de conclusão.** A partir do M25, cada task concluída recebe uma linha `✅ **Concluída** — commit \`hash\`` logo abaixo do título, ligando a spec ao código que a implementou. Os marcos anteriores (M1–M24) **não** são marcados retroativamente: o histórico do git é o registro do que foi feito ali, e preencher 89 marcações a posteriori produziria informação reconstruída, não observada.
+
 ---
 
 ## M1 — Setup do projeto
@@ -601,13 +603,14 @@ Regressão introduzida pela Task 86, que acrescentou a terceira opção ("Invest
 
 ---
 
-## M25 — Categorias gerenciáveis pelo usuário
+## M25 — Categorias gerenciáveis pelo usuário ✅
 
 Substitui o `enum Categoria` por uma tabela com CRUD próprio. Requisitos item 4 revisado e §3.10; Design §18.
 
 O marco segue **expandir → migrar → contrair** (Design §18.2): a coluna antiga só é removida na última task, depois que todo o código já usa a nova. Cada task é deployável de forma independente — importante porque o `build` roda `prisma migrate deploy` antes de a nova versão entrar no ar, e uma remoção precoce deixaria produção com código antigo sobre schema novo.
 
 **Task 90. Modelo `Categoria`, seed e backfill (expandir)**
+✅ **Concluída** — commit `a646422`
 Puramente aditivo — nenhuma tela muda, o enum continua sendo a fonte da verdade. Design §18.1 e §18.2.
 
 - Cria o model `Categoria` (`nome` único, `cor`, `ativa`, `criadoEm`) e os tokens `--categoria-<slug>` da paleta (Design §18.4) em `globals.css` e `tailwind.config.js`.
@@ -620,6 +623,7 @@ Puramente aditivo — nenhuma tela muda, o enum continua sendo a fonte da verdad
 ---
 
 **Task 91. Tela `/categorias` (CRUD)**
+✅ **Concluída** — commit `302f567`
 Requisitos §3.10; Design §18.3 e §18.5.
 
 - Rota `/categorias` e entrada na navegação junto de Contas e Valores padrão (Design §8.1).
@@ -634,6 +638,7 @@ Requisitos §3.10; Design §18.3 e §18.5.
 ---
 
 **Task 92. Telas passam a usar `categoriaId` (migrar)**
+✅ **Concluída** — commit `9884b77`
 O núcleo do marco. Design §18.3.
 
 - `/lancamento`: chips de categoria vêm da tabela, filtrando `ativa = true`; grava `categoriaId`.
@@ -648,6 +653,7 @@ O núcleo do marco. Design §18.3.
 ---
 
 **Task 93. Cor da categoria nas listagens**
+✅ **Concluída** — commit `3495944`
 Design §18.4.
 
 - Marcador de cor ao lado do nome da categoria na coluna de `/transacoes`, no detalhe diário da Visão mensal e nos chips de `/lancamento`.
@@ -658,6 +664,7 @@ Design §18.4.
 ---
 
 **Task 94. Remoção do enum (contrair)**
+✅ **Concluída** — commit `b6058be`
 Só depois que as Tasks 92 e 93 estiverem em produção e verificadas. Design §18.2.
 
 - `categoriaId` vira **obrigatório** em `Transacao` (segue anulável em `ValorPadrao`, espelhando a regra atual: obrigatória quando `tipo = SAIDA`, nula quando `ENTRADA`).
