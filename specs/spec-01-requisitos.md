@@ -38,9 +38,14 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - **Tipo (revisado — Task 86):** o usuário escolhe entre três opções — **Entrada**, **Saída** ou **Investimento** — pra reduzir a fricção de marcar um aporte, hoje uma marcação secundária (checkbox) sobre Saída. A escolha de Tipo continua determinando internamente se a transação é uma entrada ou uma saída (seção 6, abaixo) — "Investimento" nesta tela sempre corresponde a uma saída (aporte); não há opção equivalente pra resgate, que continua sendo lançado como uma Entrada comum (seção 6).
 3. **Edição e exclusão**
    - Qualquer transação já lançada pode ser editada ou apagada livremente (sem histórico de alterações no MVP).
-4. **Categorias**
-   - Lista fixa de categorias, definida no código (ex: Mercado, Lazer, Saúde, Transporte, Moradia, Salário, Outros).
-   - Sem criação de categorias pelo usuário nem sugestão automática no MVP.
+4. **Categorias** (revisado — M25)
+   - ~~Lista fixa de categorias, definida no código.~~ Passa a ser **entidade no banco, gerenciada pelo usuário** numa tela própria (§3.10), no mesmo contexto de configuração de Contas e Valores padrão.
+   - Cada categoria tem **nome** e **cor**, escolhida numa paleta fixa do tema (não um seletor livre — ver §3.10).
+   - Categoria pode ser **desativada**: deixa de ser oferecida em novos lançamentos, mas continua válida e exibida normalmente nos lançamentos que já a usam. É o caminho para aposentar uma categoria sem perder histórico.
+   - **Exclusão é bloqueada** enquanto houver transação ou valor padrão usando a categoria. Só categorias sem uso algum podem ser excluídas.
+   - Um nível só — sem subcategorias.
+   - As 7 categorias que existiam em código (Mercado, Lazer, Saúde, Transporte, Moradia, Salário, Outros) passam a ser linhas comuns da nova tabela, **preservando a categorização de todo o histórico** (ver Design §18.2). A partir daí são editáveis e desativáveis como qualquer outra.
+   - Sem sugestão automática de categoria (segue fora do escopo).
 5. **Conta (entidade polimórfica)**
    - Toda transação (entrada ou saída) é vinculada a uma **Conta**.
    - Uma Conta tem um **tipo**: Conta corrente, Cartão de crédito ou Conta de investimento.
@@ -226,10 +231,28 @@ Complementa a seção 3.5: além de prever o gasto, o usuário precisa **registr
 - Em **meses já encerrados** os itens pendentes continuam visíveis, sinalizando um possível registro esquecido, mas **não somam** ao total do mês (coerente com 3.5).
 - Apagar um item de despesa padrão **não apaga** os lançamentos já gerados por ele — o dinheiro foi gasto de fato; os lançamentos apenas deixam de estar vinculados ao item.
 
+### 3.10 Especificação — Gestão de categorias (M25)
+
+Resolve o item 4 revisado. Tela própria em `/categorias`, no mesmo agrupamento de navegação de Contas e Valores padrão.
+
+- **Listagem** de todas as categorias, mostrando nome, cor e se está ativa. As inativas aparecem visualmente distintas, sem sumir da lista.
+- **Criar** uma categoria exige nome e cor. O nome é único — duas categorias não podem ter o mesmo nome, para não gerar ambiguidade na hora de escolher.
+- **Editar** permite trocar nome e cor. Renomear vale para todo o histórico, já que os lançamentos referenciam a categoria, não o texto.
+- **Desativar / reativar** é a forma de aposentar uma categoria sem perder histórico:
+  - uma categoria inativa **não é oferecida** ao lançar ou editar uma transação, nem ao definir um valor padrão;
+  - os lançamentos que já a usam **continuam exibindo-a normalmente**, inclusive no filtro por categoria da tela de Transações — do contrário o histórico ficaria inconsultável;
+  - a exceção é a transação que já está gravada com uma categoria inativa: ao editá-la, a categoria atual continua selecionável, para que salvar sem mexer na categoria não force uma troca.
+- **Excluir** só é permitido quando a categoria **não tem nenhum uso** — nenhuma transação e nenhum valor padrão apontando para ela. Havendo uso, a exclusão é bloqueada com uma mensagem que explica o motivo e aponta o caminho: desativar.
+- **Cor** vem de uma **paleta fixa** definida no tema, não de um seletor livre. Motivo: cores arbitrárias sobre o fundo escuro produzem combinações ilegíveis, e a paleta do app perderia coerência (ver Design §16 e §18.4).
+- A cor é usada para **identificação visual rápida** nas listagens de transação — não carrega significado próprio (não indica receita/despesa nem gravidade).
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).
 - Controle de orçamento (limite por categoria).
+- **Subcategorias** — a hierarquia de categorias tem um nível só (item 4, §3.10).
+- **Ícone por categoria** — a identificação visual é feita só por nome e cor (§3.10).
+- **Tipo atribuído à categoria** (marcar uma categoria como de receita ou de despesa, restringindo onde ela aparece) — qualquer categoria pode ser usada em qualquer lançamento.
 - Entrada recorrente marcada como investimento (resgate recorrente) — só saída recorrente pode ser aporte.
 - Recorrência "sem data de término" — a quantidade de meses é sempre definida pelo usuário no lançamento. (A necessidade de projetar valores indefinidamente é atendida pelos **valores padrão** da seção 3.5, que são um mecanismo distinto e não geram transações.)
 - Veredito automático da simulação ("pode comprar" / "não pode") e reserva mínima configurável.

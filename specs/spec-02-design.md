@@ -1323,3 +1323,60 @@ Para `glob` (via `eslint-config-next`): a vulnerabilidade é na **CLI** do pacot
 | **Ausência de verificação de propriedade** em `editarConta`/`apagarConta` e nas ações de transação | Adicionar checagem por `usuarioId` **contradiria a spec-01 §2**: o modelo familiar exige que qualquer membro edite o que outro lançou. O risco real vinha do cadastro aberto (17.2), não da falta da checagem. Fechado o cadastro, toda sessão autenticada é, por definição, um membro da família |
 | **Ausência de auditoria** de alterações | Explicitamente fora de escopo desde a spec-01. `usuarioId` registra a autoria da criação, nunca da edição. Se o app passar a ter mais usuários, isso deve ser reavaliado junto com o isolamento de dados |
 | **Política de senha** (mínimo de 6 caracteres, sem complexidade) | Mantida como está na tela de gestão (17.2). Com o cadastro fechado, senhas só são definidas pelo administrador para um grupo de duas pessoas — exigir complexidade protegeria pouco e atrapalharia mais. A limitação de taxa no login (17.3) é a defesa efetiva contra senha fraca |
+
+## 18. Categorias como entidade gerenciável (M25)
+
+Resolve o item 4 revisado e a §3.10 dos Requisitos. Substitui o `enum Categoria` — sete valores cravados no schema e espelhados em `CATEGORIA_LABELS` (`lib/categorias.js`) e numa lista `CATEGORIAS_VALIDAS` duplicada em `lib/actions/transacoes.js` — por uma tabela.
+
+### 18.1 Modelo
+
+```prisma
+model Categoria {
+  id       String   @id @default(cuid())
+  nome     String   @unique
+  cor      String   // slug da paleta (§18.4), não um hex livre
+  ativa    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+
+  transacoes    Transacao[]
+  valoresPadrao ValorPadrao[]
+}
+```
+
+**Sem `usuarioId`, diferente de `Conta` e `ValorPadrao`.** Categoria é uma taxonomia compartilhada, não um dado de alguém. A razão concreta vem da migração: as sete categorias atuais são usadas por transações de **vários usuários**, então não existe dono natural a atribuir — qualquer escolha seria arbitrária e o campo nasceria vestigial. Como a aplicação já não isola dados por usuário (spec-01 §2), `usuarioId` aqui só registraria autoria de criação, informação que ninguém consome.
+
+**`nome` é único** (§3.10): duas categorias homônimas tornariam a escolha ambígua no formulário e no filtro.
+
+**`cor` guarda o slug da paleta**, não o valor hexadecimal. Assim uma eventual revisão de tema (como a do M15) muda a cor em todo lugar de uma vez, em vez de deixar hexadecimais órfãos espalhados pelas linhas do banco.
+
+**Ordenação:** `criadoEm asc`. As sete categorias migradas são semeadas na ordem em que existiam no enum, preservando a posição dos chips em `/lancamento` — o usuário já tem memória muscular dessa ordem, e alfabetar reembaralharia. Categorias novas entram no fim.
+
+### 18.2 Migração de dados — expandir, migrar, contrair
+
+O ponto sensível do marco: produção tem transações reais e `Transacao.categoria` é **obrigatória**. Decisão do usuário: **preservar a categorização do histórico**, mapeando 1:1 (a alternativa cogitada, jogar tudo em "Outros", perderia o filtro por categoria para todo o passado).
+
+A troca **não** é feita numa migration só. O `build` roda `prisma migrate deploy` **antes** de a nova versão entrar no ar, então uma migration que já removesse a coluna antiga deixaria o código em produção — ainda o antigo — consultando uma coluna inexistente até o deploy concluir. Pior: se o `next build` falhasse depois da migration, produção ficaria com código velho sobre schema novo. O caminho é o padrão *expand/contract*, em três deploys independentes:
+
+1. **Expandir (Task 90):** cria `Categoria`, semeia as sete linhas, adiciona `categoriaId` **anulável** em `Transacao` e `ValorPadrao` e preenche por correspondência com o enum. Puramente aditivo — o código antigo continua funcionando, porque a coluna `categoria` segue intacta e continua sendo a fonte da verdade.
+2. **Migrar (Tasks 91–93):** a tela nova nasce e as telas existentes passam a ler e gravar `categoriaId`. As duas colunas convivem; a antiga vira apenas resquício.
+3. **Contrair (Task 94):** `categoriaId` vira obrigatório em `Transacao`, e a coluna `categoria` e o `enum Categoria` são removidos.
+
+O backfill é uma correspondência direta entre o valor do enum e o nome semeado (`MERCADO` → "Mercado" e assim por diante), sem ambiguidade nem linha órfã possível: o enum garante que todo valor existente está na lista das sete.
+
+### 18.3 Regras de uso
+
+- **Desativar** (`ativa = false`) tira a categoria da oferta em novos lançamentos e valores padrão, sem afetar o que já existe. As consultas que **alimentam formulários** filtram por `ativa`; as que **exibem ou filtram histórico** (coluna e filtro de `/transacoes`, detalhe diário da Visão mensal) não filtram — esconder uma categoria inativa ali tornaria o histórico inconsultável.
+- **Exceção do formulário de edição:** ao editar uma transação cuja categoria já está inativa, essa categoria continua selecionável. Sem isso, salvar uma edição de valor forçaria trocar a categoria junto — efeito colateral que o usuário não pediu.
+- **Excluir** exige zero uso: nenhuma `Transacao` e nenhum `ValorPadrao` apontando para a categoria. A verificação é feita na Server Action, e a foreign key no banco é a garantia final. A mensagem de erro precisa dizer **quantos** lançamentos impedem e sugerir desativar — um "não é possível excluir" seco deixaria o usuário sem saída.
+
+### 18.4 Paleta de cores
+
+Decisão do usuário: paleta fixa, não seletor livre. Cor arbitrária sobre `--background` (`#131316`) produz combinações ilegíveis, e o M15 justamente trouxe todas as cores da aplicação para o sistema de tokens — um hexadecimal livre por categoria abriria de novo o buraco que aquele marco fechou.
+
+A paleta reaproveita os tokens semânticos que já existem (`--entrada`, `--investimento`, `--saida-debito`, `--saida-credito`) e acrescenta o que faltar para chegar a cerca de dez opções distinguíveis entre si, todas na família `-400` do Tailwind — a mesma escolha do §16.1, calibrada para contrastar com fundo escuro. Cada cor entra como token `--categoria-<slug>`, e é o `<slug>` que vai para o banco.
+
+A cor aparece como **marcador** (ponto ou pílula) ao lado do nome da categoria: na listagem de `/categorias`, na coluna Categoria de `/transacoes` e no detalhe diário da Visão mensal. **Não** é usada como fundo de texto longo nem como única portadora de informação — o nome está sempre junto, o que mantém a leitura possível para daltônicos e em impressão (mesmo princípio do §16.2).
+
+### 18.5 Tela `/categorias`
+
+Entra no agrupamento de navegação de Contas e Valores padrão (§8.1). Estrutura segue o padrão já estabelecido por `/contas` e `/valores-padrao`: listagem em `Card`, formulário de criação inline, edição e exclusão por linha, Server Actions em `lib/actions/categorias.js` com `revalidatePath` para `/categorias` e para **todas as telas que exibem categoria** — `/lancamento`, `/transacoes`, `/visao-mensal` e `/valores-padrao`. Omitir alguma reproduz o bug de cache já ocorrido com contas (§8.5).

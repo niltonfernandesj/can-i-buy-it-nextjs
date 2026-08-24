@@ -601,6 +601,73 @@ Regressão introduzida pela Task 86, que acrescentou a terceira opção ("Invest
 
 ---
 
+## M25 — Categorias gerenciáveis pelo usuário
+
+Substitui o `enum Categoria` por uma tabela com CRUD próprio. Requisitos item 4 revisado e §3.10; Design §18.
+
+O marco segue **expandir → migrar → contrair** (Design §18.2): a coluna antiga só é removida na última task, depois que todo o código já usa a nova. Cada task é deployável de forma independente — importante porque o `build` roda `prisma migrate deploy` antes de a nova versão entrar no ar, e uma remoção precoce deixaria produção com código antigo sobre schema novo.
+
+**Task 90. Modelo `Categoria`, seed e backfill (expandir)**
+Puramente aditivo — nenhuma tela muda, o enum continua sendo a fonte da verdade. Design §18.1 e §18.2.
+
+- Cria o model `Categoria` (`nome` único, `cor`, `ativa`, `criadoEm`) e os tokens `--categoria-<slug>` da paleta (Design §18.4) em `globals.css` e `tailwind.config.js`.
+- Migration semeia as **sete categorias atuais** com os nomes já usados em `CATEGORIA_LABELS` e na ordem do enum (Mercado, Lazer, Saúde, Transporte, Moradia, Salário, Outros), atribuindo uma cor da paleta a cada uma.
+- Adiciona `categoriaId` **anulável** em `Transacao` e `ValorPadrao`, com índice, e faz o **backfill** por correspondência com o enum.
+- A coluna `categoria` e o `enum Categoria` **permanecem intactos**.
+
+*(Checkpoint: sem QA de interface — nenhuma tela muda. `npx prisma migrate status` sincronizado; verificar por consulta que **nenhuma** `Transacao` ficou com `categoriaId` nulo e que a contagem por categoria antes e depois bate exatamente, categoria a categoria — é a prova de que o histórico foi preservado.)*
+
+---
+
+**Task 91. Tela `/categorias` (CRUD)**
+Requisitos §3.10; Design §18.3 e §18.5.
+
+- Rota `/categorias` e entrada na navegação junto de Contas e Valores padrão (Design §8.1).
+- Server Actions em `lib/actions/categorias.js`: criar, editar (nome e cor), alternar `ativa`, excluir. `revalidatePath` para `/categorias`, `/lancamento`, `/transacoes`, `/visao-mensal` e `/valores-padrao`.
+- Nome único validado na action, com mensagem clara no conflito.
+- Exclusão **bloqueada** quando houver `Transacao` ou `ValorPadrao` referenciando a categoria; a mensagem informa **quantos** lançamentos impedem e sugere desativar.
+- Inativas aparecem na listagem visualmente distintas, não escondidas.
+- Seletor de cor pela paleta fixa (Design §18.4) — sem input de cor livre.
+
+*(Checkpoint: critério de aceite do item 4 revisado. QA de interface: criar, renomear, trocar cor, desativar e reativar; tentar criar nome duplicado e conferir a mensagem; tentar excluir uma categoria em uso e confirmar o bloqueio com a contagem correta; excluir uma categoria sem uso e confirmar a remoção no banco.)*
+
+---
+
+**Task 92. Telas passam a usar `categoriaId` (migrar)**
+O núcleo do marco. Design §18.3.
+
+- `/lancamento`: chips de categoria vêm da tabela, filtrando `ativa = true`; grava `categoriaId`.
+- `/transacoes`: coluna e filtro passam a usar a categoria relacionada, **sem** filtrar por `ativa` (histórico precisa continuar consultável). No modal de edição, a categoria atual da transação continua selecionável mesmo se inativa (Design §18.3).
+- `/visao-mensal` e `detalhe-diario.jsx`: exibem a categoria relacionada.
+- `/valores-padrao` e a consolidação de despesa padrão: passam a usar `categoriaId`, filtrando `ativa` nos formulários.
+- Server Actions validam contra a tabela; `CATEGORIA_LABELS` e a lista `CATEGORIAS_VALIDAS` duplicada em `lib/actions/transacoes.js` são removidas.
+- Escrita passa a preencher **as duas** colunas enquanto a antiga existir, para não quebrar um eventual rollback desta task.
+
+*(Checkpoint: QA de interface cobrindo as quatro telas — lançar uma transação e conferir no banco `categoriaId` correto; filtrar por categoria em `/transacoes`; confirmar que categoria inativa **não** aparece no formulário de lançamento mas **continua** aparecendo na coluna e no filtro do histórico; editar uma transação de categoria inativa sem trocar a categoria e confirmar que salva sem erro.)*
+
+---
+
+**Task 93. Cor da categoria nas listagens**
+Design §18.4.
+
+- Marcador de cor ao lado do nome da categoria na coluna de `/transacoes`, no detalhe diário da Visão mensal e nos chips de `/lancamento`.
+- O nome acompanha sempre o marcador — cor nunca é a única portadora de informação (mesmo princípio do §16.2).
+
+*(Checkpoint: QA de interface: confirmar por asserção de cor computada que o marcador reflete a cor da categoria e que trocar a cor em `/categorias` se propaga para as listagens — validando de passagem o `revalidatePath` da Task 91.)*
+
+---
+
+**Task 94. Remoção do enum (contrair)**
+Só depois que as Tasks 92 e 93 estiverem em produção e verificadas. Design §18.2.
+
+- `categoriaId` vira **obrigatório** em `Transacao` (segue anulável em `ValorPadrao`, espelhando a regra atual: obrigatória quando `tipo = SAIDA`, nula quando `ENTRADA`).
+- Remove a coluna `categoria` de `Transacao` e `ValorPadrao` e o `enum Categoria` do schema.
+- Remove a escrita dupla introduzida na Task 92.
+
+*(Checkpoint: antes de aplicar, confirmar por consulta que nenhuma linha tem `categoriaId` nulo onde ele passará a ser obrigatório — a migration falharia no meio do deploy. `npx prisma migrate status` sincronizado; suite completa; QA de interface rápido nas quatro telas confirmando que nada regrediu.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -629,3 +696,4 @@ Regressão introduzida pela Task 86, que acrescentou a terceira opção ("Invest
 | M22 | Escopo itens 2, 6, 8, 11 revisados — redução de fricção no lançamento (Tipo/Meio/Conta/Categoria em toggles e chips, parcelas integradas ao Valor), Tipo Investimento, e remoção completa de Recorrência |
 | M23 | Requisitos não funcionais — tema escuro (spec-01 §4), complementando o M15: widgets nativos do navegador coerentes com o tema |
 | M24 | Correção — toggle de Tipo estourava a largura da coluna no mobile após ganhar a terceira opção na Task 86 |
+| M25 | Escopo item 4 revisado — categorias deixam de ser lista fixa em código e viram entidade gerenciável pelo usuário, com cor e desativação (spec-01 §3.10) |
