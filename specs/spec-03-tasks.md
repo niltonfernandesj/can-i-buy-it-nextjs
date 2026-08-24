@@ -770,7 +770,7 @@ Resolve o requisito de instalabilidade da spec-01 §4; Design §19. Escopo restr
 Alvo é **iPhone**, por Safari e por Chrome — que no iOS roda sobre WebKit e herda o mesmo comportamento. Isso descarta de saída o prompt automático de instalação (`beforeinstallprompt` é de Chromium e nunca dispara no iOS): instalar é sempre manual, pelo menu Compartilhar.
 
 **Task 95. Manifest, ícones e liberação no middleware**
-✅ **Concluída** — commit `05254e5`
+✅ **Concluída** — commit `b18f39d`
 As três coisas numa task só porque, separadas, produziriam um estado quebrado: manifest sem ícone não instala, e qualquer um dos dois bloqueado pelo middleware falha em silêncio. Design §19.1–19.3.
 
 - **Ícones**, gerados a partir de uma fonte única: `apple-touch-icon` 180×180 **opaco** (iOS compõe fundo branco sob transparência, o que num tema escuro criaria moldura branca), mais 192 e 512 para o manifest.
