@@ -9,31 +9,13 @@ import {
   alternarAtivaCategoria,
   apagarCategoria,
 } from "@/lib/actions/categorias";
-import {
-  PALETA_CATEGORIAS,
-  CLASSE_COR_CATEGORIA,
-  COR_CATEGORIA_PADRAO,
-} from "@/lib/categorias";
+import { PALETA_CATEGORIAS, CLASSE_COR_CATEGORIA } from "@/lib/categorias";
+import { MarcadorCor } from "@/components/marcador-categoria";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// Marcador de cor. Sempre acompanhado do nome — cor nunca é a única
-// portadora de informação (Design §18.4 e §16.2).
-export function MarcadorCor({ cor, className }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-block h-2.5 w-2.5 shrink-0 rounded-full",
-        CLASSE_COR_CATEGORIA[cor] ?? CLASSE_COR_CATEGORIA[COR_CATEGORIA_PADRAO],
-        className
-      )}
-    />
-  );
-}
 
 function SeletorCor({ valor, onSelecionar }) {
   return (

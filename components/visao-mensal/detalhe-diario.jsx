@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatarReais } from "@/lib/moeda";
+import { CategoriaComCor } from "@/components/marcador-categoria";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -44,9 +45,10 @@ function ListaTransacoes({ transacoes, total, renderTag }) {
             {renderTag?.(t)}
           </span>
           <span className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {t.categoriaNova?.nome ?? "—"}
-            </span>
+            <CategoriaComCor
+              categoria={t.categoriaNova}
+              className="text-xs text-muted-foreground"
+            />
             <span>{formatarReais(t.valor)}</span>
           </span>
         </div>

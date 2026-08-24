@@ -14,6 +14,7 @@ import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoe
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
+import { MarcadorCor } from "@/components/marcador-categoria";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,7 +80,8 @@ function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado, ocul
   );
 }
 
-// Chips de um clique — Conta e Categoria (Design §8.2.4).
+// Chips de um clique — Conta e Categoria (Design §8.2.4). `cor` é opcional:
+// só os chips de Categoria trazem marcador (Design §18.4).
 function Chips({ opcoes, valorAtual, onSelecionar }) {
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -89,12 +91,13 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
           type="button"
           onClick={() => onSelecionar(opcao.valor)}
           className={cn(
-            "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
             valorAtual === opcao.valor
               ? "border-primary bg-primary text-primary-foreground"
               : "border-input bg-muted text-muted-foreground hover:text-foreground"
           )}
         >
+          {opcao.cor && <MarcadorCor cor={opcao.cor} />}
           {opcao.rotulo}
         </button>
       ))}
@@ -308,7 +311,7 @@ export function LancamentoClient({ contas, categorias }) {
           <div className="flex flex-col gap-2">
             <Label>Categoria</Label>
             <Chips
-              opcoes={categorias.map((c) => ({ valor: c.id, rotulo: c.nome }))}
+              opcoes={categorias.map((c) => ({ valor: c.id, rotulo: c.nome, cor: c.cor }))}
               valorAtual={form.categoriaId}
               onSelecionar={(categoriaId) => setForm({ ...form, categoriaId })}
             />

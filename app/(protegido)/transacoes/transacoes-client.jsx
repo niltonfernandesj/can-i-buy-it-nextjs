@@ -15,6 +15,7 @@ import { formatarDataCurta, formatarMesReferencia, MESES } from "@/lib/datas";
 import { TIPO_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
+import { CategoriaComCor } from "@/components/marcador-categoria";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,7 +84,7 @@ const COLUNAS_BASE = [
     header: "Categoria",
     accessorFn: (row) => row.categoriaId,
     filterFn: "equals",
-    cell: (info) => info.row.original.categoriaNova?.nome ?? "—",
+    cell: (info) => <CategoriaComCor categoria={info.row.original.categoriaNova} />,
   },
   {
     id: "conta",
