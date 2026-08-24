@@ -763,7 +763,7 @@ Só depois que as Tasks 92 e 93 estiverem em produção e verificadas. Design §
 
 ---
 
-## M26 — Instalação como app na tela inicial (PWA instalável)
+## M26 — Instalação como app na tela inicial (PWA instalável) ✅
 
 Resolve o requisito de instalabilidade da spec-01 §4; Design §19. Escopo restrito ao app instalável: **sem service worker, sem offline, sem push** (decisões do usuário registradas nos Requisitos).
 
@@ -784,6 +784,7 @@ As três coisas numa task só porque, separadas, produziriam um estado quebrado:
 ---
 
 **Task 96. Área segura em modo standalone**
+✅ **Concluída** — commit `e81f13a`
 Só se manifesta depois de instalado, quando o app passa a ocupar a tela inteira e a moldura do navegador deixa de reservar espaço para a barra de status e o indicador de home. Design §19.4.
 
 - `viewport-fit=cover` no viewport.
