@@ -16,6 +16,13 @@ body {
      leitura de prefers-color-scheme. Não existe bloco .dark: estes são os
      únicos valores da aplicação. */
   :root {
+    /* Informa o navegador de que o tema é escuro — os tokens abaixo valem
+       só para o CSS do app, mas o interior dos widgets nativos (ícone e
+       popup do <input type="date">, scrollbars, autofill) é desenhado pelo
+       navegador. Sem isto, o ícone de calendário fica escuro sobre fundo
+       escuro e o calendário abre branco. Design §16.1. */
+    color-scheme: dark;
+
     --background: #131316;
     --foreground: #F4F4F5;
     --card: #1B1B1F;

@@ -572,6 +572,20 @@ A mais arriscada das três — schema, backend e telas. Sem substituto imediato 
 
 ---
 
+## M23 — Widgets nativos coerentes com o tema escuro
+
+**Task 88. `color-scheme: dark` no `:root`**
+Fecha uma lacuna do M15: os tokens definem o tema para o *app*, mas nunca informaram o *navegador*, que é quem desenha o interior dos widgets nativos. Design §16.1.
+
+- **`app/globals.css`:** adiciona `color-scheme: dark;` ao bloco `:root`.
+- **`lancamento-client.jsx`:** remove o `[color-scheme:dark]` escopado no `<input type="date">` do campo Data, que vira redundante.
+- **Efeito medido:** o ícone de calendário dos `<input type="date">` de `/projecao`, `/visao-mensal` e `/transacoes` sai de brilho 48 (sobre fundo 36 — invisível na prática) para 255. O popup do calendário desses campos deixa de abrir branco no meio da aplicação escura. Scrollbars e o preenchimento automático do Chrome no login passam a acompanhar o tema.
+- **Sem mudança de comportamento:** `color-scheme` não sobrepõe cor definida pelo autor. Nenhum componente, token ou classe muda além do citado acima.
+
+*(Checkpoint: requisito de tema — spec-01 §4, complementando o M15. QA de interface: comparar o brilho do ícone nos date inputs antes/depois por asserção, não por inspeção visual; confirmar por asserção que `body`, superfície de card, fundo/borda de `Input` e cor de texto permanecem idênticos — a mudança não pode vazar para superfície estilizada pelo app.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -598,3 +612,4 @@ A mais arriscada das três — schema, backend e telas. Sem substituto imediato 
 | M20 | Correção — agrupamento por dia na Visão mensal herdava horário de lançamento antigo |
 | M21 | Escopo item 7 revisado — cada seção da Visão mensal em card, e acompanhamento de fatura por cartão em Saídas no crédito |
 | M22 | Escopo itens 2, 6, 8, 11 revisados — redução de fricção no lançamento (Tipo/Meio/Conta/Categoria em toggles e chips, parcelas integradas ao Valor), Tipo Investimento, e remoção completa de Recorrência |
+| M23 | Requisitos não funcionais — tema escuro (spec-01 §4), complementando o M15: widgets nativos do navegador coerentes com o tema |

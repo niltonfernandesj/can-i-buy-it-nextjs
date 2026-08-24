@@ -359,11 +359,7 @@ export function LancamentoClient({ contas }) {
                 value={form.dataCompra}
                 onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
                 onClick={abrirSeletorData}
-                // color-scheme:dark faz o navegador renderizar as partes
-                // nativas do campo no tema escuro — o ícone de calendário
-                // (que sem isso fica escuro sobre fundo escuro) e o próprio
-                // popup do calendário, que abriria claro no meio do app escuro.
-                className="mx-auto w-auto border-none bg-transparent p-0 text-sm tabular-nums text-foreground outline-none [color-scheme:dark]"
+                className="mx-auto w-auto border-none bg-transparent p-0 text-sm tabular-nums text-foreground outline-none"
               />
               <button
                 type="button"

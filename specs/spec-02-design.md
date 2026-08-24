@@ -1133,6 +1133,10 @@ Resolve o requisito de tema da spec-01 §4. É um marco independente das seçõe
 
 O tema escuro é **único**: não há alternância nem leitura de `prefers-color-scheme`. Na prática, o bloco `:root` de `app/globals.css` passa a conter os valores escuros e o bloco `.dark` — hoje código morto, nunca ativado — é removido.
 
+**`color-scheme: dark` no `:root` (Task 88).** Os tokens abaixo informam o *app* de que o tema é escuro, mas não informam o **navegador** — e o interior de widgets nativos é desenhado por ele, não por CSS do autor. Sem essa declaração, todo `<input type="date">` renderiza o ícone de calendário escuro sobre fundo escuro (medido: brilho 48 sobre fundo 36, praticamente invisível) e abre o popup do calendário **branco** no meio da aplicação escura. Vale também para scrollbars e para o preenchimento automático do Chrome no login, que força fundo claro por padrão.
+
+`color-scheme` **não sobrepõe cor definida pelo autor** — afeta só o interior dos widgets do navegador e o canvas default. Verificado: `body`, superfície de card, fundo e borda de `Input` e cor de texto ficam idênticos antes e depois. Como não há `<select>` nativo na aplicação (todos são Radix), o principal ponto de risco dessa declaração não se aplica aqui.
+
 Paleta base:
 
 | Token | Valor | Uso |
