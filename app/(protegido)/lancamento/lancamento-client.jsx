@@ -52,15 +52,25 @@ function ToggleSegmentado({ opcoes, valorAtual, onSelecionar, desabilitado }) {
           type="button"
           onClick={() => onSelecionar(opcao.valor)}
           disabled={desabilitado}
+          // min-w-0 é o que impede o grupo de estourar a largura disponível:
+          // sem ele os itens flex não encolhem abaixo do próprio conteúdo
+          // (min-width: auto é o default), e a terceira opção "Investimento"
+          // empurrava o toggle pra fora da tela no mobile. O rótulo vai num
+          // <span> truncável pra degradar com reticências em telas muito
+          // estreitas em vez de vazar o layout.
           className={cn(
-            "flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+            "flex min-w-0 flex-1 items-center justify-center gap-1 rounded px-1.5 py-1.5 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
             valorAtual === opcao.valor
               ? "bg-primary font-semibold text-primary-foreground"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          <opcao.Icone className="h-3.5 w-3.5" />
-          {opcao.rotulo}
+          {/* Ícone só a partir de sm: medido que com ele "Investimento" não
+              cabe em nenhuma largura de celular, nem reduzindo a fonte a 11px
+              — é o ícone, não o texto, que estoura. O rótulo carrega o
+              significado sozinho; o ícone é reforço visual onde há espaço. */}
+          <opcao.Icone className="hidden h-3.5 w-3.5 shrink-0 sm:block" />
+          <span className="truncate">{opcao.rotulo}</span>
         </button>
       ))}
     </div>

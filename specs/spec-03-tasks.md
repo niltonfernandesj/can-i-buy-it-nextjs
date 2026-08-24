@@ -586,6 +586,21 @@ Fecha uma lacuna do M15: os tokens definem o tema para o *app*, mas nunca inform
 
 ---
 
+## M24 — Correção: toggle de Tipo estourava a largura no mobile
+
+**Task 89. `ToggleSegmentado` que não vaza com três opções**
+Regressão introduzida pela Task 86, que acrescentou a terceira opção ("Investimento") ao toggle de Tipo sem revisar o comportamento em telas estreitas. Design §8.2.4.
+
+- **Causa raiz:** os botões são itens flex com `flex-1`, mas `min-width` continua no default `auto` — que impede um item flex de encolher abaixo da largura do próprio conteúdo. Com três rótulos, o grupo passava a exigir mais largura do que a coluna tinha e transbordava à direita. Medido: a 320px o container tem 206px e os botões exigiam 274px; **o vazamento começava já em 390px** (4px), ou seja, atingia celulares atuais, não só telas pequenas.
+- **Correção estrutural:** `min-w-0` nos botões, que devolve ao flex a permissão de encolher, e rótulo dentro de um `<span className="truncate">`, para degradar com reticências em vez de vazar caso o espaço ainda falte.
+- **Ícone só a partir de `sm:`:** medido que **o ícone é o que não cabe, não a fonte** — com ele, "Investimento" trunca em toda largura de celular testada (320/360/375/390), mesmo reduzindo a fonte a 11px; sem ele, cabe inteiro a 12px a partir de 360px. O rótulo carrega o significado sozinho; o ícone permanece onde há espaço.
+- **Fonte do toggle para `text-xs`** (12px), aplicada aos dois toggles do formulário (Tipo e Meio) por serem o mesmo componente — mantém a consistência visual entre eles e dá folga para as métricas de fonte de aparelhos reais, diferentes das do ambiente de teste.
+- **Limite conhecido e aceito:** a 320px (iPhone SE de 1ª geração) "Investimento" ainda trunca com reticências. O layout permanece íntegro e sem rolagem horizontal — apenas o rótulo aparece cortado. Resolver também esse caso exigiria encurtar o rótulo, decisão de conteúdo que não cabe a esta correção.
+
+*(Checkpoint: QA de interface por asserção em 320/360/375/390/412/1100px — o último botão não pode ultrapassar a borda direita do container, a página não pode ganhar rolagem horizontal, e de 360px para cima nenhum rótulo pode truncar; confirmar também que o ícone reaparece a partir de `sm:`.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -613,3 +628,4 @@ Fecha uma lacuna do M15: os tokens definem o tema para o *app*, mas nunca inform
 | M21 | Escopo item 7 revisado — cada seção da Visão mensal em card, e acompanhamento de fatura por cartão em Saídas no crédito |
 | M22 | Escopo itens 2, 6, 8, 11 revisados — redução de fricção no lançamento (Tipo/Meio/Conta/Categoria em toggles e chips, parcelas integradas ao Valor), Tipo Investimento, e remoção completa de Recorrência |
 | M23 | Requisitos não funcionais — tema escuro (spec-01 §4), complementando o M15: widgets nativos do navegador coerentes com o tema |
+| M24 | Correção — toggle de Tipo estourava a largura da coluna no mobile após ganhar a terceira opção na Task 86 |
