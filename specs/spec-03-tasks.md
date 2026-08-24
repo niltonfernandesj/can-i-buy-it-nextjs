@@ -900,7 +900,7 @@ Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100
 
 ---
 
-## M28 — Percentual do disponível na Projeção
+## M28 — Percentual do disponível na Projeção ✅
 
 Resolve Requisitos §3.12 (nova) e o bullet acrescentado em §3.6. Design §14.4 (nova) e §16.1 (tokens).
 
@@ -911,6 +911,7 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 ---
 
 **Task 104. Funções puras de percentual e faixa**
+✅ **Concluída** — commit `9e26be5`
 
 `lib/disponivel.js` (novo) e `lib/disponivel.test.js` (novo). Sem UI, sem Playwright. Design §14.4.
 
@@ -923,6 +924,7 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 ---
 
 **Task 105. Tokens da régua e rótulo no card da Projeção**
+✅ **Concluída** — commit `0479ca9`
 
 `app/globals.css`, `tailwind.config.js` e `app/(protegido)/projecao/projecao-client.jsx`. Design §14.4 e §16.1.
 
