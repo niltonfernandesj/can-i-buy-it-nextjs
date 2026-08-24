@@ -715,8 +715,11 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
   return (
     <div className="flex flex-col gap-4">
       {porCartao.map((cartao) => {
+        // Total líquido: o banco também lança o estorno dentro da fatura do
+        // cartão, e um total que o ignorasse nunca bateria com o extrato —
+        // que é justamente pra que esta visão existe (Design §8.3.16).
         const totalCartao = cartao.transacoes.reduce(
-          (soma, t) => soma + Number(t.valor),
+          (soma, t) => soma + valorComSinal(t),
           0,
         );
         return (
@@ -729,32 +732,45 @@ function ListaPorCartao({ grupos, mensagemVazia }) {
                 <CreditCard className="h-3.5 w-3.5 text-muted-foreground" />
                 {cartao.nome}
               </span>
-              <span className="text-sm font-semibold tabular-nums">
+              <span
+                className={cn(
+                  "text-sm font-semibold tabular-nums",
+                  classeValor(totalCartao),
+                )}
+              >
                 {formatarReais(totalCartao)}
               </span>
             </div>
-            {cartao.transacoes.map((transacao) => (
-              <div
-                key={transacao.id}
-                className="flex items-baseline justify-between pl-5 text-sm"
-              >
-                <span className="flex min-w-0 items-baseline gap-2">
-                  <span className="truncate">{transacao.descricao}</span>
-                  {transacao.numeroParcela && (
-                    <TagParcela
-                      numeroParcela={transacao.numeroParcela}
-                      totalParcelas={transacao.totalParcelas}
-                    />
-                  )}
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {formatarDiaMes(transacao.dataCompra)}
+            {cartao.transacoes.map((transacao) => {
+              const valor = valorComSinal(transacao);
+              return (
+                <div
+                  key={transacao.id}
+                  className="flex items-baseline justify-between pl-5 text-sm"
+                >
+                  <span className="flex min-w-0 items-baseline gap-2">
+                    <span className="truncate">{transacao.descricao}</span>
+                    {transacao.numeroParcela && (
+                      <TagParcela
+                        numeroParcela={transacao.numeroParcela}
+                        totalParcelas={transacao.totalParcelas}
+                      />
+                    )}
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {formatarDiaMes(transacao.dataCompra)}
+                    </span>
                   </span>
-                </span>
-                <span className="shrink-0 pl-3 tabular-nums">
-                  {formatarReais(transacao.valor)}
-                </span>
-              </div>
-            ))}
+                  <span
+                    className={cn(
+                      "shrink-0 pl-3 tabular-nums",
+                      classeValor(valor),
+                    )}
+                  >
+                    {formatarReais(valor)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         );
       })}
