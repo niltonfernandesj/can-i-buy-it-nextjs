@@ -544,7 +544,13 @@ Nos dois casos, Meio é forçado pra Débito automaticamente ao trocar de Tipo.
 - Parcelas ≥ 2 força Tipo = Saída (parcelamento não existe pra entrada nem investimento) e **trava o toggle de Tipo** (fica esmaecido, sem clique) enquanto ativo — evita uma combinação inválida por trás do campo.
 - Nenhuma mudança em `criarTransacaoParcelada` nem no algoritmo de geração de parcelas (§5.1) — só a decisão "isso é parcelado" migra de um checkbox explícito pra `parcelas > 1`.
 
-**Data — navegação rápida (Task 85):** ganha botões `‹`/`›` (dia anterior/seguinte) flanqueando o campo `<input type="date">`, mesmo padrão visual (não o mesmo componente) do seletor de período da Visão mensal (§8.3.1). Resolve a fricção de trocar de dia usando o seletor nativo do navegador várias vezes numa mesma sequência de lançamentos que avança dia a dia.
+**Data — navegação rápida (Task 85, revisado):** ganha botões `‹`/`›` (dia anterior/seguinte), mesmo padrão visual (não o mesmo componente) do seletor de período da Visão mensal (§8.3.1). Resolve a fricção de trocar de dia usando o seletor nativo do navegador várias vezes numa mesma sequência de lançamentos que avança dia a dia.
+
+Os botões ficam **acoplados dentro das pontas do próprio campo** (não flanqueando-o como elementos soltos, que era a forma original): um único container ocupa a largura total da coluna — igual aos demais campos — carregando fundo, borda e cantos arredondados, com os dois botões nas extremidades separados por divisores verticais.
+
+O `<input type="date">` fica no meio com **largura intrínseca** (do próprio conteúdo), centralizado por `margin: auto`. Essa é a parte não óbvia: o widget nativo **ignora `text-align`** — renderiza o valor sempre colado à esquerda —, então centralizar o texto exige centralizar o próprio campo, já dimensionado exatamente pelo conteúdo. Tentativas anteriores (`text-align: center` no input de largura total) deixavam a data visivelmente à esquerda.
+
+Clicar em qualquer ponto do campo abre o calendário via **`showPicker()`** (método padronizado do WHATWG HTML), envolto em `try/catch` — onde ela é barrada (iframe cross-origin, falta de ativação do usuário) o ícone nativo do campo continua sendo o gatilho. Descartada explicitamente a alternativa de esticar `::-webkit-calendar-picker-indicator` sobre o campo: embora seja um workaround difundido, depende de pseudo-elemento **não-padrão**, sem equivalente no Firefox (que removeu o comportamento de abrir no clique em qualquer ponto) e ainda em processo de padronização no CSSWG como `::picker-icon`.
 
 **Foco automático pós-envio (Task 85):** ao salvar com sucesso, o foco do teclado volta pro campo Valor — hoje fica parado no botão "Lançar", exigindo um clique manual no campo antes de continuar digitando o próximo lançamento. Importante especialmente pra quem lança em sequência via teclado (Enter já submete o formulário a partir de `CampoValor`/Descrição, sem precisar do mouse no botão).
 

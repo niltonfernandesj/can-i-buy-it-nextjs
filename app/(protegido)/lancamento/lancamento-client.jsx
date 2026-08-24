@@ -90,7 +90,7 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
   );
 }
 
-const BOTAO_ICONE = "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground hover:text-foreground";
+const BOTAO_DIA = "flex w-10 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
 const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground";
 
 const FORM_INICIAL = {
@@ -161,6 +161,19 @@ export function LancamentoClient({ contas }) {
 
   function ajustarParcelas(delta) {
     setForm({ ...form, numeroParcelas: Math.max(1, Math.min(99, form.numeroParcelas + delta)) });
+  }
+
+  // Clicar em qualquer ponto do campo abre o calendário, não só no ícone
+  // nativo. showPicker() é a forma padronizada de fazer isso (WHATWG HTML);
+  // o try/catch cobre os casos em que ela é barrada — iframe cross-origin,
+  // ausência de ativação do usuário — onde o clique no ícone nativo continua
+  // funcionando normalmente.
+  function abrirSeletorData(e) {
+    try {
+      e.currentTarget.showPicker?.();
+    } catch {
+      // Sem problema: o ícone nativo do campo continua abrindo o calendário.
+    }
   }
 
   function somarDia(delta) {
@@ -323,19 +336,41 @@ export function LancamentoClient({ contas }) {
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="dataCompra">Data</Label>
-            <div className="flex items-center justify-between gap-1.5">
-              <button type="button" onClick={() => somarDia(-1)} aria-label="Dia anterior" className={BOTAO_ICONE}>
+            {/* Campo único com os controles de dia acoplados nas pontas. O
+                container carrega fundo/borda e ocupa a largura toda; o
+                <input type="date"> fica com largura intrínseca, centralizado
+                por mx-auto. O widget nativo ignora text-align (renderiza o
+                valor sempre colado à esquerda), então o que centraliza a data
+                de fato é centralizar o próprio campo, já do tamanho exato do
+                conteúdo. Não usa o componente Input porque ele força w-full. */}
+            <div className="flex h-9 w-full items-stretch overflow-hidden rounded-md border border-input bg-muted shadow-sm has-[input:focus-visible]:ring-1 has-[input:focus-visible]:ring-ring">
+              <button
+                type="button"
+                onClick={() => somarDia(-1)}
+                aria-label="Dia anterior"
+                className={cn(BOTAO_DIA, "border-r border-border")}
+              >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <Input
+              <input
                 id="dataCompra"
                 type="date"
                 required
                 value={form.dataCompra}
                 onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
-                className="w-40 text-center"
+                onClick={abrirSeletorData}
+                // color-scheme:dark faz o navegador renderizar as partes
+                // nativas do campo no tema escuro — o ícone de calendário
+                // (que sem isso fica escuro sobre fundo escuro) e o próprio
+                // popup do calendário, que abriria claro no meio do app escuro.
+                className="mx-auto w-auto border-none bg-transparent p-0 text-sm tabular-nums text-foreground outline-none [color-scheme:dark]"
               />
-              <button type="button" onClick={() => somarDia(1)} aria-label="Dia seguinte" className={BOTAO_ICONE}>
+              <button
+                type="button"
+                onClick={() => somarDia(1)}
+                aria-label="Dia seguinte"
+                className={cn(BOTAO_DIA, "border-l border-border")}
+              >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
