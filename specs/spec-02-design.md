@@ -1144,6 +1144,45 @@ Roda **inteiramente no cliente**, sobre os dados já carregados — nenhuma cham
 - **Efêmera:** vive em `useState`. Sair da rota descarta. Não há persistência, não há URL compartilhável, não há conversão em lançamento.
 - **Exibição:** o resultado simulado deve ser distinguível do valor base — a proposta é exibir o delta ao lado do número (ex.: `R$ 1.140 → R$ 840`), para que o impacto seja lido diretamente, sem o usuário precisar memorizar o estado anterior.
 
+### 14.4 Percentual do disponível (M28)
+
+Resolve Requisitos §3.12. Validado com o usuário via mock em HTML antes das tasks — a régua, o texto do rótulo e os casos de borda foram decididos ali.
+
+**Duas funções puras, em `lib/disponivel.js`** (módulo novo, sem dependência de `db` — é consumido por um Client Component):
+
+```javascript
+/**
+ * Quanto o disponível representa das entradas do mês, em porcentagem.
+ * Devolve null quando não há base de cálculo (entradas <= 0) — a camada de
+ * exibição usa isso pra esconder o rótulo (Requisitos §3.12).
+ */
+export function percentualDoDisponivel(disponivel, entradas) {
+  if (!(entradas > 0)) return null;
+  return (disponivel / entradas) * 100;
+}
+
+/** Faixa da régua (Requisitos §3.12). Limites inclusivos no piso. */
+export function faixaDoPercentual(percentual) {
+  if (percentual >= 40) return "otimo";
+  if (percentual >= 25) return "bom";
+  if (percentual >= 10) return "atencao";
+  if (percentual >= 5) return "baixo";
+  return "critico";
+}
+```
+
+`percentualDoDisponivel` devolve **null**, não zero: zero é um percentual legítimo (disponível exatamente zerado, que cai na faixa crítica) e confundir os dois faria um mês sem renda parecer um mês sem folga. A guarda é `!(entradas > 0)` e não `entradas === 0` de propósito — cobre também `null`, `undefined` e `NaN` vindos de um mês malformado, sem deixar `Infinity` chegar à tela.
+
+`faixaDoPercentual` não trata negativo em separado: qualquer valor abaixo de 5 — inclusive negativo — é `critico`, que é exatamente a regra dos Requisitos.
+
+**Tokens (§16.1).** Cinco tokens semânticos novos, `--disponivel-otimo` … `--disponivel-critico`. Quatro reaproveitam valores hexadecimais que já existem na paleta, mas ganham nome próprio em vez de a UI referenciar `--categoria-lima` ou `--saida-credito` — a régua não é uma categoria nem um meio de pagamento, e o alias explícito deixa uma futura recalibragem tocar num lugar só. Só `--disponivel-critico` (`#F43F5E`) é um valor novo.
+
+**Mapa explícito de classe, não interpolação.** Mesma armadilha já registrada em `CLASSE_COR_CATEGORIA` (§18.4): o JIT do Tailwind só gera a classe se encontrar a string literal no código-fonte, então `text-disponivel-${faixa}` sairia sem cor na build. O componente usa um objeto literal `{ otimo: "text-disponivel-otimo", ... }`.
+
+**Anatomia do rótulo:** `text-xs` (12px contra os 20px do valor) e `font-normal`, exceto nas faixas `otimo` e `critico`, que levam `font-semibold` — é assim que "com destaque" dos Requisitos se materializa, sem um sexto tom. Fica na mesma linha do valor, alinhado pela linha de base (`items-baseline`), à direita dele no desktop e logo após ele no mobile — o container do Disponível já inverte o alinhamento por breakpoint (`md:text-right`), então o rótulo acompanha sem regra própria.
+
+**Com simulação ativa** (§14.3), o percentual é calculado sobre `disponivelSimulado` e aparece **uma vez só**, ao fim da linha "antes → depois". Dois percentuais numa linha que já tem dois valores em R$ passariam de qualquer largura útil no mobile.
+
 ## 15. Navegação agrupada
 
 Revisa a seção 8.1. Em caso de conflito, **esta seção prevalece**.
@@ -1213,6 +1252,18 @@ Paleta base:
 | `--foreground` | `#F4F4F5` | Texto principal |
 | `--muted-foreground` | `#85858F` | Texto secundário |
 | `--border`, `--input` | `#2E2E34` | Bordas e campos |
+
+Régua do percentual do disponível (§14.4, M28) — cinco degraus do verde ao vermelho:
+
+| Token | Valor | Faixa |
+|---|---|---|
+| `--disponivel-otimo` | `#4ADE80` | 40% ou mais (mesmo hex de `--entrada`) |
+| `--disponivel-bom` | `#A3E635` | 25% a 40% (mesmo hex de `--categoria-lima`) |
+| `--disponivel-atencao` | `#FBBF24` | 10% a 25% (mesmo hex de `--saida-debito`) |
+| `--disponivel-baixo` | `#FB7185` | 5% a 10% (mesmo hex de `--saida-credito`) |
+| `--disponivel-critico` | `#F43F5E` | Abaixo de 5% (**valor novo**) |
+
+Quatro repetem hexadecimais já presentes na paleta, mas com nome próprio: a régua não é categoria nem meio de pagamento, e o alias deixa uma recalibragem futura tocar num lugar só.
 | `--primary` | `#F4F4F5` | Botão primário (fundo claro) |
 | `--primary-foreground` | `#1B1B1F` | Texto do botão primário |
 

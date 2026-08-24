@@ -198,6 +198,7 @@ Em ambos os meios, a composição de despesas de cada mês degrada naturalmente 
   3. **Valores padrão**, aplicando a regra do teto descrita na seção 3.5.
 - Cada card de mês resume **Entradas**, **Saídas** e **Investimentos** como ícone colorido + valor consolidado (sem rótulo em texto) e destaca o **Disponível** do mês — a Projeção é um resumo rápido de doze meses, não o lugar do detalhe. A distinção entre real e estimado, exigida na Visão mensal (3.1), **não aparece neste nível de resumo**; o grau de confiança de cada valor é visto ao entrar no mês (clique leva à Visão mensal, que mantém a distinção completa).
 - A Visão mensal (3.1) **continua existindo e não é substituída** — permanece como o detalhe de um único mês.
+- Ao lado do valor **Disponível** de cada mês, um rótulo discreto mostra **quanto ele representa das Entradas do mês**, colorido por faixa (M28). Ver especificação detalhada na seção 3.12 abaixo.
 - Cada mês da lista funciona como **link** para a Visão mensal filtrada naquele mês/ano — a Projeção é um resumo de doze meses, o detalhe de cada um continua na Visão mensal.
 
 ### 3.7 Especificação — Simulação de compra
@@ -280,6 +281,35 @@ Um **estorno** é dinheiro que volta para o cartão de crédito: devolução de 
 **Cancelamento de compra parcelada não é estorno.** Quando o parcelamento inteiro é cancelado, o caminho continua sendo apagar as parcelas ("apagar esta e as restantes", seção 3.2) — não lançar um estorno por cima. O estorno existe para a devolução em que a cobrança original permanece na fatura e o crédito entra ao lado dela.
 
 **Estorno não é valor padrão.** Não há estorno recorrente nem item de estorno na lista de valores padrão (seção 3.5) — é sempre um lançamento pontual.
+
+### 3.12 Especificação — Percentual do disponível na Projeção (M28)
+
+Na tela de Projeção, o valor **Disponível** de cada mês é um número absoluto, e sozinho não diz se aquele mês é folgado ou apertado — R$ 3.000 de sobra significa coisas opostas para quem ganha R$ 6.000 e para quem ganha R$ 40.000. O rótulo traduz o valor em **proporção da renda daquele mês**.
+
+- **O que é:** ao lado do valor Disponível, um texto menor e de menos destaque com o percentual que o Disponível representa das **Entradas** do mês.
+- **Formato:** só o número e o símbolo — `31%`. Sem casas decimais (é um indicador de faixa, não uma medida precisa) e sem complemento textual, **em todos os viewports** (decisão do usuário sobre a alternativa "31% das entradas", comparada em mock).
+- **Base do cálculo:** o **total de Entradas** do mês — o mesmo número já exibido no indicador de Entradas do card, incluindo a receita padrão. Entradas no crédito (estornos, §3.11) já não fazem parte desse total.
+- **Escopo:** só a Projeção. A Visão mensal também tem um card Disponível, mas fica fora deste marco.
+
+**Régua de cores** — um degradê do verde ao vermelho, em cinco faixas:
+
+| Percentual | Tratamento |
+|---|---|
+| 40% ou mais | Verde, com destaque |
+| 25% a 40% | Verde-lima, sem destaque |
+| 10% a 25% | Amarelo |
+| 5% a 10% | Vermelho |
+| Abaixo de 5% | Vermelho, com destaque |
+
+- Os limites são **inclusivos no piso**: exatamente 40% já é a primeira faixa, exatamente 25% é a segunda, e assim por diante.
+- "Com destaque" nas duas pontas é **peso da fonte**, não um sexto tom — o degradê tem cinco cores, e as extremidades ganham reforço tipográfico.
+
+**Casos de borda:**
+
+- **Entradas iguais a zero:** o rótulo **não aparece**. Acontece de verdade — um mês sem receita padrão e sem entrada lançada — e a divisão não teria resultado definido. O valor Disponível continua exibido normalmente.
+- **Disponível negativo:** o percentual é negativo e cai na última faixa (vermelho com destaque), sem tratamento especial. O valor em si segue a regra de cor que já existe.
+- **Percentual acima de 100%:** possível quando as saídas do mês são negativas (mês dominado por estornos, §3.11). Entra na primeira faixa como qualquer valor acima de 40%.
+- **Simulação ativa (§3.7):** o card mostra "antes → depois", e o percentual acompanha o **valor simulado** — o número que passa a valer. Não são exibidos dois percentuais.
 
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
@@ -457,6 +487,16 @@ Estorno no crédito (M27, seção 3.11):
 - [ ] O card Disponível negativo continua na cor padrão, sem verde — é déficit, não crédito a favor.
 - [ ] Em `/transacoes`, um estorno exibe um indicador próprio ao lado da descrição, distinguindo-o de uma entrada comum.
 - [ ] A Projeção reflete o estorno no mês de referência correto, pelas mesmas regras da Visão mensal.
+
+Percentual do disponível na Projeção (M28, seção 3.12):
+
+- [ ] Cada card de mês da Projeção exibe, ao lado do Disponível, o percentual que ele representa das Entradas do mês, no formato `31%`.
+- [ ] O rótulo tem menos destaque que o valor: fonte menor e cor da faixa.
+- [ ] Um mês com 40% ou mais sai em verde com destaque; entre 25% e 40%, verde-lima; entre 10% e 25%, amarelo; entre 5% e 10%, vermelho; abaixo de 5%, vermelho com destaque.
+- [ ] Exatamente 40%, 25%, 10% e 5% caem na faixa superior de cada limite.
+- [ ] Um mês com Entradas zeradas não exibe o rótulo, e o valor Disponível continua visível.
+- [ ] Um mês com Disponível negativo exibe percentual negativo, em vermelho com destaque.
+- [ ] Com uma simulação ativa, o percentual corresponde ao valor simulado (o segundo número), e há apenas um percentual na linha.
 
 ## 7. Perguntas em aberto / decisões futuras
 

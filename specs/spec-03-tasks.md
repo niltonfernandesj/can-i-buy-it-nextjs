@@ -900,6 +900,42 @@ Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100
 
 ---
 
+## M28 — Percentual do disponível na Projeção
+
+Resolve Requisitos §3.12 (nova) e o bullet acrescentado em §3.6. Design §14.4 (nova) e §16.1 (tokens).
+
+Sem migration, sem Server Action, sem mudança de leitura de dados: `comporMes` já devolve `entradas.total` e `disponivel` para os doze meses, e a Projeção já os recebe. O marco é uma função pura mais apresentação.
+
+Régua e formato validados com o usuário via mock em HTML antes da primeira task, incluindo três decisões dele: rótulo **curto** (`31%`, sem complemento textual, em todos os viewports), **sem rótulo** quando as Entradas são zero, e percentual **acompanhando o valor simulado** quando há simulação ativa.
+
+---
+
+**Task 104. Funções puras de percentual e faixa**
+
+`lib/disponivel.js` (novo) e `lib/disponivel.test.js` (novo). Sem UI, sem Playwright. Design §14.4.
+
+- `percentualDoDisponivel(disponivel, entradas)` — devolve o percentual, ou **`null`** quando não há base (`!(entradas > 0)`, cobrindo zero, negativo, `null` e `NaN`). Null e não zero: zero é um percentual legítimo, e confundir os dois faria um mês sem renda parecer um mês sem folga.
+- `faixaDoPercentual(percentual)` — `"otimo" | "bom" | "atencao" | "baixo" | "critico"`, limites inclusivos no piso.
+- Testes cobrindo: cada uma das cinco faixas; os quatro limites exatos (40, 25, 10, 5) caindo na faixa superior; percentual negativo → `critico`; acima de 100% → `otimo`; e as quatro entradas sem base (`0`, negativa, `null`, `NaN`) devolvendo `null`.
+
+*(Checkpoint: lint + test + build. Nenhuma tela consome as funções ainda — a Task 105 é que as liga.)*
+
+---
+
+**Task 105. Tokens da régua e rótulo no card da Projeção**
+
+`app/globals.css`, `tailwind.config.js` e `app/(protegido)/projecao/projecao-client.jsx`. Design §14.4 e §16.1.
+
+- Cinco tokens `--disponivel-otimo` … `--disponivel-critico` em `globals.css`, e o grupo `disponivel` correspondente em `tailwind.config.js`. Quatro reaproveitam hexadecimais já na paleta; só `--disponivel-critico` (`#F43F5E`) é valor novo.
+- **Mapa literal de classe** no componente (`{ otimo: "text-disponivel-otimo", ... }`), nunca `text-disponivel-${faixa}` — o JIT do Tailwind descarta nome montado em runtime, mesma armadilha já registrada em `CLASSE_COR_CATEGORIA` (Design §18.4). Sem isso o rótulo sai sem cor, e só na build de produção.
+- `DisponivelComDelta` passa a receber `entradas` e renderizar o rótulo: `text-xs`, `font-semibold` só nas faixas `otimo` e `critico`, alinhado pela linha de base do valor.
+- Com simulação ativa, o percentual sai do `disponivelSimulado` e aparece **uma vez só**, ao fim da linha.
+- Rótulo ausente quando `percentualDoDisponivel` devolve `null`.
+
+*(Checkpoint: QA de interface. Cenário com meses cobrindo as cinco faixas, um mês de Entradas zeradas e um mês de Disponível negativo — asserção de `textContent()` e `getComputedStyle().color`/`fontWeight`, sem screenshot: cor e peso são computáveis. Verificar também com uma simulação ativa que existe **um** percentual na linha e que ele corresponde ao segundo valor. Como a régua depende de agregados do mês num banco sem isolamento por usuário, os valores padrão globais entram na conta — montar o cenário conferindo o número que a tela exibe, não o que o script criou isoladamente.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -931,3 +967,4 @@ Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100
 | M25 | Escopo item 4 revisado — categorias deixam de ser lista fixa em código e viram entidade gerenciável pelo usuário, com cor e desativação (spec-01 §3.10) |
 | M26 | Requisitos não funcionais — instalação na tela inicial do iPhone (spec-01 §4), sem offline e sem push |
 | M27 | Escopo item 2 revisado — estorno no crédito (spec-01 §3.11), com os ajustes decorrentes na Visão mensal (§3.1), na tabela de transações (§3.3) e na regra do teto de despesa padrão no crédito (§3.5) |
+| M28 | Escopo item 13 revisado — percentual do disponível em relação às Entradas, na Projeção (spec-01 §3.12) |
