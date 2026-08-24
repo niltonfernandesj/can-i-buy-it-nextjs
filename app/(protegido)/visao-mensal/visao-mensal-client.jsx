@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta } from "@/lib/datas";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -378,6 +377,7 @@ function LinhaItemDespesaPadrao({
   ano,
   mesEncerrado,
   contasCorrentes,
+  categorias,
   editando,
   onEditar,
   onFechar,
@@ -398,7 +398,9 @@ function LinhaItemDespesaPadrao({
       : dataInicialConsolidacao(mes, ano),
   );
   const [contaId, setContaId] = useState(item.contaId ?? "");
-  const [categoria, setCategoria] = useState(item.categoria ?? "OUTROS");
+  const [categoriaId, setCategoriaId] = useState(
+    item.categoriaId ?? categorias.find((c) => c.nome === "Outros")?.id ?? categorias[0]?.id ?? ""
+  );
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
@@ -421,7 +423,7 @@ function LinhaItemDespesaPadrao({
       valor: valorCentavos / 100,
       data,
       contaId,
-      categoria,
+      categoriaId,
     });
     setCarregando(false);
 
@@ -491,14 +493,14 @@ function LinhaItemDespesaPadrao({
             <Label htmlFor={`despesa-padrao-categoria-${item.id}`}>
               Categoria
             </Label>
-            <Select value={categoria} onValueChange={setCategoria}>
+            <Select value={categoriaId} onValueChange={setCategoriaId}>
               <SelectTrigger id={`despesa-padrao-categoria-${item.id}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
-                  <SelectItem key={valor} value={valor}>
-                    {label}
+                {categorias.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -592,6 +594,7 @@ function ListaDespesaPadrao({
   ano,
   mesEncerrado,
   contasCorrentes,
+  categorias,
 }) {
   const router = useRouter();
   const [editandoId, setEditandoId] = useState(null);
@@ -609,6 +612,7 @@ function ListaDespesaPadrao({
           ano={ano}
           mesEncerrado={mesEncerrado}
           contasCorrentes={contasCorrentes}
+          categorias={categorias}
           editando={editandoId === item.id}
           onEditar={() => setEditandoId(item.id)}
           onFechar={() => setEditandoId(null)}
@@ -761,6 +765,7 @@ function BlocoPorDia({
   itensDespesaPadraoDebito,
   mesEncerrado,
   contasCorrentes,
+  categorias,
   ehSaidasCredito = false,
   mes,
   ano,
@@ -794,6 +799,7 @@ function BlocoPorDia({
               ano={ano}
               mesEncerrado={mesEncerrado}
               contasCorrentes={contasCorrentes}
+              categorias={categorias}
             />
           )}
           {ehSaidasCredito && (
@@ -893,6 +899,7 @@ export function VisaoMensalClient({
   itensDespesaPadraoDebito,
   mesEncerrado,
   contasCorrentes,
+  categorias,
   composicaoEntradas,
   composicaoDebito,
   composicaoCredito,
@@ -986,6 +993,7 @@ export function VisaoMensalClient({
             itensDespesaPadraoDebito={itensDespesaPadraoDebito}
             mesEncerrado={mesEncerrado}
             contasCorrentes={contasCorrentes}
+            categorias={categorias}
             mes={mes}
             ano={ano}
           />

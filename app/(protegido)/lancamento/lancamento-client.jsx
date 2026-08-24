@@ -11,7 +11,6 @@ import {
   Wallet,
 } from "lucide-react";
 import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
@@ -110,7 +109,7 @@ const FORM_INICIAL = {
   tipo: "SAIDA",
   meio: "CREDITO",
   contaId: "",
-  categoria: "OUTROS",
+  categoriaId: "",
   valorCentavos: 0,
   numeroParcelas: 1,
   descricao: "",
@@ -118,10 +117,13 @@ const FORM_INICIAL = {
   contaInvestimentoId: "",
 };
 
-export function LancamentoClient({ contas }) {
+export function LancamentoClient({ contas, categorias }) {
   const [form, setForm] = useState(() => ({
     ...FORM_INICIAL,
     contaId: contas.find((c) => c.tipo === "CARTAO_CREDITO")?.id ?? "",
+    // "Outros" era o default histórico do enum; se tiver sido renomeada ou
+    // desativada, cai na primeira categoria ativa.
+    categoriaId: (categorias.find((c) => c.nome === "Outros") ?? categorias[0])?.id ?? "",
   }));
   const [erro, setErro] = useState("");
   const [sucesso, setSucesso] = useState("");
@@ -213,7 +215,7 @@ export function LancamentoClient({ contas }) {
     const resultado = ehParcelado
       ? await criarTransacaoParcelada({
           descricao: form.descricao,
-          categoria: form.categoria,
+          categoriaId: form.categoriaId,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
           valorParcela: form.valorCentavos / 100,
@@ -223,7 +225,7 @@ export function LancamentoClient({ contas }) {
           tipo: tipoReal,
           valor: form.valorCentavos / 100,
           descricao: form.descricao,
-          categoria: form.categoria,
+          categoriaId: form.categoriaId,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
           ehInvestimento,
@@ -248,7 +250,7 @@ export function LancamentoClient({ contas }) {
       tipo: form.tipo,
       meio: form.meio,
       contaId: form.contaId,
-      categoria: form.categoria,
+      categoriaId: form.categoriaId,
       dataCompra: form.dataCompra,
       contaInvestimentoId: form.contaInvestimentoId,
     });
@@ -306,9 +308,9 @@ export function LancamentoClient({ contas }) {
           <div className="flex flex-col gap-2">
             <Label>Categoria</Label>
             <Chips
-              opcoes={Object.entries(CATEGORIA_LABELS).map(([valor, rotulo]) => ({ valor, rotulo }))}
-              valorAtual={form.categoria}
-              onSelecionar={(categoria) => setForm({ ...form, categoria })}
+              opcoes={categorias.map((c) => ({ valor: c.id, rotulo: c.nome }))}
+              valorAtual={form.categoriaId}
+              onSelecionar={(categoriaId) => setForm({ ...form, categoriaId })}
             />
           </div>
 

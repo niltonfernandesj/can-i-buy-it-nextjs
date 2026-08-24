@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { formatarReais } from "@/lib/moeda";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -46,7 +45,7 @@ function ListaTransacoes({ transacoes, total, renderTag }) {
           </span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {CATEGORIA_LABELS[t.categoria] ?? t.categoria}
+              {t.categoriaNova?.nome ?? "—"}
             </span>
             <span>{formatarReais(t.valor)}</span>
           </span>

@@ -12,7 +12,7 @@ import {
 import { editarTransacao, apagarTransacao } from "@/lib/actions/transacoes";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta, formatarMesReferencia, MESES } from "@/lib/datas";
-import { TIPO_LABELS, CATEGORIA_LABELS } from "@/lib/categorias";
+import { TIPO_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
@@ -81,9 +81,9 @@ const COLUNAS_BASE = [
   {
     id: "categoria",
     header: "Categoria",
-    accessorFn: (row) => row.categoria,
+    accessorFn: (row) => row.categoriaId,
     filterFn: "equals",
-    cell: (info) => CATEGORIA_LABELS[info.getValue()] ?? info.getValue(),
+    cell: (info) => info.row.original.categoriaNova?.nome ?? "—",
   },
   {
     id: "conta",
@@ -115,7 +115,7 @@ const COLUNAS_OCULTAS = [
   { id: "anoReferencia", accessorFn: (row) => row.anoReferencia, filterFn: "equals" },
 ];
 
-function BarraFiltros({ table, contas, anosDisponiveis }) {
+function BarraFiltros({ table, contas, categorias, anosDisponiveis }) {
   const colunaDescricao = table.getColumn("descricao");
   const colunaConta = table.getColumn("conta");
   const colunaCategoria = table.getColumn("categoria");
@@ -172,9 +172,10 @@ function BarraFiltros({ table, contas, anosDisponiveis }) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todas">Todas</SelectItem>
-            {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
-              <SelectItem key={valor} value={valor}>
-                {label}
+            {categorias.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.nome}
+                {!c.ativa && <span className="ml-2 text-xs text-muted-foreground">(inativa)</span>}
               </SelectItem>
             ))}
           </SelectContent>
@@ -361,7 +362,7 @@ function ConfirmarExclusao({ transacao, ehParcela, ehLinhaBloqueada, onVoltar, o
   );
 }
 
-function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
+function DetalheTransacaoConteudo({ transacao, contas, categorias, onSalvo, onApagado }) {
   const ehParcela = transacao.parcelamentoId !== null;
   const ehLinhaBloqueada = ehParcela;
   const podePropagar = ehParcela ? transacao.numeroParcela < transacao.totalParcelas : false;
@@ -371,7 +372,7 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
     tipo: transacao.tipo,
     contaId: transacao.contaId,
     valorCentavos: Math.round(transacao.valor * 100),
-    categoria: transacao.categoria,
+    categoriaId: transacao.categoriaId ?? "",
     descricao: transacao.descricao,
     dataCompra: paraISO(transacao.dataCompra),
     ehInvestimento: transacao.ehInvestimento,
@@ -399,12 +400,12 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
     setCarregando(true);
 
     const dados = ehLinhaBloqueada
-      ? { valor: form.valorCentavos / 100, descricao: form.descricao, categoria: form.categoria }
+      ? { valor: form.valorCentavos / 100, descricao: form.descricao, categoriaId: form.categoriaId }
       : {
           tipo: form.tipo,
           valor: form.valorCentavos / 100,
           descricao: form.descricao,
-          categoria: form.categoria,
+          categoriaId: form.categoriaId,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
           ehInvestimento: form.ehInvestimento,
@@ -451,18 +452,24 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
       <div className="flex flex-col gap-2">
         <Label htmlFor="edit-categoria">Categoria</Label>
         <Select
-          value={form.categoria}
-          onValueChange={(categoria) => setForm({ ...form, categoria })}
+          value={form.categoriaId}
+          onValueChange={(categoriaId) => setForm({ ...form, categoriaId })}
         >
           <SelectTrigger id="edit-categoria">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
-              <SelectItem key={valor} value={valor}>
-                {label}
-              </SelectItem>
-            ))}
+            {/* Ativas + a categoria atual desta transação, mesmo inativa: sem
+                isso, editar só o valor de um lançamento antigo forçaria trocar
+                a categoria junto (Design §18.3). */}
+            {categorias
+              .filter((c) => c.ativa || c.id === transacao.categoriaId)
+              .map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nome}
+                  {!c.ativa && <span className="ml-2 text-xs text-muted-foreground">(inativa)</span>}
+                </SelectItem>
+              ))}
           </SelectContent>
         </Select>
       </div>
@@ -502,7 +509,7 @@ function DetalheTransacaoConteudo({ transacao, contas, onSalvo, onApagado }) {
   );
 }
 
-function DetalheTransacaoDialog({ transacao, contas, open, onOpenChange, onFechar }) {
+function DetalheTransacaoDialog({ transacao, contas, categorias, open, onOpenChange, onFechar }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
@@ -514,6 +521,7 @@ function DetalheTransacaoDialog({ transacao, contas, open, onOpenChange, onFecha
             key={transacao.id}
             transacao={transacao}
             contas={contas}
+            categorias={categorias}
             onSalvo={onFechar}
             onApagado={onFechar}
           />
@@ -523,7 +531,7 @@ function DetalheTransacaoDialog({ transacao, contas, open, onOpenChange, onFecha
   );
 }
 
-export function TransacoesClient({ transacoes, contas }) {
+export function TransacoesClient({ transacoes, contas, categorias }) {
   const router = useRouter();
   const [columnFilters, setColumnFilters] = useState([]);
   const [columnVisibility, setColumnVisibility] = useState({
@@ -561,7 +569,7 @@ export function TransacoesClient({ transacoes, contas }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <BarraFiltros table={table} contas={contas} anosDisponiveis={anosDisponiveis} />
+      <BarraFiltros table={table} contas={contas} categorias={categorias} anosDisponiveis={anosDisponiveis} />
 
       <div className="overflow-x-auto rounded-md border">
         <Table>
@@ -630,6 +638,7 @@ export function TransacoesClient({ transacoes, contas }) {
       <DetalheTransacaoDialog
         transacao={transacaoSelecionada}
         contas={contas}
+        categorias={categorias}
         open={!!transacaoSelecionada}
         onOpenChange={(open) => !open && setTransacaoSelecionada(null)}
         onFechar={aposMudanca}

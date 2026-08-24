@@ -9,7 +9,6 @@ import {
   apagarValorPadrao,
 } from "@/lib/actions/valores-padrao";
 import { formatarReais } from "@/lib/moeda";
-import { CATEGORIA_LABELS } from "@/lib/categorias";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,9 +24,9 @@ import {
 
 const MEIO_LABELS = { CREDITO: "Crédito", DEBITO: "Débito" };
 
-const FORM_INICIAL = { descricao: "", valorCentavos: 0, meio: "DEBITO", categoria: "OUTROS" };
+const FORM_INICIAL = { descricao: "", valorCentavos: 0, meio: "DEBITO", categoriaId: "" };
 
-function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
+function FormularioInline({ tipo, valorInicial, categorias, onCancelar, onSalvar }) {
   const [form, setForm] = useState(valorInicial ?? FORM_INICIAL);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -43,7 +42,7 @@ function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
       valor: form.valorCentavos / 100,
       tipo,
       meio: ehDespesa ? form.meio : null,
-      categoria: ehDespesa ? form.categoria : null,
+      categoriaId: ehDespesa ? form.categoriaId : null,
     });
 
     setCarregando(false);
@@ -95,16 +94,17 @@ function FormularioInline({ tipo, valorInicial, onCancelar, onSalvar }) {
           <div className="flex flex-col gap-2 sm:w-40">
             <Label htmlFor={`categoria-${tipo}`}>Categoria</Label>
             <Select
-              value={form.categoria}
-              onValueChange={(categoria) => setForm({ ...form, categoria })}
+              value={form.categoriaId}
+              onValueChange={(categoriaId) => setForm({ ...form, categoriaId })}
             >
               <SelectTrigger id={`categoria-${tipo}`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(CATEGORIA_LABELS).map(([valor, label]) => (
-                  <SelectItem key={valor} value={valor}>
-                    {label}
+                {categorias.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.nome}
+                    {!c.ativa && <span className="ml-2 text-xs text-muted-foreground">(inativa)</span>}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -132,7 +132,7 @@ function LinhaValorPadrao({ item, ehDespesa, onEditar, onApagar }) {
         <p className="text-sm font-medium">{item.descricao}</p>
         <p className="text-xs text-muted-foreground">
           {formatarReais(item.valor)}
-          {ehDespesa && ` · ${MEIO_LABELS[item.meio]} · ${CATEGORIA_LABELS[item.categoria]}`}
+          {ehDespesa && ` · ${MEIO_LABELS[item.meio]} · ${item.categoriaNova?.nome ?? "—"}`}
         </p>
       </div>
       <div className="flex items-center gap-1">
@@ -164,6 +164,7 @@ function ListaValoresPadrao({
   Icone,
   tipo,
   itens,
+  categorias,
   editandoId,
   adicionando,
   onEditar,
@@ -201,7 +202,12 @@ function ListaValoresPadrao({
 
         <div className="flex flex-col">
           {adicionando && (
-            <FormularioInline tipo={tipo} onCancelar={onCancelarAdicao} onSalvar={onCriar} />
+            <FormularioInline
+              tipo={tipo}
+              categorias={categorias}
+              onCancelar={onCancelarAdicao}
+              onSalvar={onCriar}
+            />
           )}
 
           {itens.map((item) =>
@@ -209,11 +215,18 @@ function ListaValoresPadrao({
               <FormularioInline
                 key={item.id}
                 tipo={tipo}
+                // A categoria já gravada entra na lista mesmo se inativa, pra
+                // que editar só o valor não force trocar a categoria junto.
+                categorias={
+                  item.categoriaNova && !item.categoriaNova.ativa
+                    ? [...categorias, item.categoriaNova]
+                    : categorias
+                }
                 valorInicial={{
                   descricao: item.descricao,
                   valorCentavos: Math.round(item.valor * 100),
                   meio: item.meio ?? "DEBITO",
-                  categoria: item.categoria ?? "OUTROS",
+                  categoriaId: item.categoriaId ?? "",
                 }}
                 onCancelar={onCancelarEdicao}
                 onSalvar={(dados) => onEditarSalvar(item.id, dados)}
@@ -234,7 +247,7 @@ function ListaValoresPadrao({
   );
 }
 
-export function ValoresPadraoClient({ valoresPadrao }) {
+export function ValoresPadraoClient({ valoresPadrao, categorias }) {
   const router = useRouter();
   const [editandoId, setEditandoId] = useState(null);
   const [adicionandoTipo, setAdicionandoTipo] = useState(null);
@@ -282,6 +295,7 @@ export function ValoresPadraoClient({ valoresPadrao }) {
         Icone={TrendingUp}
         tipo="ENTRADA"
         itens={receitas}
+        categorias={categorias}
         editandoId={editandoId}
         adicionando={adicionandoTipo === "ENTRADA"}
         onEditar={setEditandoId}
@@ -298,6 +312,7 @@ export function ValoresPadraoClient({ valoresPadrao }) {
         Icone={TrendingDown}
         tipo="SAIDA"
         itens={despesas}
+        categorias={categorias}
         editandoId={editandoId}
         adicionando={adicionandoTipo === "SAIDA"}
         onEditar={setEditandoId}

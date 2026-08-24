@@ -44,6 +44,7 @@ export default async function VisaoMensalPage({ searchParams }) {
     consolidacoesDespesa,
     cartoes,
     contasCorrentes,
+    categorias,
   ] = await Promise.all([
     buscarEntradas(mes, ano),
     buscarSaidasDebito(mes, ano),
@@ -51,13 +52,15 @@ export default async function VisaoMensalPage({ searchParams }) {
     buscarInvestimentos(mes, ano),
     db.transacao.findMany({
       where: { mesReferencia: mes, anoReferencia: ano },
-      include: { conta: true },
+      include: { conta: true, categoriaNova: true },
     }),
     db.valorPadrao.findMany(),
     db.consolidacaoReceitaPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),
     db.consolidacaoDespesaPadrao.findMany({ where: { mesReferencia: mes, anoReferencia: ano } }),
     db.conta.findMany({ where: { tipo: "CARTAO_CREDITO" } }),
     db.conta.findMany({ where: { tipo: "CONTA_CORRENTE" } }),
+    // Ativas: alimentam o formulário de consolidação de despesa (Design §18.3).
+    db.categoria.findMany({ where: { ativa: true }, orderBy: { criadoEm: "asc" } }),
   ]);
 
   // comporMes (lib/projecao.js) é a fonte de verdade para real + estimado —
@@ -106,7 +109,7 @@ export default async function VisaoMensalPage({ searchParams }) {
       return {
         id: item.id,
         descricao: item.descricao,
-        categoria: item.categoria,
+        categoriaId: item.categoriaId,
         valorPadrao: Number(item.valor),
         consolidado: Boolean(registro),
         resolvidoSemPagar: Boolean(registro) && !registro.transacaoId,
@@ -132,6 +135,7 @@ export default async function VisaoMensalPage({ searchParams }) {
         itensDespesaPadraoDebito={itensDespesaPadraoDebito}
         mesEncerrado={mesEncerrado}
         contasCorrentes={contasCorrentes}
+        categorias={categorias}
         composicaoEntradas={composicao.entradas}
         composicaoDebito={composicao.debito}
         composicaoCredito={composicao.credito}
