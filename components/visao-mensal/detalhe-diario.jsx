@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatarReais } from "@/lib/moeda";
+import { valorComSinal } from "@/lib/estorno";
 import { CategoriaComCor } from "@/components/marcador-categoria";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,6 +23,13 @@ function ehHoje(data) {
   );
 }
 
+// Valor negativo (estorno, ou agregado que ficou negativo por causa de um)
+// sai em verde — Design §8.3.17. `formatarReais` já emite o sinal, nada é
+// montado à mão aqui.
+function classeValor(valor) {
+  return valor < 0 ? "text-entrada" : undefined;
+}
+
 function LinhaResumoDia({ dia, total }) {
   const destaque = ehHoje(dia);
   return (
@@ -30,7 +38,7 @@ function LinhaResumoDia({ dia, total }) {
         {destaque && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
         {formatarDia(dia)}
       </span>
-      <span className="font-medium">{formatarReais(total)}</span>
+      <span className={cn("font-medium", classeValor(total))}>{formatarReais(total)}</span>
     </div>
   );
 }
@@ -38,24 +46,27 @@ function LinhaResumoDia({ dia, total }) {
 function ListaTransacoes({ transacoes, total, renderTag }) {
   return (
     <div className="flex max-h-72 flex-col gap-2 overflow-y-auto">
-      {transacoes.map((t) => (
-        <div key={t.id} className="flex items-center justify-between gap-3 text-sm">
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="truncate">{t.descricao}</span>
-            {renderTag?.(t)}
-          </span>
-          <span className="flex shrink-0 items-center gap-2">
-            <CategoriaComCor
-              categoria={t.categoria}
-              className="text-xs text-muted-foreground"
-            />
-            <span>{formatarReais(t.valor)}</span>
-          </span>
-        </div>
-      ))}
+      {transacoes.map((t) => {
+        const valor = valorComSinal(t);
+        return (
+          <div key={t.id} className="flex items-center justify-between gap-3 text-sm">
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate">{t.descricao}</span>
+              {renderTag?.(t)}
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <CategoriaComCor
+                categoria={t.categoria}
+                className="text-xs text-muted-foreground"
+              />
+              <span className={classeValor(valor)}>{formatarReais(valor)}</span>
+            </span>
+          </div>
+        );
+      })}
       <div className="flex items-center justify-between border-t pt-2 text-sm font-semibold">
         <span>Total do dia</span>
-        <span>{formatarReais(total)}</span>
+        <span className={classeValor(total)}>{formatarReais(total)}</span>
       </div>
     </div>
   );

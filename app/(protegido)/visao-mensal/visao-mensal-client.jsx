@@ -15,6 +15,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
+import { valorComSinal } from "@/lib/estorno";
 import { formatarDataCurta } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,8 +84,19 @@ function classeAnimacaoSwipe(direcao) {
   return "";
 }
 
+// Soma com sinal (Design §8.3.17): um estorno subtrai do dia em que ocorreu.
+// Vale pros três blocos agrupados por dia — valorComSinal só devolve negativo
+// pra estorno, então Entradas e Saídas no débito não mudam de comportamento.
 function somarGrupo(grupo) {
-  return grupo.transacoes.reduce((soma, t) => soma + Number(t.valor), 0);
+  return grupo.transacoes.reduce((soma, t) => soma + valorComSinal(t), 0);
+}
+
+// Agregado negativo sai em verde, em qualquer nível (spec-01 §3.1, Design
+// §8.3.17). O verde aqui não significa "receita", significa "a favor do
+// usuário" — por isso a condição é só o sinal, sem o componente precisar
+// saber por que ficou negativo.
+function classeValor(valor) {
+  return valor < 0 ? "text-entrada" : undefined;
 }
 
 function dataParaISO(data) {
