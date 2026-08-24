@@ -66,6 +66,22 @@ body {
     --periodo-bg: #262640;
     --periodo-fg: #A5B4FC;
     --estimado: #8C8C96;
+
+    /* Paleta de categorias (Design §18.4) — o banco guarda o slug, não o
+       hexadecimal, pra que uma revisão de tema mude tudo de uma vez em vez
+       de deixar hex órfãos nas linhas. Toda a família -400 do Tailwind, a
+       mesma calibragem do §16.1 pra contrastar com fundo escuro. As quatro
+       primeiras reaproveitam os tons já usados pelos tokens semânticos. */
+    --categoria-verde: #4ADE80;
+    --categoria-azul: #60A5FA;
+    --categoria-ambar: #FBBF24;
+    --categoria-rosa: #FB7185;
+    --categoria-roxo: #C084FC;
+    --categoria-ciano: #22D3EE;
+    --categoria-laranja: #FB923C;
+    --categoria-lima: #A3E635;
+    --categoria-indigo: #818CF8;
+    --categoria-cinza: #A1A1AA;
   }
 }
 @layer base {

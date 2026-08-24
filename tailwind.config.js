@@ -67,6 +67,20 @@ module.exports = {
   			periodo: {
   				DEFAULT: 'var(--periodo-bg)',
   				foreground: 'var(--periodo-fg)'
+  			},
+  			// Paleta de categorias (Design §18.4). O slug gravado no banco é a
+  			// chave aqui — ex.: cor 'verde' vira a classe bg-categoria-verde.
+  			categoria: {
+  				verde: 'var(--categoria-verde)',
+  				azul: 'var(--categoria-azul)',
+  				ambar: 'var(--categoria-ambar)',
+  				rosa: 'var(--categoria-rosa)',
+  				roxo: 'var(--categoria-roxo)',
+  				ciano: 'var(--categoria-ciano)',
+  				laranja: 'var(--categoria-laranja)',
+  				lima: 'var(--categoria-lima)',
+  				indigo: 'var(--categoria-indigo)',
+  				cinza: 'var(--categoria-cinza)'
   			}
   		},
   		borderRadius: {

@@ -21,7 +21,11 @@ enum TipoConta {
   CONTA_INVESTIMENTO
 }
 
-enum Categoria {
+// Enum legado, substituído pelo model Categoria (Design §18). Renomeado de
+// `Categoria` na Task 90 só porque o Prisma não admite model e enum com o
+// mesmo nome durante a fase de convivência — o rename é metadata-only e não
+// altera valor algum. Sai de vez na Task 94, junto com as colunas que o usam.
+enum CategoriaLegado {
   MERCADO
   LAZER
   SAUDE
@@ -29,6 +33,18 @@ enum Categoria {
   MORADIA
   SALARIO
   OUTROS
+}
+
+// Taxonomia compartilhada, sem usuarioId — ver justificativa no Design §18.1.
+model Categoria {
+  id       String   @id @default(cuid())
+  nome     String   @unique
+  cor      String // slug da paleta (Design §18.4), não hexadecimal
+  ativa    Boolean  @default(true)
+  criadoEm DateTime @default(now())
+
+  transacoes    Transacao[]
+  valoresPadrao ValorPadrao[]
 }
 
 enum MeioPagamento {
@@ -74,7 +90,17 @@ model Transacao {
   tipo              TipoTransacao
   valor             Decimal       // sempre positivo; sinal é dado pelo `tipo`
   descricao         String
-  categoria         Categoria
+
+  // Convivência das duas categorias durante o M25 (Design §18.2): `categoria`
+  // (enum) é a fonte da verdade até a Task 92; `categoriaId` nasce anulável na
+  // Task 90 e vira obrigatório na 94, quando o enum sai e `categoriaNova`
+  // assume o nome `categoria`.
+  categoria         CategoriaLegado
+  categoriaId       String?
+  // onDelete: Restrict — a regra "não exclui categoria em uso" (Design §18.3)
+  // é checada na Server Action, mas a FK é a garantia final; o default do
+  // Prisma pra relação anulável seria SetNull, que anularia em silêncio.
+  categoriaNova     Categoria?    @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
   contaId           String
   conta             Conta         @relation("ContaPrincipal", fields: [contaId], references: [id])
@@ -102,6 +128,7 @@ model Transacao {
   @@index([contaId])
   @@index([mesReferencia, anoReferencia])
   @@index([parcelamentoId])
+  @@index([categoriaId])
 }
 
 model ValorPadrao {
@@ -113,7 +140,9 @@ model ValorPadrao {
   valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
   tipo      TipoTransacao // ENTRADA (receita padrão) | SAIDA (despesa padrão)
   meio      MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
-  categoria Categoria? // obrigatória quando tipo = SAIDA; null quando ENTRADA — pré-preenche a consolidação de despesa (Task 79)
+  categoria     CategoriaLegado? // obrigatória quando tipo = SAIDA; null quando ENTRADA — pré-preenche a consolidação de despesa (Task 79)
+  categoriaId   String? // convivência do M25 (Design §18.2); segue anulável depois da Task 94, espelhando a regra acima
+  categoriaNova Categoria?       @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
   criadoEm DateTime @default(now())
 
@@ -121,6 +150,7 @@ model ValorPadrao {
   consolidacoesDespesa ConsolidacaoDespesaPadrao[]
 
   @@index([usuarioId])
+  @@index([categoriaId])
 }
 
 // Ajuste pontual de um item de receita padrão pra um mês específico
