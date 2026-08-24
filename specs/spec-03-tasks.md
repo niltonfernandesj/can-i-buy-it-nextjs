@@ -795,7 +795,7 @@ Só se manifesta depois de instalado, quando o app passa a ocupar a tela inteira
 
 ---
 
-## M27 — Estorno no crédito
+## M27 — Estorno no crédito ✅
 
 Resolve Requisitos §3.11 (novo), §3.1 revisado (bloco Entradas só no débito; valores negativos), §3.3 revisado (indicador de estorno) e §3.5 revisado (estorno não devolve teto). Design §6, §8.2.4, §8.3.2, §8.3.16, §8.3.17 (novo), §12.1, §13.3, §13.4.
 
@@ -808,6 +808,7 @@ Decisões do usuário registradas antes da primeira task, todas validadas em moc
 ---
 
 **Task 97. `comporMes`: estorno sai de Entradas e abate o crédito**
+✅ **Concluída** — commit `0a457be`
 
 Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. Design §13.3.
 
@@ -822,6 +823,7 @@ Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. 
 ---
 
 **Task 98. Camada de dados: helper de sinal e queries dos dois blocos**
+✅ **Concluída** — commit `60c4e53`
 
 `lib/estorno.js` (novo), `lib/estorno.test.js` (novo) e `lib/consolidacao.js`. Design §6 e §8.3.17.
 
@@ -835,6 +837,7 @@ Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. 
 ---
 
 **Task 99. Saídas no crédito, visão "Por dia": soma com sinal e verde no negativo**
+✅ **Concluída** — commit `563459d`
 
 `app/(protegido)/visao-mensal/visao-mensal-client.jsx` (`somarGrupo`) e `components/visao-mensal/detalhe-diario.jsx`. Design §8.3.17.
 
@@ -848,6 +851,7 @@ Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. 
 ---
 
 **Task 100. Saídas no crédito, visão "Por cartão": total líquido por cartão**
+✅ **Concluída** — commit `0003c0e`
 
 `ListaPorCartao`, em `visao-mensal-client.jsx`. Design §8.3.16 e §8.3.17.
 
@@ -860,6 +864,7 @@ Só `lib/projecao.js` e `lib/projecao.test.js` — função pura, nenhuma tela. 
 ---
 
 **Task 101. Agregados negativos em verde no cabeçalho do bloco e no resumo**
+✅ **Concluída** — commit `98543ed`
 
 `CabecalhoBloco` e `CardResumo`, em `visao-mensal-client.jsx`. Design §8.3.17.
 
@@ -870,6 +875,7 @@ Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100
 ---
 
 **Task 102. `/transacoes`: badge "Estorno"**
+✅ **Concluída** — commit `ed16915`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Design §12.1.
 
@@ -881,6 +887,7 @@ Fecha a regra "verde em todos os níveis" nos dois agregados que as tasks 99-100
 ---
 
 **Task 103. Lançamento: Meio Crédito liberado para Entrada**
+✅ **Concluída** — commit `eff2440`
 
 `app/(protegido)/lancamento/lancamento-client.jsx`. Design §8.2.4. **Última do marco** — é ela que torna o estorno alcançável.
 
