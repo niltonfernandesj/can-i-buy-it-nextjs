@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   TrendingUp,
+  PiggyBank,
   Wallet,
   SlidersHorizontal,
   Settings,
@@ -17,14 +18,23 @@ import { cn } from "@/lib/utils";
 import { MenuUsuario } from "@/components/navegacao/menu-usuario";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-// Design §15.1 — dois grupos semânticos, seis destinos (Categorias entrou
-// em Ajustes na Task 91).
-const GRUPO_DADOS = [
-  { href: "/visao-mensal", label: "Visão mensal", Icone: LayoutDashboard },
-  { href: "/transacoes", label: "Transações", Icone: ArrowLeftRight },
-  { href: "/projecao", label: "Projeção", Icone: TrendingUp },
+// Design §15.1 e §20.5 — dois grupos semânticos, sete destinos (Categorias
+// entrou em Ajustes na Task 91; Investimentos, no M29).
+//
+// `label` é o rótulo do desktop e `labelCurto`, o do mobile. Os dois campos
+// existem sempre, mesmo quando repetem o mesmo texto: uma tabela onde só
+// alguns itens têm o campo curto obriga a lembrar do fallback em cada uso.
+// Só "Visão mensal" e "Investimentos" divergem — com quatro abas dividindo
+// 390px por igual, são os únicos rótulos que não cabem inteiros.
+export const GRUPO_DADOS = [
+  { href: "/visao-mensal", label: "Visão mensal", labelCurto: "Mês", Icone: LayoutDashboard },
+  { href: "/transacoes", label: "Transações", labelCurto: "Transações", Icone: ArrowLeftRight },
+  { href: "/projecao", label: "Projeção", labelCurto: "Projeção", Icone: TrendingUp },
+  { href: "/investimentos", label: "Investimentos", labelCurto: "Investir", Icone: PiggyBank },
 ];
 
+// Ajustes não tem abas no mobile (abre num Sheet, §15.3), então aqui não há
+// rótulo curto — o Sheet tem largura de sobra.
 const GRUPO_AJUSTES = [
   { href: "/contas", label: "Contas", Icone: Wallet },
   { href: "/categorias", label: "Categorias", Icone: Tags },
