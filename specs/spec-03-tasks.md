@@ -1008,11 +1008,14 @@ Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas oper
 `prisma/schema.prisma` e migration. Design §20.1. Sem UI.
 
 - Enums `MercadoAtivo`, `EstrategiaAtivo`, `ProdutoAtivo`, `IndexadorAtivo`, `NaturezaMovimento` e `MotivoMovimento`.
-- Modelo `Ativo`, com `dataLiquidacao`/`valorLiquidacao` anuláveis e a relação `AtivosDaConta` em `Conta`.
+- Modelo `Ativo`, com a relação `AtivosDaConta` em `Conta`.
+- Modelo `LiquidacaoAtivo`: liquidação é **evento**, não coluna. Guarda `data`, `valorRecebido` e **`valorRemanescente`** — é este último que torna o rendimento calculável depois de um resgate parcial, e liquidação total é o caso em que ele é zero.
 - Modelo `MovimentoInvestimento`, com `natureza` e `motivo` em campos separados e a relação `MovimentosDaConta`.
 - Índices por `usuarioId`, `contaId` e `vencimento`.
 
-As duas tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 sem metade da fórmula de saldo.
+As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 sem metade da fórmula de saldo.
+
+*(Emenda feita durante a implementação, com `Ativo` ainda vazia: a primeira versão guardava a liquidação como duas colunas anuláveis em `Ativo`, o que suportaria só liquidação total. Ao revisar como um resgate parcial se comporta numa corretora, ficou claro que o valor que segue rendendo é a base remanescente a partir da data do resgate — e sem esse campo o M30 não conseguiria corrigir uma posição parcialmente resgatada. Como a migration anterior já estava aplicada no banco de desenvolvimento, a correção entrou como uma segunda migration em vez de reescrever a primeira.)*
 
 *(Checkpoint: lint + test + build; `npx prisma migrate status` sincronizado. Sem Playwright — não há tela. Nenhum dado existente é tocado: a tabela nasce vazia.)*
 
@@ -1023,6 +1026,8 @@ As duas tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task
 `lib/investimentos.js` e `lib/investimentos.test.js`, ambos novos. Design §20.2. Sem UI.
 
 - `saldoInvestido`, `saldoEmConta`, `patrimonio` e a função de agrupamento por chave (`estrategia` ou `mercado`), mais o percentual sobre o patrimônio.
+- **Saldo investido é a soma da base atual de cada posição viva** — `valorRemanescente` do último evento de liquidação, ou `valorAquisicao` quando não houve nenhum. Não é mais "soma do valor de aquisição dos não liquidados": essa forma quebra depois de um resgate parcial.
+- Uma posição está **viva** quando não tem liquidação alguma, ou quando a última tem remanescente maior que zero. Uma posição encerrada some da listagem (Requisitos §3.13.2).
 - A fórmula do saldo em conta inclui os movimentos avulsos, somando os de natureza crédito e subtraindo os de débito.
 - **A agregação roda no banco** (`groupBy`/`aggregate`), devolvendo uma linha por conta — não o histórico carregado na aplicação. É o ponto que responde à objeção de "consolidar toda a história a cada leitura" (Design §20.2).
 - Testes cobrindo as duas sutilezas que a fórmula esconde: **a compra debita para sempre** (o somatório de aquisições inclui os já liquidados, senão o caixa reaparece na liquidação) e **vencido não liquidado continua investido** (a condição é `dataLiquidacao == null`, não o vencimento).

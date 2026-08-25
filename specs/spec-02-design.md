@@ -1544,13 +1544,9 @@ model Ativo {
   valorAquisicao Decimal
   vencimento     DateTime
 
-  // Nulos enquanto a posição está viva. Liquidação parcial está fora do M29,
-  // então uma posição tem no máximo uma liquidação — daí serem colunas aqui
-  // em vez de uma tabela própria.
-  dataLiquidacao  DateTime?
-  valorLiquidacao Decimal?
-
   criadoEm DateTime @default(now())
+
+  liquidacoes LiquidacaoAtivo[]
 
   @@index([usuarioId])
   @@index([contaId])
@@ -1561,6 +1557,21 @@ model Ativo {
 // conta corrente: cupom, taxa de custódia, corretagem (Requisitos §3.13.3).
 // Sempre da CONTA, nunca de um ativo — decisão do usuário: no M29 um vínculo
 // com posição seria gravado e nunca lido.
+// Liquidação é evento, não coluna. Total = remanescente zero.
+model LiquidacaoAtivo {
+  id      String @id @default(cuid())
+  ativoId String
+  ativo   Ativo  @relation(fields: [ativoId], references: [id], onDelete: Cascade)
+
+  data              DateTime
+  valorRecebido     Decimal // líquido de IR e IOF, retidos na fonte
+  valorRemanescente Decimal // zero = posição fechada
+
+  criadoEm DateTime @default(now())
+
+  @@index([ativoId])
+}
+
 model MovimentoInvestimento {
   id        String  @id @default(cuid())
   usuarioId String
@@ -1585,6 +1596,12 @@ model MovimentoInvestimento {
 }
 ```
 
+**Por que liquidação é tabela, e por que ela guarda o remanescente.** Duas colunas em `Ativo` só suportam uma liquidação total. Com resgate parcial, `valorAquisicao × fator(dataAquisicao → hoje)` deixa de valer: a base encolheu e o trecho seguinte começa noutra data. Como o produtório dos fatores diários é **multiplicativo** — `fator(t0→t2) = fator(t0→t1) × fator(t1→t2)` —, quebrar o intervalo no dia do resgate é exato, e a posição passa a valer `valorRemanescente × fator(data do evento → hoje)`. O caso sem nenhum evento cai na mesma fórmula, com a compra como "último evento": não são dois caminhos de código.
+
+O remanescente é **guardado, não derivado**. Derivar exigiria que o nosso cálculo do trecho anterior batesse com o da corretora, incluindo arredondamento, e que soubéssemos o valor **bruto** retirado (guardamos o líquido, que é o que caiu na conta). Guardado, ele é um fato lido do extrato e **reancora** a conta a cada evento, sem acumular erro entre trechos — mesmo princípio já adotado para o valor recebido.
+
+`LiquidacaoAtivo` **não tem `usuarioId`**, diferente das tabelas irmãs: aqui ele seria derivável do ativo, e duplicar abriria a chance de uma liquidação com dono diferente do da posição. E **não há flag de "liquidado" em `Ativo`** — seria dado derivado, exatamente o que esta seção evita. Uma posição está viva quando não tem liquidação alguma, ou quando a última tem remanescente maior que zero.
+
 **Por que não existe coluna de saldo.** Nem `saldoEmConta` nem `saldoInvestido` são persistidos: os dois são **derivados** dos movimentos, pela mesma razão que a Visão mensal nunca guardou totais — um saldo materializado passa a ser uma segunda fonte de verdade, e diverge no primeiro `apagarTransacao` que esquecer de atualizá-lo.
 
 **Por que os movimentos não reaproveitam `Transacao`.** A pergunta é legítima — seria uma tabela a menos. Mas toda `Transacao` com `mesReferencia` entra em `comporMes`: um cupom viraria receita e uma taxa de custódia, saída no débito, mudando o Disponível de um mês por dinheiro que ninguém pode gastar. Evitar isso exigiria um filtro novo em **seis** pontos de leitura (`comporMes`, as três buscas de `lib/consolidacao.js`, `/transacoes` e a Projeção) que ninguém pode esquecer — e o M27 mostrou o preço disso. Some-se que `categoriaId` é obrigatório com FK `Restrict` (que categoria é uma taxa da B3? e, pela regra de "não exclui categoria em uso", a categoria inventada ficaria indeletável), que `mesReferencia`/`anoReferencia` são obrigatórios e sem sentido aqui, e que `validarTransacao` **já recusa** `contaId` de uma conta de investimento — trava que existe justamente para manter essa semântica.
@@ -1600,12 +1617,15 @@ O critério que separa os dois casos: **isso muda quanto a família pode gastar 
 Módulo novo `lib/investimentos.js`, puro (sem `db`), porque é consumido por Client Component:
 
 ```javascript
-saldoInvestido(conta) = Σ valorAquisicao dos ativos da conta AINDA NÃO liquidados
+saldoInvestido(conta) = Σ base atual de cada posição viva da conta
+                        // base atual = valorRemanescente do ÚLTIMO evento de
+                        // liquidação, ou valorAquisicao se não houve nenhum.
+                        // Viva = sem evento, ou último evento com remanescente > 0.
 
 saldoEmConta(conta)   = Σ aportes            // Transacao SAIDA  + ehInvestimento + contaInvestimentoId
                       − Σ resgates           // Transacao ENTRADA + ehInvestimento + contaInvestimentoId
                       − Σ valorAquisicao     // TODOS os ativos da conta, inclusive liquidados
-                      + Σ valorLiquidacao    // dos ativos liquidados
+                      + Σ valorRecebido      // de todos os eventos de liquidação
                       + Σ movimentos CREDITO // cupom, ajuste
                       − Σ movimentos DEBITO  // taxa, corretagem, ajuste
 
@@ -1620,8 +1640,8 @@ patrimonio            = Σ (saldoEmConta + saldoInvestido) de todas as contas de
 
 Duas sutilezas que a fórmula esconde:
 
-- **A compra debita para sempre.** O `− Σ valorAquisicao` percorre inclusive os ativos já liquidados: o dinheiro saiu do caixa no dia da compra e voltou pelo `+ Σ valorLiquidacao`, possivelmente com valor diferente. Somar só os vivos faria o caixa reaparecer sozinho na liquidação.
-- **Ativo vencido e não liquidado continua em `saldoInvestido`** (Requisitos §3.13.2) — a condição é `dataLiquidacao == null`, não o vencimento.
+- **A compra debita para sempre.** O `− Σ valorAquisicao` percorre inclusive os ativos já liquidados: o dinheiro saiu do caixa no dia da compra e voltou pelos eventos de liquidação, possivelmente com valor diferente. Somar só os vivos faria o caixa reaparecer sozinho na liquidação.
+- **Ativo vencido e não liquidado continua em `saldoInvestido`** (Requisitos §3.13.2) — o que tira a posição do saldo é o remanescente ter chegado a zero, não o vencimento ter passado.
 
 **Agrupamento:** uma função recebe os ativos vivos e a chave (`estrategia` ou `mercado`) e devolve os grupos, cada um com seu total e as contas dentro. Não há duas implementações por visão — é a mesma função com chave diferente, no espírito do que `agruparPorCartao` já faz na Visão mensal.
 
@@ -1648,7 +1668,7 @@ Cada grupo é um card recolhível no mesmo padrão de `CabecalhoBloco` e de `Gru
 Em `lib/actions/investimentos.js`, seguindo o padrão das demais (sessão, validação, `revalidatePath`):
 
 - `criarAtivo(dados)` — valida que a conta é `CONTA_INVESTIMENTO`, que o indexador pertence à estratégia, e que `valorAquisicao <= saldoEmConta` da conta. Cria o `Ativo`.
-- `liquidarAtivo(id, { data, valor })` — valida que a posição existe e ainda está viva; grava `dataLiquidacao`/`valorLiquidacao`.
+- `liquidarAtivo(id, { data, valor })` — valida que a posição existe e ainda está viva; cria um `LiquidacaoAtivo` com `valorRemanescente = 0` (no M29 toda liquidação é total).
 - `apagarAtivo(id)` — desfaz um cadastro errado, devolvendo o valor ao saldo em conta por consequência da fórmula.
 - `registrarMovimento(dados)` — valida a conta, que o motivo pertence à natureza, e que um débito não excede o saldo em conta.
 - `apagarMovimento(id)` — desfaz um registro errado.

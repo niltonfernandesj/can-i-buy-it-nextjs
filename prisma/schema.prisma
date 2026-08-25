@@ -33,74 +33,125 @@ model Categoria {
   valoresPadrao ValorPadrao[]
 }
 
+// Investimentos (M29, Design §20.1). Enums de domínio — os rótulos exibidos
+// vivem num mapa em lib/, no mesmo padrão de TIPO_CONTA_LABELS.
+enum MercadoAtivo {
+  RENDA_FIXA
+}
+
+enum EstrategiaAtivo {
+  POS_FIXADO
+  PRE_FIXADO
+  INFLACAO
+}
+
+enum ProdutoAtivo {
+  CDB
+  LCA
+  LCI
+  TESOURO_DIRETO
+}
+
+// Restrito pela estratégia na aplicação (Requisitos §3.13.2): pós-fixado
+// oferece os quatro primeiros; pré-fixado, só PREFIXADO; inflação, só IPCA_MAIS.
+enum IndexadorAtivo {
+  PERCENTUAL_CDI
+  PERCENTUAL_SELIC
+  CDI_MAIS
+  SELIC_MAIS
+  PREFIXADO
+  IPCA_MAIS
+}
+
+// natureza dá o sinal na soma do saldo; motivo apenas descreve. Separados de
+// propósito: um motivo novo não multiplica as opções (Requisitos §3.13.3).
+enum NaturezaMovimento {
+  CREDITO
+  DEBITO
+}
+
+enum MotivoMovimento {
+  CUPOM
+  TAXA
+  CORRETAGEM
+  AJUSTE
+}
+
 enum MeioPagamento {
   CREDITO
   DEBITO
 }
 
 model Usuario {
-  id           String   @id @default(cuid())
-  nome         String
-  email        String   @unique
-  senhaHash    String
-  ehAdmin      Boolean  @default(false) // gestão de usuários — spec-02 §17.2
-  criadoEm     DateTime @default(now())
+  id        String   @id @default(cuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  ehAdmin   Boolean  @default(false) // gestão de usuários — spec-02 §17.2
+  criadoEm  DateTime @default(now())
 
   contas        Conta[]
   transacoes    Transacao[]
   valoresPadrao ValorPadrao[]
+  ativos        Ativo[]
+  movimentos    MovimentoInvestimento[]
 }
 
 model Conta {
-  id             String   @id @default(cuid())
-  usuarioId      String
-  usuario        Usuario  @relation(fields: [usuarioId], references: [id])
-  nome           String
-  tipo           TipoConta
+  id        String    @id @default(cuid())
+  usuarioId String
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id])
+  nome      String
+  tipo      TipoConta
 
   // Específicos de CARTAO_CREDITO (null para os demais tipos)
-  diaFechamento  Int?
-  diaVencimento  Int?
+  diaFechamento Int?
+  diaVencimento Int?
 
-  criadoEm       DateTime @default(now())
+  criadoEm DateTime @default(now())
 
   transacoes             Transacao[] @relation("ContaPrincipal")
   transacoesInvestimento Transacao[] @relation("ContaInvestimento")
+
+  // Só populadas em contas CONTA_INVESTIMENTO (M29) — a regra é da aplicação,
+  // como já acontece com contaInvestimentoId em Transacao.
+  ativos     Ativo[]                 @relation("AtivosDaConta")
+  movimentos MovimentoInvestimento[] @relation("MovimentosDaConta")
 }
 
 model Transacao {
-  id                String        @id @default(cuid())
-  usuarioId         String
-  usuario           Usuario       @relation(fields: [usuarioId], references: [id])
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
 
-  tipo              TipoTransacao
-  valor             Decimal       // sempre positivo; sinal é dado pelo `tipo`
-  descricao         String
+  tipo      TipoTransacao
+  valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
+  descricao String
 
-  categoriaId       String
+  categoriaId String
   // onDelete: Restrict — a regra "não exclui categoria em uso" (Design §18.3)
   // é checada na Server Action, mas a FK é a garantia final.
-  categoria         Categoria     @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
-  contaId           String
-  conta             Conta         @relation("ContaPrincipal", fields: [contaId], references: [id])
+  contaId String
+  conta   Conta  @relation("ContaPrincipal", fields: [contaId], references: [id])
 
-  dataCompra        DateTime
-  dataEfetiva       DateTime
-  mesReferencia     Int           // 1-12
-  anoReferencia     Int
+  dataCompra    DateTime
+  dataEfetiva   DateTime
+  mesReferencia Int // 1-12
+  anoReferencia Int
 
   // Parcelamento (null quando não é compra parcelada)
-  numeroParcela     Int?
-  totalParcelas     Int?
-  parcelamentoId    String?
+  numeroParcela  Int?
+  totalParcelas  Int?
+  parcelamentoId String?
 
   // Investimento
   ehInvestimento      Boolean @default(false)
   contaInvestimentoId String?
   contaInvestimento   Conta?  @relation("ContaInvestimento", fields: [contaInvestimentoId], references: [id])
 
-  criadoEm          DateTime      @default(now())
+  criadoEm DateTime @default(now())
 
   consolidacaoDespesa ConsolidacaoDespesaPadrao?
 
@@ -112,18 +163,18 @@ model Transacao {
 }
 
 model ValorPadrao {
-  id        String        @id @default(cuid())
+  id        String  @id @default(cuid())
   usuarioId String
-  usuario   Usuario       @relation(fields: [usuarioId], references: [id])
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
 
-  descricao String
-  valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
-  tipo      TipoTransacao // ENTRADA (receita padrão) | SAIDA (despesa padrão)
-  meio      MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
+  descricao   String
+  valor       Decimal // sempre positivo; sinal é dado pelo `tipo`
+  tipo        TipoTransacao // ENTRADA (receita padrão) | SAIDA (despesa padrão)
+  meio        MeioPagamento? // obrigatório quando tipo = SAIDA; null quando ENTRADA
   // Anulável: obrigatória quando tipo = SAIDA, null quando ENTRADA — a regra
   // é da aplicação, não do banco (pré-preenche a consolidação de despesa, Task 79).
-  categoriaId   String?
-  categoria     Categoria? @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  categoriaId String?
+  categoria   Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
   criadoEm DateTime @default(now())
 
@@ -176,3 +227,99 @@ model ConsolidacaoDespesaPadrao {
   @@unique([valorPadraoId, mesReferencia, anoReferencia])
   @@index([mesReferencia, anoReferencia])
 }
+
+// Uma posição de renda fixa dentro de uma conta de investimento (M29,
+// Requisitos §3.13.2, Design §20.1). Compra e liquidação NÃO são transações:
+// são movimentos internos da corretora, e modelá-las como Transacao as faria
+// entrar em comporMes, contaminando Entradas/Saídas de um mês em que nada
+// saiu do bolso do usuário.
+model Ativo {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  // Sempre uma conta de tipo CONTA_INVESTIMENTO — regra da aplicação.
+  contaId String
+  conta   Conta  @relation("AtivosDaConta", fields: [contaId], references: [id])
+
+  mercado    MercadoAtivo    @default(RENDA_FIXA)
+  estrategia EstrategiaAtivo
+  produto    ProdutoAtivo
+  emissor    String
+  indexador  IndexadorAtivo
+  // O sentido muda com o indexador: em PERCENTUAL_CDI, 110 é "110% do CDI";
+  // em CDI_MAIS, 2 é "CDI + 2% a.a." (Requisitos §3.13.2).
+  taxa       Decimal
+
+  dataAquisicao  DateTime
+  valorAquisicao Decimal
+  vencimento     DateTime
+
+  criadoEm DateTime @default(now())
+
+  liquidacoes LiquidacaoAtivo[]
+
+  @@index([usuarioId])
+  @@index([contaId])
+  @@index([vencimento])
+}
+
+// Dinheiro que entra ou sai do caixa da corretora sem envolver posição nem
+// conta corrente: cupom semestral, taxa de custódia da B3, corretagem
+// (Requisitos §3.13.3). Sempre da CONTA, nunca de um ativo — no M29 um
+// vínculo com posição seria gravado e nunca lido.
+model MovimentoInvestimento {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  contaId String
+  conta   Conta  @relation("MovimentosDaConta", fields: [contaId], references: [id])
+
+  natureza NaturezaMovimento
+  motivo   MotivoMovimento
+
+  data      DateTime
+  valor     Decimal // sempre positivo; o sinal vem da natureza
+  descricao String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([contaId])
+}
+
+// Um evento de liquidação de uma posição (Design §20.1). Liquidação total é
+// simplesmente aquela em que o remanescente é zero — não há dois conceitos.
+//
+// Tabela, e não duas colunas em Ativo, por causa do resgate parcial: depois
+// dele, `valorAquisicao × fator(dataAquisicao → hoje)` deixa de valer, porque
+// a base encolheu e o trecho seguinte começa noutra data. O produtório dos
+// fatores diários é multiplicativo, então quebrar o intervalo no dia do
+// resgate é exato: base nova × fator(data do evento → hoje).
+model LiquidacaoAtivo {
+  id      String @id @default(cuid())
+  // Cascade: uma liquidação não significa nada sem a posição.
+  ativoId String
+  ativo   Ativo  @relation(fields: [ativoId], references: [id], onDelete: Cascade)
+
+  data DateTime
+
+  // O que caiu no saldo em conta — já líquido de IR e IOF, retidos na fonte.
+  valorRecebido Decimal
+
+  // Quanto continua rendendo depois desta retirada, a partir de `data`.
+  // Zero = a posição fechou. É este campo, e não a existência da linha, que
+  // torna o rendimento calculável. Guardado em vez de derivado pelo mesmo
+  // motivo do valor recebido: é um fato lido do extrato, e reancora a conta
+  // a cada evento, sem acumular erro entre trechos.
+  valorRemanescente Decimal
+
+  criadoEm DateTime @default(now())
+
+  @@index([ativoId])
+}
+
+// Sem usuarioId, diferente das tabelas irmãs: aqui ele seria derivável do
+// ativo, e duplicar abriria a chance de uma liquidação com dono diferente
+// do da posição.
