@@ -940,9 +940,10 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ## Detalhamento de investimentos — M29 a M32 (planejados)
 
-> **Estas quatro seções registram o escopo acordado, não a implementação.** As tasks
-> ainda **não foram escritas**, e os Requisitos (spec-01) e o Design (spec-02) ainda
-> não têm seção correspondente. Nada aqui está pronto para codar: cada marco precisa
+> **Estas quatro seções registram o escopo acordado.** O **M29 já tem Requisitos
+> (spec-01 §3.13), Design (spec-02 §20) e tasks escritas** — aguardando validação do
+> usuário antes da implementação. Os **M30 a M32 seguem sem tasks**, e sem seção
+> correspondente em Requisitos e Design. Nada aqui está pronto para codar: cada marco precisa
 > passar pelo ciclo normal — Requisitos, Design, tasks — antes da primeira linha de
 > código. O objetivo deste bloco é não perder as decisões tomadas na entrevista de
 > 2026-08-25.
@@ -977,33 +978,129 @@ fixa" por ora), Estratégia, Produto (CDB, LCA, LCI, Tesouro Direto), Emissor, I
 
 ---
 
-### M29 — Modelo de investimentos: ativos e os dois saldos (planejado)
+### M29 — Modelo de investimentos: ativos e os dois saldos
 
-**Status:** mock publicado e em avaliação pelo usuário; tasks **a escrever** depois da aprovação.
+**Status:** mock validado pelo usuário; Requisitos §3.13 e Design §20 escritos. Tasks abaixo **aguardando validação** antes de qualquer implementação.
 
-Primeira fatia, escolhida pelo usuário por entregar algo usável sem depender da integração
-externa: o ativo passa a existir, os dois saldos aparecem, e as duas operações novas
-funcionam — **sem rendimento**. Enquanto vivo, o ativo vale o que custou.
+Duas decisões vindas da revisão do schema, depois da primeira versão destas tasks: os **movimentos avulsos** entram no M29 (sem eles o saldo desencontra do extrato real em seis meses de Tesouro Direto), e **transferência entre corretoras não ganha operação própria** — quem precisar registra dois ajustes, um de cada lado.
 
-Escopo previsto:
+Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas operações novas funcionam — **sem rendimento**. Enquanto vivo, um ativo vale o que custou.
 
-- Entidade `Ativo` no schema (migration), vinculada a uma conta de investimento.
-- Saldo em conta e saldo investido derivados dos movimentos, por conta.
-- Compra de ativo consumindo o saldo em conta, e liquidação devolvendo a ele.
-- Rota `/investimentos` com patrimônio consolidado, contas e suas posições.
-- Resgate volta a pedir a conta de investimento de origem na tela de lançamento.
-- Quarta aba no grupo Dados, com ícones na navegação mobile.
+**Ordem e uma amarração:** o usuário pediu a aba como primeiro passo. Uma aba apontando para uma rota inexistente daria 404, então a **Task 106 cria também a rota mínima** que ela aponta — só o título, sem conteúdo. É o menor acréscimo que evita entregar um link quebrado, e está explícito aqui para não parecer escopo esticado.
 
-Decisões propostas no mock, **pendentes de confirmação**:
+---
 
-- Compra e liquidação **não são transações** — são movimentos internos da corretora, fora de `/transacoes` e sem efeito em Entradas/Saídas de nenhum mês.
-- Na liquidação o usuário **informa o valor recebido** (é um fato conhecido, não estimativa); no M30 esse campo passa a vir pré-preenchido pelo cálculo.
-- **Liquidação parcial fica fora** desta fatia — um ativo é liquidado inteiro.
+**Task 106. Navegação: quarta aba e rótulos por breakpoint**
 
-Ponto em aberto sem solução ainda: cadastrar as posições que já existem hoje **não pode
-debitar o saldo em conta** (os aportes que as financiaram já estão lançados), ou o saldo
-fica negativo. Resolver na spec — provavelmente com um marcador de "posição de abertura"
-ou um lançamento de acerto.
+`components/navegacao/navegacao-principal.jsx`, `components/navegacao/abas-dados.jsx` e uma rota `/investimentos` mínima. Design §20.5, Requisitos §3.13.4.
+
+- `GRUPO_DADOS` ganha o destino `/investimentos` e cada item passa a ter `label` (desktop) e `labelCurto` (mobile).
+- Barra lateral do desktop inalterada em estrutura — só o sexto item, rotulado **"Investimentos"**.
+- `AbasDados` passa a ícone + rótulo curto: **"Mês"**, "Transações", "Projeção", **"Investir"**.
+- Rota `/investimentos` só com o título "Investimentos", para a aba não apontar para o vazio.
+
+*(Checkpoint: QA de interface. A 390px, as quatro abas cabem sem transbordar e sem truncar rótulo — assertar `boundingBox()` das abas e `scrollWidth` do container, não screenshot. Confirmar que o item ativo acompanha a rota nos dois breakpoints, e que os outros cinco destinos seguem funcionando.)*
+
+---
+
+**Task 107. Schema: enums, o modelo Ativo e os movimentos**
+
+`prisma/schema.prisma` e migration. Design §20.1. Sem UI.
+
+- Enums `MercadoAtivo`, `EstrategiaAtivo`, `ProdutoAtivo`, `IndexadorAtivo`, `NaturezaMovimento` e `MotivoMovimento`.
+- Modelo `Ativo`, com `dataLiquidacao`/`valorLiquidacao` anuláveis e a relação `AtivosDaConta` em `Conta`.
+- Modelo `MovimentoInvestimento`, com `natureza` e `motivo` em campos separados e a relação `MovimentosDaConta`.
+- Índices por `usuarioId`, `contaId` e `vencimento`.
+
+As duas tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 sem metade da fórmula de saldo.
+
+*(Checkpoint: lint + test + build; `npx prisma migrate status` sincronizado. Sem Playwright — não há tela. Nenhum dado existente é tocado: a tabela nasce vazia.)*
+
+---
+
+**Task 108. Cálculo de saldos e agrupamento**
+
+`lib/investimentos.js` e `lib/investimentos.test.js`, ambos novos. Design §20.2. Sem UI.
+
+- `saldoInvestido`, `saldoEmConta`, `patrimonio` e a função de agrupamento por chave (`estrategia` ou `mercado`), mais o percentual sobre o patrimônio.
+- A fórmula do saldo em conta inclui os movimentos avulsos, somando os de natureza crédito e subtraindo os de débito.
+- **A agregação roda no banco** (`groupBy`/`aggregate`), devolvendo uma linha por conta — não o histórico carregado na aplicação. É o ponto que responde à objeção de "consolidar toda a história a cada leitura" (Design §20.2).
+- Testes cobrindo as duas sutilezas que a fórmula esconde: **a compra debita para sempre** (o somatório de aquisições inclui os já liquidados, senão o caixa reaparece na liquidação) e **vencido não liquidado continua investido** (a condição é `dataLiquidacao == null`, não o vencimento).
+- Mais: conta sem ativo algum; liquidação com valor maior e menor que o de aquisição; grupos não somando 100% quando há dinheiro parado; e movimentos de crédito e débito alterando o saldo em conta nos dois sentidos.
+
+*(Checkpoint: lint + test + build. Sem Playwright — função pura.)*
+
+---
+
+**Task 109. Rota `/investimentos`: resumo e disponível para investir**
+
+`app/(protegido)/investimentos/`. Requisitos §3.13.3, Design §20.3.
+
+- Server Component lendo contas, ativos e transações de investimento; `Decimal` convertido na fronteira.
+- Card de resumo: linha única com divisor de 1px no desktop, **sempre** duas linhas sem divisor no mobile.
+- Card "Disponível para investir": uma linha por conta, com saldo parado e os dois botões (ainda sem ação — as ações chegam nas Tasks 111 e 112).
+
+*(Checkpoint: QA de interface nos dois breakpoints, assertando que o divisor existe só no desktop e que a quebra do mobile independe do tamanho dos números — testar com valor curto e com valor de 6 dígitos.)*
+
+---
+
+**Task 110. Detalhamento agrupado por estratégia ou mercado**
+
+`investimentos-client.jsx`. Requisitos §3.13.3, Design §20.3.
+
+- Alternância "Por estratégia" / "Por mercado", com **estratégia como padrão**.
+- Cards de grupo recolhidos, com percentual e nome à esquerda e valor bruto à direita.
+- Expandido: uma seção por conta com posição no grupo, e a tabela Produto / Vencimento / Taxa / Saldo bruto.
+- Posição vencida com destaque e marcação "Vencido" (o botão Liquidar entra na Task 112).
+
+*(Checkpoint: QA de interface. Cenário com duas contas dentro da mesma estratégia, para provar o sub-agrupamento; um ativo vencido, para o destaque; e conferir que a soma dos percentuais dos grupos mais o parado fecha o patrimônio.)*
+
+---
+
+**Task 111. Compra de ativo**
+
+`lib/actions/investimentos.js` e o formulário. Requisitos §3.13.1 e §3.13.2, Design §20.4.
+
+- `criarAtivo`, validando conta de investimento, indexador pertencente à estratégia e valor dentro do saldo em conta.
+- Formulário com o indexador filtrado pela estratégia e o rótulo da taxa mudando junto — "110" significa coisas diferentes em `%CDI` e em `CDI+`.
+- Revalida só `/investimentos`.
+
+*(Checkpoint: QA de interface + confirmação no banco. Comprar debita o saldo em conta e credita o investido; uma compra acima do saldo é recusada com mensagem; e **nenhuma linha nova aparece em `/transacoes`** nem muda o Disponível do mês — asserção explícita, é a decisão mais fácil de quebrar sem perceber.)*
+
+---
+
+**Task 112. Liquidação**
+
+`liquidarAtivo` e o formulário. Requisitos §3.13.2, Design §20.4.
+
+- Botão Liquidar na linha da posição, em destaque quando vencida.
+- Formulário com data e **valor recebido informado pelo usuário**.
+- Devolve ao saldo em conta daquela corretora; a posição sai do detalhamento.
+
+*(Checkpoint: QA de interface + banco. Liquidar com valor maior que o de aquisição e conferir que o saldo em conta reflete o valor recebido, não o aplicado. Confirmar de novo que nada apareceu em `/transacoes`.)*
+
+---
+
+**Task 113. Registrar movimento avulso**
+
+`lib/actions/investimentos.js`, o `DropdownMenu` na linha da conta e o formulário. Requisitos §3.13.3, Design §20.3 e §20.4.
+
+- `registrarMovimento`, validando a conta, que o motivo pertence à natureza, e que um débito não excede o saldo em conta.
+- Menu de mais ações na linha da conta, dentro do card "Disponível para investir" — `DropdownMenu` do shadcn, já instalado e em uso no menu do usuário.
+- Formulário com natureza, motivo (filtrado pela natureza), data, valor e descrição opcional. Sem vínculo com ativo.
+- Revalida só `/investimentos`.
+
+*(Checkpoint: QA de interface + banco. Um crédito de cupom aumenta o saldo em conta e um débito de taxa diminui; um débito acima do saldo é recusado; cupom não aparece como opção quando a natureza é Débito. E, de novo, a asserção que mais importa: **nada aparece em `/transacoes`** e o Disponível do mês não muda.)*
+
+---
+
+**Task 114. Resgate volta a vincular a conta de investimento**
+
+`app/(protegido)/lancamento/lancamento-client.jsx` e `lib/actions/transacoes.js`. Requisitos §3.13.5.
+
+Reabre a superfície removida na Task 86: uma entrada marcada como resgate volta a pedir a conta de investimento de origem. Sem isso o saldo em conta só cresce, e nenhuma conta fecha.
+
+*(Checkpoint: QA de interface + banco — a transação nasce com `contaInvestimentoId` preenchido, e o saldo em conta da corretora cai no valor resgatado. Conferir que uma entrada comum, sem marcação de resgate, continua sem pedir conta de investimento.)*
 
 ---
 

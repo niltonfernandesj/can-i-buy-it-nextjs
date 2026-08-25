@@ -59,6 +59,11 @@ Aplicação web para acompanhamento de finanças pessoais de uso familiar, subst
    - Uma transação pode ser marcada como **investimento**, indicando que representa um aporte, e não um gasto comum.
    - Aporte: saída vinculada à Conta corrente, marcada como investimento, referenciando a Conta de investimento de destino. **Lançado escolhendo Tipo = Investimento (revisado — Task 86)** — deixa de existir como uma marcação secundária (checkbox) sobre uma saída comum; ao escolher esse Tipo, a tela pede diretamente a Conta de origem (a conta corrente) e a Conta de destino (a conta de investimento).
    - Resgate: uma entrada comum, vinda de uma conta de investimento — **sem marcação nem conta de investimento vinculada na tela de lançamento (revisado — Task 86)**. A capacidade de vincular uma entrada a uma conta de investimento de origem existe no modelo de dados mas não tem mais superfície de uso — na prática, o usuário registra um resgate como qualquer outra Entrada.
+6.1 **Detalhamento de investimentos (M29)**
+   - A conta de investimento deixa de ser um saldo único e passa a ter **saldo em conta** (dinheiro parado na corretora) e **saldo investido** (dentro de ativos).
+   - Nasce a entidade **Ativo**: uma posição de renda fixa dentro de uma conta de investimento.
+   - Uma área própria, `/investimentos`, consolida patrimônio, saldos e posições.
+   - Ver especificação detalhada na seção 3.13 abaixo.
 7. **Visão mensal (tela de acompanhamento financeiro mensal)**
    - Resumo mensal (total de entradas, total de saídas, disponível).
    - Sem gráficos ou análises visuais no MVP — foco em acompanhamento operacional e consulta das movimentações consolidadas do período.
@@ -312,6 +317,111 @@ Na tela de Projeção, o valor **Disponível** de cada mês é um número absolu
 - **Percentual acima de 100%:** possível quando as saídas do mês são negativas (mês dominado por estornos, §3.11). Entra na primeira faixa como qualquer valor acima de 40%.
 - **Simulação ativa (§3.7):** o card mostra "antes → depois", e o percentual acompanha o **valor simulado** — o número que passa a valer. Não são exibidos dois percentuais.
 
+### 3.13 Especificação — Detalhamento de investimentos (M29)
+
+Hoje a conta de investimento tem só um nome, e o app sabe apenas **quanto foi aportado nela**. Não sabe se o dinheiro foi aplicado em alguma coisa, em quê, nem quanto ainda está parado. Esta seção cobre a **primeira fatia** do detalhamento — modelo, cadastro e as duas operações novas. **Rendimento não entra aqui**: enquanto vivo, um ativo vale o que custou. O cálculo por indexador vem nos marcos seguintes (M30 a M32).
+
+#### 3.13.1 Modelo
+
+Cada conta de investimento passa a ter **dois saldos**:
+
+- **Saldo em conta** — dinheiro que chegou por aporte e ainda não foi aplicado. Não rende nada (decisão do usuário).
+- **Saldo investido** — a soma das posições vivas naquela conta.
+
+E quatro fluxos, dois deles novos:
+
+| Fluxo | De → Para | Natureza |
+|---|---|---|
+| Aporte | Conta corrente → saldo em conta | Transação (já existe) |
+| **Compra de ativo** | Saldo em conta → saldo investido | **Novo — não é transação** |
+| **Liquidação do ativo** | Saldo investido → saldo em conta | **Novo — não é transação** |
+| Resgate | Saldo em conta → conta corrente | Transação (existe; o vínculo com a conta volta nesta fatia) |
+| **Movimento avulso** | Entra ou sai do saldo em conta | **Novo — não é transação** |
+
+**Compra e liquidação não são transações** (decisão do usuário): são movimentos internos da corretora. Não aparecem em `/transacoes`, não têm categoria, e **não afetam Entradas, Saídas nem o Disponível de mês nenhum**. Só aporte e resgate cruzam a fronteira com a conta corrente, e esses já são transações.
+
+**Integridade:** uma compra não pode exceder o saldo em conta daquela corretora, e um resgate também não. É a mesma classe de trava que já impede um aporte sem conta de destino.
+
+#### 3.13.2 O ativo
+
+Um ativo é uma posição de **renda fixa** dentro de uma conta de investimento, com:
+
+| Campo | Regra |
+|---|---|
+| Conta | Uma conta de investimento existente |
+| Mercado | Só **Renda fixa** nesta fase; o campo existe para abrir espaço depois |
+| Estratégia | **Pós-fixado**, **Pré-fixado** ou **Inflação** |
+| Produto | CDB, LCA, LCI ou Tesouro Direto |
+| Emissor | Texto livre |
+| Indexador | **Restrito pela estratégia:** pós-fixado oferece %CDI, %Selic, CDI+ e Selic+; pré-fixado, só % fixo a.a.; inflação, só IPCA+ |
+| Taxa | O modificador do indexador. O significado muda com ele — em `%CDI`, "110" é *110% do CDI*; em `CDI+`, "2" é *2% a.a. acima do CDI* |
+| Data de aquisição, Valor de aquisição, Vencimento | |
+
+**Liquidação parcial está fora desta fatia** — um ativo é liquidado inteiro.
+
+**Ativo vencido** (vencimento no passado, ainda não liquidado): **continua contando no saldo investido** pelo seu valor, e ganha destaque visual mais a ação de liquidar. A alternativa — tirá-lo do total no dia do vencimento — faria o patrimônio cair sozinho num dia em que nada aconteceu. Ele **para de render** a partir do vencimento, mas isso só passa a ter efeito quando o rendimento existir (M30+).
+
+**Na liquidação o usuário informa o valor recebido.** É um dado conhecido — ele viu o número na corretora —, não uma estimativa. A partir do M30 esse campo vem pré-preenchido pelo cálculo, e continua editável.
+
+#### 3.13.3 Movimentos avulsos da corretora
+
+Nem todo dinheiro que entra ou sai do saldo em conta vem de aporte, resgate, compra ou liquidação. Com **Tesouro Direto** na lista de produtos, dois casos deixam de ser exóticos e viram rotina: o **cupom semestral** (Tesouro IPCA+ e Prefixado com juros) e a **taxa de custódia da B3**, cobrada semestralmente sobre posições acima de R$ 10 mil. Nos dois, o dinheiro se move **sem que nenhuma posição seja comprada ou liquidada**.
+
+Sem uma forma de registrar isso, em até seis meses o saldo do app deixa de bater com o da corretora, e a única saída seria lançar um aporte falso para compensar — exatamente a gambiarra que corromperia a derivação em que o saldo se apoia.
+
+Um **movimento avulso** tem:
+
+| Campo | Regra |
+|---|---|
+| Conta | A conta de investimento afetada |
+| **Natureza** | **Crédito** (entra) ou **Débito** (sai) — é ela que dá o sinal na soma |
+| **Motivo** | Cupom, Taxa, Corretagem ou Ajuste — **restrito pela natureza**: cupom só existe como crédito; taxa e corretagem, só como débito; ajuste serve aos dois |
+| Data | |
+| Valor | Sempre positivo; o sinal vem da natureza, como em toda a aplicação |
+| Descrição | Opcional |
+
+**Natureza e motivo são campos separados**, e não um enum único combinando os dois: a natureza dá o sinal e o motivo descreve, então um motivo novo não multiplica as opções.
+
+**O movimento é sempre da conta, nunca de uma posição.** Não há vínculo com um ativo específico — decisão do usuário: no M29 esse vínculo seria gravado e nunca lido, já que não existe rendimento nem relatório por ativo que o consumisse.
+
+**Transferência entre corretoras não ganha operação própria** (decisão do usuário). Quem precisar registra **dois ajustes** — um débito numa conta, um crédito na outra —, sem amarração entre eles. O motivo `Ajuste` é, também, a válvula de escape para qualquer movimento que não previmos.
+
+#### 3.13.4 A tela `/investimentos`
+
+Título: **Investimentos**.
+
+**Card de resumo**, no topo:
+- **Desktop:** linha única — **Patrimônio** em destaque, separador de 1px, **Investido** e **Parado em conta**.
+- **Mobile:** **sempre** em duas linhas — Patrimônio em destaque acima; Investido e Parado em conta abaixo. **O separador de 1px não existe no mobile.** A quebra é fixa, não depende do tamanho dos números.
+- **Patrimônio** = investido + parado, somando todas as contas de investimento. **Não inclui conta corrente** — é o que está na corretora.
+
+**Card "Disponível para investir"**, entre o resumo e o detalhamento: uma linha por conta de investimento, com o saldo parado e as ações **Comprar ativo** e **Resgatar**. Existe porque as duas ações são **por conta**, e no detalhamento a conta virou uma seção aninhada dentro do grupo — um botão de compra ali dentro sugeriria, erradamente, que a compra herda a estratégia do grupo. O card também responde "de onde eu compro" e "o que ainda não foi alocado" no mesmo lugar.
+
+As duas ações frequentes de cada linha ficam visíveis; um **menu de mais ações** guarda o que é raro — é dele que sai **Registrar movimento**. A escolha do lugar tem motivo: esse card é o único que fala do caixa da corretora, e todo movimento avulso mexe nesse caixa. Como a conta já está escolhida na linha, o formulário nasce com um campo a menos.
+
+**Detalhamento**, agrupado por **Estratégia** ou **Mercado**, à escolha do usuário. **Estratégia é o padrão** (por mercado, hoje, existe um card só). A estrutura é idêntica nas duas visões — só o critério de agrupamento muda.
+
+Cada grupo é um **card recolhido**:
+- À esquerda: **percentual de participação no patrimônio** e o nome do grupo.
+- À direita: **valor bruto investido** no grupo.
+- O percentual é sobre o **patrimônio**, não sobre o investido — então os grupos **não somam 100%**, e a diferença é exatamente o dinheiro parado. É deliberado: a soma que não fecha é o que ainda não foi alocado.
+
+Ao expandir, uma **seção por conta** que tenha posição naquele grupo:
+- Título da seção: nome da conta e ícone à esquerda; à direita, o valor investido **daquela conta naquele grupo**.
+- Tabela de posições: **Produto** (emissor em destaque, produto como subtítulo), **Vencimento**, **Taxa** e **Saldo bruto**.
+- **Nesta fatia, saldo bruto = valor de aquisição.** No M30 a coluna passa a mostrar o valor corrigido.
+- Uma posição vencida aparece destacada, com marcação "Vencido" e o botão **Liquidar** na própria linha.
+
+#### 3.13.5 Navegação
+
+A área entra no grupo **Dados**, e os rótulos passam a **divergir por breakpoint**:
+
+- **Desktop:** a barra lateral mantém a estrutura atual e ganha um sexto destino, **"Investimentos"**.
+- **Mobile:** as abas do grupo Dados passam a ter **ícone + rótulo curto**. A aba nova chama-se **"Investir"**, e **"Visão mensal" passa a "Mês"** — com quatro abas dividindo a largura por igual, é o único outro rótulo que não cabe. "Transações" e "Projeção" continuam inteiros.
+
+#### 3.13.6 Resgate volta a ter conta de origem
+
+O resgate é uma entrada em conta corrente vinda de uma conta de investimento. A Task 86 removeu esse vínculo da tela de lançamento, e sem ele **nenhuma conta por conta fecha** — o saldo em conta ficaria sempre crescente. A tela de lançamento volta a pedir a conta de investimento de origem quando a entrada é um resgate.
 ### 3.15 Especificação — Parcelamento com controle fundido ao Valor (M35)
 
 **Origem:** feedback de uso real — a esposa do usuário relatou que lançar uma saída parcelada no crédito é pouco intuitivo. O controle atual é um stepper `− 1x +` embutido dentro do campo Valor, criado na Task 85 (M22).
@@ -536,6 +646,29 @@ Percentual do disponível na Projeção (M28, seção 3.12):
 - [ ] Um mês com Entradas zeradas não exibe o rótulo, e o valor Disponível continua visível.
 - [ ] Um mês com Disponível negativo exibe percentual negativo, em vermelho com destaque.
 - [ ] Com uma simulação ativa, o percentual corresponde ao valor simulado (o segundo número), e há apenas um percentual na linha.
+
+Detalhamento de investimentos (M29, seção 3.13):
+
+- [ ] No desktop, a barra lateral exibe seis destinos, com "Investimentos" no grupo Dados.
+- [ ] No mobile, o grupo Dados exibe quatro abas com ícone e rótulo curto: "Mês", "Transações", "Projeção" e "Investir", sem transbordar a 390px.
+- [ ] A tela `/investimentos` exibe Patrimônio, Investido e Parado em conta, somando todas as contas de investimento e sem incluir conta corrente.
+- [ ] No desktop o resumo fica numa linha só, com separador de 1px; no mobile quebra sempre em duas linhas, sem separador.
+- [ ] O card "Disponível para investir" lista uma linha por conta de investimento, com o saldo parado e as ações Comprar ativo e Resgatar.
+- [ ] O detalhamento abre agrupado por Estratégia, e o usuário consegue alternar para Mercado.
+- [ ] Cada grupo aparece recolhido, com o percentual sobre o patrimônio e o nome à esquerda e o valor bruto à direita.
+- [ ] Ao expandir um grupo, aparece uma seção por conta com posição nele, com a tabela Produto / Vencimento / Taxa / Saldo bruto.
+- [ ] Comprar um ativo debita o saldo em conta da corretora escolhida e credita o saldo investido, sem criar transação alguma.
+- [ ] Uma compra maior que o saldo em conta é recusada.
+- [ ] O indexador oferecido é restrito pela estratégia escolhida.
+- [ ] Um ativo com vencimento no passado aparece destacado, com a ação Liquidar, e continua contando no saldo investido.
+- [ ] Liquidar um ativo devolve o valor informado ao saldo em conta daquela corretora, e a posição sai do detalhamento.
+- [ ] Nem compra nem liquidação aparecem em `/transacoes`, e nenhuma das duas altera Entradas, Saídas ou Disponível de qualquer mês.
+- [ ] O menu de mais ações da linha de cada conta oferece "Registrar movimento".
+- [ ] Um movimento de crédito aumenta o saldo em conta daquela corretora; um de débito diminui.
+- [ ] O motivo oferecido é restrito pela natureza: cupom só aparece em crédito; taxa e corretagem, só em débito; ajuste nos dois.
+- [ ] Um movimento não aparece em `/transacoes` e não altera Entradas, Saídas nem Disponível de nenhum mês.
+- [ ] Um movimento de débito maior que o saldo em conta é recusado.
+- [ ] Na tela de lançamento, uma entrada marcada como resgate volta a pedir a conta de investimento de origem.
 
 ## 7. Perguntas em aberto / decisões futuras
 

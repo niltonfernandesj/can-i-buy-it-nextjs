@@ -1498,6 +1498,171 @@ A cor aparece como **marcador** (ponto ou pílula) ao lado do nome da categoria:
 
 Entra no agrupamento de navegação de Contas e Valores padrão (§8.1). Estrutura segue o padrão já estabelecido por `/contas` e `/valores-padrao`: listagem em `Card`, formulário de criação inline, edição e exclusão por linha, Server Actions em `lib/actions/categorias.js` com `revalidatePath` para `/categorias` e para **todas as telas que exibem categoria** — `/lancamento`, `/transacoes`, `/visao-mensal` e `/valores-padrao`. Omitir alguma reproduz o bug de cache já ocorrido com contas (§8.5).
 
+## 20. Detalhamento de investimentos (M29)
+
+Resolve Requisitos §3.13. Validado com o usuário por duas rodadas de mock antes desta seção.
+
+### 20.1 Schema
+
+Quatro enums e um modelo. Os enums são do **domínio**, não da apresentação — os rótulos exibidos vivem num mapa em `lib/`, no mesmo padrão de `TIPO_CONTA_LABELS`.
+
+```prisma
+enum MercadoAtivo   { RENDA_FIXA }
+enum EstrategiaAtivo { POS_FIXADO PRE_FIXADO INFLACAO }
+enum ProdutoAtivo   { CDB LCA LCI TESOURO_DIRETO }
+
+enum IndexadorAtivo {
+  PERCENTUAL_CDI    // %CDI        — pós-fixado
+  PERCENTUAL_SELIC  // %Selic      — pós-fixado
+  CDI_MAIS          // CDI+        — pós-fixado
+  SELIC_MAIS        // Selic+      — pós-fixado
+  PREFIXADO         // % fixo a.a. — pré-fixado
+  IPCA_MAIS         // IPCA+       — inflação
+}
+
+enum NaturezaMovimento { CREDITO DEBITO }
+enum MotivoMovimento  { CUPOM TAXA CORRETAGEM AJUSTE }
+
+model Ativo {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  // Sempre uma conta de tipo CONTA_INVESTIMENTO — a regra é da aplicação,
+  // como já acontece com contaInvestimentoId em Transacao.
+  contaId String
+  conta   Conta  @relation("AtivosDaConta", fields: [contaId], references: [id])
+
+  mercado    MercadoAtivo    @default(RENDA_FIXA)
+  estrategia EstrategiaAtivo
+  produto    ProdutoAtivo
+  emissor    String
+  indexador  IndexadorAtivo
+  taxa       Decimal // sentido definido pelo indexador — ver Requisitos §3.13.2
+
+  dataAquisicao  DateTime
+  valorAquisicao Decimal
+  vencimento     DateTime
+
+  // Nulos enquanto a posição está viva. Liquidação parcial está fora do M29,
+  // então uma posição tem no máximo uma liquidação — daí serem colunas aqui
+  // em vez de uma tabela própria.
+  dataLiquidacao  DateTime?
+  valorLiquidacao Decimal?
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([contaId])
+  @@index([vencimento])
+}
+
+// Dinheiro que entra ou sai do caixa da corretora sem envolver posição nem
+// conta corrente: cupom, taxa de custódia, corretagem (Requisitos §3.13.3).
+// Sempre da CONTA, nunca de um ativo — decisão do usuário: no M29 um vínculo
+// com posição seria gravado e nunca lido.
+model MovimentoInvestimento {
+  id        String  @id @default(cuid())
+  usuarioId String
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  contaId String
+  conta   Conta  @relation("MovimentosDaConta", fields: [contaId], references: [id])
+
+  // natureza dá o sinal na soma; motivo apenas descreve. Separados de
+  // propósito: um motivo novo não multiplica as opções.
+  natureza NaturezaMovimento
+  motivo   MotivoMovimento
+
+  data      DateTime
+  valor     Decimal // sempre positivo; o sinal vem da natureza
+  descricao String?
+
+  criadoEm DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([contaId])
+}
+```
+
+**Por que não existe coluna de saldo.** Nem `saldoEmConta` nem `saldoInvestido` são persistidos: os dois são **derivados** dos movimentos, pela mesma razão que a Visão mensal nunca guardou totais — um saldo materializado passa a ser uma segunda fonte de verdade, e diverge no primeiro `apagarTransacao` que esquecer de atualizá-lo.
+
+**Por que os movimentos não reaproveitam `Transacao`.** A pergunta é legítima — seria uma tabela a menos. Mas toda `Transacao` com `mesReferencia` entra em `comporMes`: um cupom viraria receita e uma taxa de custódia, saída no débito, mudando o Disponível de um mês por dinheiro que ninguém pode gastar. Evitar isso exigiria um filtro novo em **seis** pontos de leitura (`comporMes`, as três buscas de `lib/consolidacao.js`, `/transacoes` e a Projeção) que ninguém pode esquecer — e o M27 mostrou o preço disso. Some-se que `categoriaId` é obrigatório com FK `Restrict` (que categoria é uma taxa da B3? e, pela regra de "não exclui categoria em uso", a categoria inventada ficaria indeletável), que `mesReferencia`/`anoReferencia` são obrigatórios e sem sentido aqui, e que `validarTransacao` **já recusa** `contaId` de uma conta de investimento — trava que existe justamente para manter essa semântica.
+
+O critério que separa os dois casos: **isso muda quanto a família pode gastar neste mês?** Aporte e resgate, sim. Compra, liquidação e movimento avulso, não.
+
+**O contra assumido:** passa a haver mais de um lugar onde "dinheiro se moveu", então o futuro extrato por conta terá que unir três fontes. É trabalho de leitura, não risco de correção.
+
+**Por que compra e liquidação não geram `Transacao`.** São movimentos internos da corretora (Requisitos §3.13.1). Modelá-los como transação os faria aparecer em `/transacoes` e entrar em `comporMes`, contaminando Entradas/Saídas de um mês em que nada saiu do bolso do usuário. A compra é o próprio registro do `Ativo`; a liquidação é o preenchimento de `dataLiquidacao`/`valorLiquidacao`.
+
+### 20.2 Cálculo dos saldos
+
+Módulo novo `lib/investimentos.js`, puro (sem `db`), porque é consumido por Client Component:
+
+```javascript
+saldoInvestido(conta) = Σ valorAquisicao dos ativos da conta AINDA NÃO liquidados
+
+saldoEmConta(conta)   = Σ aportes            // Transacao SAIDA  + ehInvestimento + contaInvestimentoId
+                      − Σ resgates           // Transacao ENTRADA + ehInvestimento + contaInvestimentoId
+                      − Σ valorAquisicao     // TODOS os ativos da conta, inclusive liquidados
+                      + Σ valorLiquidacao    // dos ativos liquidados
+                      + Σ movimentos CREDITO // cupom, ajuste
+                      − Σ movimentos DEBITO  // taxa, corretagem, ajuste
+
+patrimonio            = Σ (saldoEmConta + saldoInvestido) de todas as contas de investimento
+```
+
+**Onde a soma roda.** No Postgres, via `groupBy`/`aggregate` — **uma linha por conta**, não o histórico carregado na aplicação. O custo não cresce com o histórico do jeito que a fórmula sugere: é um `SUM` sobre índice, e o volume realista são algumas dezenas de linhas por ano por conta. Registrado porque a leitura ingênua da fórmula assusta, e a preocupação é legítima — a resposta é *onde* ela roda.
+
+**A saída documentada, se a dor aparecer:** fechamento periódico (saldo de abertura por conta, por período), que torna o trabalho limitado sem abandonar a derivação. Cabe por baixo **sem mudar a assinatura de leitura** — `saldoEmConta(conta)` continua sendo `saldoEmConta(conta)`. É por isso que derivar agora é a escolha reversível: sair de uma coluna materializada que já divergiu exigiria reconciliar dado real.
+
+**Por que não materializar, como fazem as fintechs.** Elas materializam saldo e funciona — mas funciona porque o razão é **imutável**: erro vira estorno, nunca `UPDATE` nem `DELETE`, e só existe um caminho de escrita. Este app faz o oposto por decisão explícita (Requisitos §3, item 3: qualquer transação pode ser editada ou apagada livremente), com `editarTransacao` (inclusive propagando para parcelas), `apagarTransacao` e as actions de consolidação criando e apagando lançamentos. Materializar aqui herdaria o risco da técnica sem herdar a proteção que a torna segura.
+
+Duas sutilezas que a fórmula esconde:
+
+- **A compra debita para sempre.** O `− Σ valorAquisicao` percorre inclusive os ativos já liquidados: o dinheiro saiu do caixa no dia da compra e voltou pelo `+ Σ valorLiquidacao`, possivelmente com valor diferente. Somar só os vivos faria o caixa reaparecer sozinho na liquidação.
+- **Ativo vencido e não liquidado continua em `saldoInvestido`** (Requisitos §3.13.2) — a condição é `dataLiquidacao == null`, não o vencimento.
+
+**Agrupamento:** uma função recebe os ativos vivos e a chave (`estrategia` ou `mercado`) e devolve os grupos, cada um com seu total e as contas dentro. Não há duas implementações por visão — é a mesma função com chave diferente, no espírito do que `agruparPorCartao` já faz na Visão mensal.
+
+**Percentual do grupo** = total bruto do grupo ÷ patrimônio. Os grupos **não somam 100%** de propósito: a diferença é o dinheiro parado (Requisitos §3.13.3).
+
+### 20.3 Estrutura da tela
+
+Rota `/investimentos`, Server Component lendo os dados e passando a um Client Component — mesmo desenho de `/visao-mensal` e `/projecao`. `Decimal` do Prisma convertido para número na fronteira, como já se faz nas outras duas.
+
+**Resumo.** Um `Card` com layout divergente por breakpoint: `flex-row` com o divisor de 1px a partir de `md`, `flex-col` sem divisor abaixo dele. A quebra é por classe, **não** por medição — o requisito é "sempre duas linhas no mobile", independente do tamanho dos números.
+
+**Card "Disponível para investir".** Uma linha por conta de investimento, com saldo parado e as duas ações. Fica **entre** o resumo e o detalhamento, e existe porque comprar e resgatar são operações **por conta**, enquanto o detalhamento agrupa por estratégia — o raciocínio completo está em Requisitos §3.13.3.
+
+**Registrar movimento** entra por um `DropdownMenu` na linha da conta, dentro do card "Disponível para investir" — o componente já está instalado e em uso no menu do usuário, então não entra dependência nova. As duas ações frequentes (comprar, resgatar) ficam visíveis e o menu guarda a rara: cupom e taxa acontecem duas vezes por ano por posição, então precisam ser **acháveis**, não rápidas de alcançar. O formulário nasce com a conta já escolhida, e o motivo é filtrado pela natureza — mesmo padrão de restrição que a estratégia faz sobre o indexador.
+
+**Detalhamento.** Alternância "Por estratégia" / "Por mercado" com o mesmo par de `<button role="tab">` construído à mão já usado em Saídas no crédito (§8.3.16) — sem puxar `@radix-ui/react-tabs` para uma escolha binária. Estratégia é o padrão.
+
+Cada grupo é um card recolhível no mesmo padrão de `CabecalhoBloco` e de `GrupoCartao`: a linha inteira é o gatilho, com `aria-expanded` e um `ChevronDown` que gira. Recolhido por padrão.
+
+**Posição vencida:** `vencimento < hoje && dataLiquidacao == null`. Ganha fundo destacado, marcação "Vencido" e o botão de liquidar na própria linha. A comparação é por **dia**, não por instante — um título que vence hoje só conta como vencido amanhã.
+
+### 20.4 Server Actions
+
+Em `lib/actions/investimentos.js`, seguindo o padrão das demais (sessão, validação, `revalidatePath`):
+
+- `criarAtivo(dados)` — valida que a conta é `CONTA_INVESTIMENTO`, que o indexador pertence à estratégia, e que `valorAquisicao <= saldoEmConta` da conta. Cria o `Ativo`.
+- `liquidarAtivo(id, { data, valor })` — valida que a posição existe e ainda está viva; grava `dataLiquidacao`/`valorLiquidacao`.
+- `apagarAtivo(id)` — desfaz um cadastro errado, devolvendo o valor ao saldo em conta por consequência da fórmula.
+- `registrarMovimento(dados)` — valida a conta, que o motivo pertence à natureza, e que um débito não excede o saldo em conta.
+- `apagarMovimento(id)` — desfaz um registro errado.
+
+Todas revalidam `/investimentos`. **Nenhuma revalida `/visao-mensal` ou `/transacoes`** — compra e liquidação não tocam em transação nenhuma, e revalidar essas rotas sugeriria o contrário.
+
+**A trava de saldo é da Server Action, não do banco.** O saldo é derivado, então não existe constraint que o expresse — mesma situação da regra "não exclui categoria em uso" (§18.3), checada na action com a FK como garantia final.
+
+### 20.5 Navegação com rótulos por breakpoint
+
+`GRUPO_DADOS` ganha um quarto destino e cada item passa a ter **dois rótulos**: `label` (desktop, usado na barra lateral) e `labelCurto` (mobile, usado em `AbasDados`). Só "Visão mensal" e "Investimentos" divergem — "Transações" e "Projeção" repetem o mesmo texto nos dois campos, em vez de um `labelCurto` opcional com fallback: dois campos sempre presentes tornam a tabela de rótulos legível de uma olhada.
+
+`AbasDados` passa de `flex-1` com texto para uma coluna de ícone + rótulo em `text-[11px]`, mantendo o `flex-1`. O ícone vem do mesmo `Icone` que a barra lateral já usa, então não há uma segunda fonte de ícones a manter.
+
 ## 19. Instalação como app na tela inicial (PWA — M26)
 
 Resolve o requisito de instalabilidade da spec-01 §4. Escopo deliberadamente restrito ao **app instalável**: sem service worker, sem cache de dados, sem push.
