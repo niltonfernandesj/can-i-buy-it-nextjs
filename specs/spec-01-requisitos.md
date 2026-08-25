@@ -408,7 +408,9 @@ As duas ações frequentes de cada linha ficam visíveis; um **menu de mais aç�
 Cada grupo é um **card recolhido**:
 - À esquerda: **percentual de participação no patrimônio** e o nome do grupo.
 - À direita: **valor bruto investido** no grupo.
-- O percentual é sobre o **patrimônio**, não sobre o investido — então os grupos **não somam 100%**, e a diferença é exatamente o dinheiro parado. É deliberado: a soma que não fecha é o que ainda não foi alocado.
+- O percentual é sobre o **patrimônio**, não sobre o investido.
+- **O dinheiro parado fecha a conta.** Depois de todos os grupos, quando houver saldo em conta, aparece um card **"Disponível em conta"** com o mesmo formato — percentual e nome à esquerda, valor à direita — mas **não expansível**: não tem posições dentro, então não tem o que abrir. Com ele, os cards somam **100% do patrimônio**, e a visão passa a ser uma alocação completa da carteira em vez de uma soma que não fecha.
+- O card só existe quando há saldo parado. Zerado, ele não aparece.
 
 Ao expandir, uma **seção por conta** que tenha posição naquele grupo:
 - Título da seção: nome da conta e ícone à esquerda; à direita, o valor investido **daquela conta naquele grupo**.
@@ -660,6 +662,8 @@ Detalhamento de investimentos (M29, seção 3.13):
 - [ ] O card "Disponível para investir" lista uma linha por conta de investimento, com o saldo parado e as ações Comprar ativo e Resgatar.
 - [ ] O detalhamento abre agrupado por Estratégia, e o usuário consegue alternar para Mercado.
 - [ ] Cada grupo aparece recolhido, com o percentual sobre o patrimônio e o nome à esquerda e o valor bruto à direita.
+- [ ] Havendo saldo parado, um card "Disponível em conta" aparece depois dos grupos, sem controle de expandir, e os percentuais de todos os cards somam 100%.
+- [ ] Com saldo parado zerado, esse card não aparece.
 - [ ] Ao expandir um grupo, aparece uma seção por conta com posição nele, com a tabela Produto / Vencimento / Taxa / Saldo bruto.
 - [ ] Comprar um ativo debita o saldo em conta da corretora escolhida e credita o saldo investido, sem criar transação alguma.
 - [ ] Uma compra maior que o saldo em conta é recusada.

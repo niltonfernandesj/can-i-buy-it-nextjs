@@ -1056,9 +1056,10 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 - Alternância "Por estratégia" / "Por mercado", com **estratégia como padrão**.
 - Cards de grupo recolhidos, com percentual e nome à esquerda e valor bruto à direita.
 - Expandido: uma seção por conta com posição no grupo, e a tabela Produto / Vencimento / Taxa / Saldo bruto.
+- Card **"Disponível em conta"** ao final, quando houver saldo parado: mesmo formato, sem controle de expandir. É ele que faz os percentuais fecharem 100% do patrimônio.
 - Posição vencida com destaque e marcação "Vencido" (o botão Liquidar entra na Task 112).
 
-*(Checkpoint: QA de interface. Cenário com duas contas dentro da mesma estratégia, para provar o sub-agrupamento; um ativo vencido, para o destaque; e conferir que a soma dos percentuais dos grupos mais o parado fecha o patrimônio.)*
+*(Checkpoint: QA de interface. Cenário com duas contas dentro da mesma estratégia, para provar o sub-agrupamento; um ativo vencido, para o destaque; e conferir que **os percentuais de todos os cards somam 100%**, com o card de parado incluído. Assertar também que ele não tem gatilho de expandir, e que some quando o saldo parado é zero.)*
 
 ---
 

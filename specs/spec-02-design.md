@@ -1645,7 +1645,9 @@ Duas sutilezas que a fórmula esconde:
 
 **Agrupamento:** uma função recebe os ativos vivos e a chave (`estrategia` ou `mercado`) e devolve os grupos, cada um com seu total e as contas dentro. Não há duas implementações por visão — é a mesma função com chave diferente, no espírito do que `agruparPorCartao` já faz na Visão mensal.
 
-**Percentual do grupo** = total bruto do grupo ÷ patrimônio. Os grupos **não somam 100%** de propósito: a diferença é o dinheiro parado (Requisitos §3.13.3).
+**Percentual do grupo** = total bruto do grupo ÷ patrimônio. O saldo parado entra como um **card próprio ao final**, e é ele que fecha os 100% (Requisitos §3.13.4).
+
+Esse card **não sai de `agruparPor`**: ele não é um grupo de posições, e a função continua devolvendo só os grupos de ativos. Quem monta a lista da tela acrescenta a linha do parado ao final — mantém a função pura com uma responsabilidade só, e evita um "grupo" fantasma sem `contas` dentro que todo consumidor teria que tratar como caso especial.
 
 ### 20.3 Estrutura da tela
 
@@ -1660,6 +1662,10 @@ Rota `/investimentos`, Server Component lendo os dados e passando a um Client Co
 **Detalhamento.** Alternância "Por estratégia" / "Por mercado" com o mesmo par de `<button role="tab">` construído à mão já usado em Saídas no crédito (§8.3.16) — sem puxar `@radix-ui/react-tabs` para uma escolha binária. Estratégia é o padrão.
 
 Cada grupo é um card recolhível no mesmo padrão de `CabecalhoBloco` e de `GrupoCartao`: a linha inteira é o gatilho, com `aria-expanded` e um `ChevronDown` que gira. Recolhido por padrão.
+
+**O card de saldo parado é a exceção**: mesmo cabeçalho, mas sem gatilho e sem `ChevronDown` — não é um `<button>`, é uma linha estática. A ausência do chevron é o que comunica que ali não há o que abrir, sem precisar de rótulo explicando.
+
+Ele repete um número que o card "Disponível para investir" já mostra, agora somado em vez de por conta. Não é descuido: lá o parado é **acionável** (de qual conta eu compro), aqui ele é **composição** (quanto da carteira não está alocado). São duas perguntas diferentes sobre o mesmo valor.
 
 **Posição vencida:** `vencimento < hoje && dataLiquidacao == null`. Ganha fundo destacado, marcação "Vencido" e o botão de liquidar na própria linha. A comparação é por **dia**, não por instante — um título que vence hoje só conta como vencido amanhã.
 

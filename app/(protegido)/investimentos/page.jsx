@@ -1,7 +1,8 @@
 import { PiggyBank } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
-import { saldoEmConta, saldoInvestido } from "@/lib/investimentos";
+import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
+import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -40,7 +41,25 @@ async function carregar() {
     "contaId",
   );
 
-  return contas.map((conta) => {
+  // Decimal do Prisma não é serializável cruzando Server → Client Component,
+  // e `base` já vem calculada pra o cliente não repetir a regra.
+  const ativosParaCliente = apenasVivas(ativos).map((ativo) => ({
+    id: ativo.id,
+    contaId: ativo.contaId,
+    conta: { id: ativo.conta.id, nome: ativo.conta.nome },
+    mercado: ativo.mercado,
+    estrategia: ativo.estrategia,
+    produto: ativo.produto,
+    emissor: ativo.emissor,
+    indexador: ativo.indexador,
+    taxa: Number(ativo.taxa),
+    dataAquisicao: ativo.dataAquisicao,
+    vencimento: ativo.vencimento,
+    valorAquisicao: Number(ativo.valorAquisicao),
+    base: baseAtual(ativo),
+  }));
+
+  const porConta = contas.map((conta) => {
     const ativosDaConta = ativos.filter((a) => a.contaId === conta.id);
     return {
       id: conta.id,
@@ -55,6 +74,8 @@ async function carregar() {
       investido: saldoInvestido(ativosDaConta),
     };
   });
+
+  return { contas: porConta, ativos: ativosParaCliente };
 }
 
 function Rotulo({ children }) {
@@ -132,7 +153,7 @@ function DisponivelParaInvestir({ contas }) {
 }
 
 export default async function InvestimentosPage() {
-  const contas = await carregar();
+  const { contas, ativos } = await carregar();
 
   const investido = contas.reduce((soma, c) => soma + c.investido, 0);
   const emConta = contas.reduce((soma, c) => soma + c.emConta, 0);
@@ -151,6 +172,11 @@ export default async function InvestimentosPage() {
               inclui conta corrente (Requisitos §3.13.4). */}
           <Resumo patrimonio={investido + emConta} investido={investido} emConta={emConta} />
           <DisponivelParaInvestir contas={contas} />
+          <DetalhamentoInvestimentos
+            ativos={ativos}
+            patrimonio={investido + emConta}
+            parado={emConta}
+          />
         </>
       )}
     </main>
