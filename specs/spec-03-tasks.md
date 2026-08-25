@@ -938,6 +938,114 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ---
 
+## Detalhamento de investimentos — M29 a M32 (planejados)
+
+> **Estas quatro seções registram o escopo acordado, não a implementação.** As tasks
+> ainda **não foram escritas**, e os Requisitos (spec-01) e o Design (spec-02) ainda
+> não têm seção correspondente. Nada aqui está pronto para codar: cada marco precisa
+> passar pelo ciclo normal — Requisitos, Design, tasks — antes da primeira linha de
+> código. O objetivo deste bloco é não perder as decisões tomadas na entrevista de
+> 2026-08-25.
+
+**O modelo, em uma frase:** a conta de investimento deixa de ser um saco só e passa a
+ter **saldo em conta** (dinheiro parado na corretora) e **saldo investido** (dentro de
+ativos), com uma entidade nova — **Ativo** — representando cada posição.
+
+**Quatro fluxos, dois deles novos:**
+
+| Fluxo | De → Para | Existe hoje? |
+|---|---|---|
+| Aporte | Conta corrente → saldo em conta | Sim (transação) |
+| Compra de ativo | Saldo em conta → saldo investido | **Novo** |
+| Liquidação do ativo | Saldo investido → saldo em conta | **Novo** |
+| Resgate | Saldo em conta → conta corrente | Existe, mas perdeu o vínculo com a conta na Task 86 |
+
+**Decisões do usuário, tomadas na entrevista:**
+
+- O que a área responde: quanto tenho hoje, quanto rendeu, histórico por conta e evolução no tempo — as quatro.
+- Rendimento **calculado por indexador**, com as séries públicas do Banco Central. Três estratégias: **Pós-fixado** (%CDI, %Selic, CDI+, Selic+), **Pré-fixado** (% fixo a.a.) e **Inflação** (IPCA+).
+- Liquidar um ativo e resgatar para a conta corrente são **duas operações separadas** — permite reinvestir sem passar pelo banco.
+- Rendimento exibido **bruto e líquido lado a lado**.
+- **Saldo em conta não rende** — dinheiro parado é dinheiro parado.
+- **Resgate volta a ser vinculado** a uma conta de investimento (reabre a superfície removida na Task 86).
+- Posições já existentes entram por **cadastro manual**, com data e valor de aquisição reais.
+- Área nova no grupo **Dados**, com a navegação mobile passando a usar **ícones** nas abas.
+
+**Atributos de um ativo de renda fixa** (definidos pelo usuário): Conta, Mercado (só "Renda
+fixa" por ora), Estratégia, Produto (CDB, LCA, LCI, Tesouro Direto), Emissor, Indexador
+(restrito pela estratégia), Taxa, Data de aquisição, Valor de aquisição, Vencimento.
+
+---
+
+### M29 — Modelo de investimentos: ativos e os dois saldos (planejado)
+
+**Status:** mock publicado e em avaliação pelo usuário; tasks **a escrever** depois da aprovação.
+
+Primeira fatia, escolhida pelo usuário por entregar algo usável sem depender da integração
+externa: o ativo passa a existir, os dois saldos aparecem, e as duas operações novas
+funcionam — **sem rendimento**. Enquanto vivo, o ativo vale o que custou.
+
+Escopo previsto:
+
+- Entidade `Ativo` no schema (migration), vinculada a uma conta de investimento.
+- Saldo em conta e saldo investido derivados dos movimentos, por conta.
+- Compra de ativo consumindo o saldo em conta, e liquidação devolvendo a ele.
+- Rota `/investimentos` com patrimônio consolidado, contas e suas posições.
+- Resgate volta a pedir a conta de investimento de origem na tela de lançamento.
+- Quarta aba no grupo Dados, com ícones na navegação mobile.
+
+Decisões propostas no mock, **pendentes de confirmação**:
+
+- Compra e liquidação **não são transações** — são movimentos internos da corretora, fora de `/transacoes` e sem efeito em Entradas/Saídas de nenhum mês.
+- Na liquidação o usuário **informa o valor recebido** (é um fato conhecido, não estimativa); no M30 esse campo passa a vir pré-preenchido pelo cálculo.
+- **Liquidação parcial fica fora** desta fatia — um ativo é liquidado inteiro.
+
+Ponto em aberto sem solução ainda: cadastrar as posições que já existem hoje **não pode
+debitar o saldo em conta** (os aportes que as financiaram já estão lançados), ou o saldo
+fica negativo. Resolver na spec — provavelmente com um marcador de "posição de abertura"
+ou um lançamento de acerto.
+
+---
+
+### M30 — Rendimento pós-fixado: integração com o Banco Central (planejado)
+
+**Status:** escopo acordado; tasks **a escrever**. Depende do M29.
+
+Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado: %CDI, %Selic,
+CDI+ e Selic+.
+
+- Séries SGS: **12** (CDI) e **11** (Selic), ambas em **% ao dia**.
+- **Achado que reduz o risco, verificado contra a API em 2026-08-25:** a série já vem **só com dias úteis** — fim de semana e feriado simplesmente não aparecem. Não será preciso manter tabela de feriados ANBIMA; o rendimento é o produtório dos fatores que a série devolver.
+- Séries passadas nunca mudam, então cabe guardá-las no banco e buscar só o que falta.
+
+A decidir na spec: o que a tela mostra quando o BC não responde (valor de custo, último
+cálculo conhecido, ou erro), e onde o cálculo roda (a cada leitura, com cache, ou um job).
+
+---
+
+### M31 — Pré-fixado e IPCA+ (planejado)
+
+**Status:** escopo acordado; tasks **a escrever**. Depende do M30.
+
+- **Pré-fixado:** `(1 + taxa)^(du/252)`, usando o mesmo calendário implícito da série do M30.
+- **IPCA+:** série SGS **433**, mensal.
+
+O ponto difícil é a **defasagem**: o IPCA sai com cerca de dez dias de atraso, e o mercado
+usa o índice defasado (15 dias ou um mês, conforme o papel). Enquanto o índice do mês não
+sai, um IPCA+ não tem valor exato — vai exigir uma convenção explícita na spec e um aviso
+na tela de que o número é provisório.
+
+---
+
+### M32 — Rendimento bruto e líquido lado a lado (planejado)
+
+**Status:** escopo acordado; tasks **a escrever**. Depende do M31.
+
+- Tabela regressiva de IR (22,5% até 15%, pelo prazo).
+- IOF nos primeiros 30 dias.
+- **LCI e LCA são isentos**, o que cria dois caminhos de cálculo por produto.
+
+É o único dos quatro marcos que ramifica a matemática por **produto**, não por estratégia.
 ### M35 — Parcelamento com controle fundido ao Valor ✅
 
 **Status:** ✅ **concluído.** Requisitos §3.15, Design §22.
@@ -1016,4 +1124,8 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M26 | Requisitos não funcionais — instalação na tela inicial do iPhone (spec-01 §4), sem offline e sem push |
 | M27 | Escopo item 2 revisado — estorno no crédito (spec-01 §3.11), com os ajustes decorrentes na Visão mensal (§3.1), na tabela de transações (§3.3) e na regra do teto de despesa padrão no crédito (§3.5) |
 | M28 | Escopo item 13 revisado — percentual do disponível em relação às Entradas, na Projeção (spec-01 §3.12) |
+| M29 | *(planejado)* Detalhamento de investimentos — ativos, saldo em conta e saldo investido. Seção de Requisitos ainda a escrever |
+| M30 | *(planejado)* Rendimento pós-fixado via séries do Banco Central. Seção de Requisitos ainda a escrever |
+| M31 | *(planejado)* Rendimento pré-fixado e IPCA+. Seção de Requisitos ainda a escrever |
+| M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
