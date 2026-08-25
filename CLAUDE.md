@@ -89,6 +89,7 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 - Rode os scripts **a partir da raiz do projeto** (`node qa-x.mjs`, com o arquivo lá dentro) — de fora, o Node não resolve `@prisma/client` nem `playwright`.
 - O campo de senha do modelo `Usuario` é **`senhaHash`**, não `senha`.
 - Datas em `new Date("2026-07-20")` são UTC e podem exibir o dia anterior no fuso local. Asserte pelo dado (`numeroParcela`, id) em vez do dia exato quando isso não for o alvo do teste.
+- **`formatarReais` usa espaço não-quebrável (U+00A0) entre "R$" e o número.** Comparar `textContent()` com uma string digitada com espaço comum falha exibindo dois valores idênticos na tela — foi o erro mais repetido no QA do M29, quatro vezes. Normalize sempre com `s.replace(/\u00a0/g, " ")`, e escreva o escape `\u00a0` explicitamente: um caractere literal no regex é invisível na revisão e some numa edição sem ninguém perceber.
 - `npm install`/`uninstall playwright` e `npm audit` imprimem avisos de engine e vulnerabilidades que não mudam de task pra task — `| tail -n 3` ou `| tail -n 5` no comando corta o ruído sem perder o resultado.
 
 ## Stack (ver spec-02-design.md §1 para detalhes/justificativas)

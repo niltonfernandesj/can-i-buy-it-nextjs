@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 function hojeISO() {
   const hoje = new Date();
@@ -117,6 +118,7 @@ const FORM_INICIAL = {
   descricao: "",
   dataCompra: hojeISO(),
   contaInvestimentoId: "",
+  ehResgate: false,
 };
 
 export function LancamentoClient({ contas, categorias }) {
@@ -174,7 +176,11 @@ export function LancamentoClient({ contas, categorias }) {
       tipo,
       meio: novoMeio,
       contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
-      contaInvestimentoId: tipo === "INVESTIMENTO" ? form.contaInvestimentoId : "",
+      contaInvestimentoId:
+        tipo === "INVESTIMENTO" || tipo === "ENTRADA" ? form.contaInvestimentoId : "",
+      // Resgate só existe em Entrada — sair dela desmarca, pra a marcação não
+      // sobreviver escondida a uma troca de Tipo.
+      ehResgate: tipo === "ENTRADA" ? form.ehResgate : false,
       // Entrada não parcela: volta a 1 pra não carregar um parcelamento
       // pendente de uma saída lançada antes na mesma sequência.
       numeroParcelas: tipo === "SAIDA" ? form.numeroParcelas : 1,
@@ -217,7 +223,11 @@ export function LancamentoClient({ contas, categorias }) {
     // Investimento é um tipo só na UI — internamente é uma Saída marcada
     // como aporte (Design §8.2.4, "sem mudança de schema").
     const tipoReal = form.tipo === "INVESTIMENTO" ? "SAIDA" : form.tipo;
-    const ehInvestimento = form.tipo === "INVESTIMENTO";
+    // Aporte é Tipo = Investimento; resgate é uma Entrada marcada como tal
+    // (Requisitos §3.13.6). Os dois gravam ehInvestimento com a conta de
+    // investimento vinculada — o que os distingue é o tipo da transação.
+    const ehInvestimento =
+      form.tipo === "INVESTIMENTO" || (form.tipo === "ENTRADA" && form.ehResgate);
 
     const resultado = ehParcelado
       ? await criarTransacaoParcelada({
@@ -260,6 +270,7 @@ export function LancamentoClient({ contas, categorias }) {
       categoriaId: form.categoriaId,
       dataCompra: form.dataCompra,
       contaInvestimentoId: form.contaInvestimentoId,
+      ehResgate: form.ehResgate,
     });
     valorInputRef.current?.focus();
   }
@@ -300,6 +311,37 @@ export function LancamentoClient({ contas, categorias }) {
               onSelecionar={selecionarConta}
             />
           </div>
+
+          {/* Resgate volta a ter conta de origem (Requisitos §3.13.6): sem o
+              vínculo removido na Task 86, o saldo em conta da corretora só
+              cresce e nenhuma conta fecha. Fica atrás de uma marcação, e não
+              como quarto Tipo, porque o toggle já estourava a largura a 390px
+              com três opções (Task 89) — e resgate é raro. */}
+          {form.tipo === "ENTRADA" && form.meio === "DEBITO" && contasInvestimento.length > 0 && (
+            <div className="flex flex-col gap-3 rounded-md border p-4">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="ehResgate"
+                  checked={form.ehResgate}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, ehResgate: Boolean(v), contaInvestimentoId: v ? form.contaInvestimentoId : "" })
+                  }
+                />
+                <Label htmlFor="ehResgate">É resgate de investimento</Label>
+              </div>
+
+              {form.ehResgate && (
+                <div className="flex flex-col gap-2">
+                  <Label>Conta de origem</Label>
+                  <Chips
+                    opcoes={contasInvestimento.map((c) => ({ valor: c.id, rotulo: c.nome }))}
+                    valorAtual={form.contaInvestimentoId}
+                    onSelecionar={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {form.tipo === "INVESTIMENTO" && (
             <div className="flex flex-col gap-2">

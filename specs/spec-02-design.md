@@ -1683,6 +1683,16 @@ Todas revalidam `/investimentos`. **Nenhuma revalida `/visao-mensal` ou `/transa
 
 **A trava de saldo é da Server Action, não do banco.** O saldo é derivado, então não existe constraint que o expresse — mesma situação da regra "não exclui categoria em uso" (§18.3), checada na action com a FK como garantia final.
 
+### 20.6 Resgate volta a ter conta de origem
+
+Resolve Requisitos §3.13.6. A Task 86 tirou da tela de lançamento a capacidade de vincular uma entrada a uma conta de investimento; sem ela o saldo em conta da corretora **só cresce**, porque nada o debita do lado do resgate.
+
+**Volta como marcação, não como quarto Tipo.** O toggle de Tipo já estourava a largura a 390px com três opções (Task 89, §8.2.4) — uma quarta reabriria aquele problema. E resgate é raro, ao contrário do aporte, que ganhou Tipo próprio justamente por ser frequente e por a marcação secundária passar despercebida.
+
+A marcação aparece **só com Tipo = Entrada e Meio = Débito**: entrada no crédito é estorno (§3.11), que nunca é resgate. Marcar revela os chips de conta de origem, e desmarcar limpa a conta — a combinação "marcado sem conta" é recusada pela Server Action, que já exigia `contaInvestimentoId` quando `ehInvestimento` é verdadeiro.
+
+**Nenhuma Server Action muda.** `validarTransacao` já aceita `ehInvestimento` numa `ENTRADA`: exige conta corrente como conta principal e uma conta de investimento vinculada. O que o M29 faz é reabrir a superfície de uso.
+
 ### 20.5 Navegação com rótulos por breakpoint
 
 `GRUPO_DADOS` ganha um quarto destino e cada item passa a ter **dois rótulos**: `label` (desktop, usado na barra lateral) e `labelCurto` (mobile, usado em `AbasDados`). Só "Visão mensal" e "Investimentos" divergem — "Transações" e "Projeção" repetem o mesmo texto nos dois campos, em vez de um `labelCurto` opcional com fallback: dois campos sempre presentes tornam a tabela de rótulos legível de uma olhada.
