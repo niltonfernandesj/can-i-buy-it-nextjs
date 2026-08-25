@@ -940,9 +940,8 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ## Detalhamento de investimentos — M29 a M33
 
-> **Estas cinco seções registram o escopo acordado.** O **M29 já tem Requisitos
-> (spec-01 §3.13), Design (spec-02 §20) e tasks escritas** — aguardando validação do
-> usuário antes da implementação. Os **M30 a M33 seguem sem tasks**, e sem seção
+> **Estas cinco seções registram o escopo acordado.** O **M29 está concluído** — Requisitos (spec-01
+> §3.13), Design (spec-02 §20) e as nove tasks, todas commitadas. Os **M30 a M33 seguem sem tasks**, e sem seção
 > correspondente em Requisitos e Design. Nada aqui está pronto para codar: cada marco precisa
 > passar pelo ciclo normal — Requisitos, Design, tasks — antes da primeira linha de
 > código. O objetivo deste bloco é não perder as decisões tomadas na entrevista de
@@ -978,9 +977,9 @@ fixa" por ora), Estratégia, Produto (CDB, LCA, LCI, Tesouro Direto), Emissor, I
 
 ---
 
-### M29 — Modelo de investimentos: ativos e os dois saldos
+### M29 — Modelo de investimentos: ativos e os dois saldos ✅
 
-**Status:** mock validado pelo usuário; Requisitos §3.13 e Design §20 escritos. Tasks abaixo **aguardando validação** antes de qualquer implementação.
+**Status:** ✅ **concluído.** Requisitos §3.13, Design §20 e as nove tasks abaixo, todas commitadas.
 
 Duas decisões vindas da revisão do schema, depois da primeira versão destas tasks: os **movimentos avulsos** entram no M29 (sem eles o saldo desencontra do extrato real em seis meses de Tesouro Direto), e **transferência entre corretoras não ganha operação própria** — quem precisar registra dois ajustes, um de cada lado.
 
@@ -991,6 +990,7 @@ Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas oper
 ---
 
 **Task 106. Navegação: quarta aba e rótulos por breakpoint**
+✅ **Concluída** — commit `3d488da`
 
 `components/navegacao/navegacao-principal.jsx`, `components/navegacao/abas-dados.jsx` e uma rota `/investimentos` mínima. Design §20.5, Requisitos §3.13.4.
 
@@ -1004,6 +1004,7 @@ Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas oper
 ---
 
 **Task 107. Schema: enums, o modelo Ativo e os movimentos**
+✅ **Concluída** — commit `e7594b7`
 
 `prisma/schema.prisma` e migration. Design §20.1. Sem UI.
 
@@ -1022,6 +1023,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 108. Cálculo de saldos e agrupamento**
+✅ **Concluída** — commit `af06907`
 
 `lib/investimentos.js` e `lib/investimentos.test.js`, ambos novos. Design §20.2. Sem UI.
 
@@ -1038,6 +1040,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 109. Rota `/investimentos`: resumo e disponível para investir**
+✅ **Concluída** — commit `5b09a4c`
 
 `app/(protegido)/investimentos/`. Requisitos §3.13.3, Design §20.3.
 
@@ -1050,6 +1053,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 110. Detalhamento agrupado por estratégia ou mercado**
+✅ **Concluída** — commit `98faaaa`
 
 `investimentos-client.jsx`. Requisitos §3.13.3, Design §20.3.
 
@@ -1064,6 +1068,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 111. Compra de ativo**
+✅ **Concluída** — commit `f6b3e2f`
 
 `lib/actions/investimentos.js` e o formulário. Requisitos §3.13.1 e §3.13.2, Design §20.4.
 
@@ -1076,6 +1081,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 112. Liquidação**
+✅ **Concluída** — commit `583f30c`
 
 `liquidarAtivo` e o formulário. Requisitos §3.13.2, Design §20.4.
 
@@ -1088,6 +1094,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 113. Registrar movimento avulso**
+✅ **Concluída** — commit `f7e3a76`
 
 `lib/actions/investimentos.js`, o `DropdownMenu` na linha da conta e o formulário. Requisitos §3.13.3, Design §20.3 e §20.4.
 
@@ -1101,6 +1108,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 114. Resgate volta a vincular a conta de investimento**
+✅ **Concluída** — commit `f94a33e`
 
 `app/(protegido)/lancamento/lancamento-client.jsx` e `lib/actions/transacoes.js`. Requisitos §3.13.5.
 
