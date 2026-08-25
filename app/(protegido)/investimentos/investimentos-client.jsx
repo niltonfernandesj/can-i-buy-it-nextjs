@@ -8,6 +8,7 @@ import { agruparPor, percentualNoPatrimonio } from "@/lib/investimentos";
 import { ROTULO_ESTRATEGIA, ROTULO_PRODUTO, rotuloIndexador } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { LiquidarAtivo } from "./liquidar-ativo";
 
 const VISOES = [
   { valor: "estrategia", rotulo: "Por estratégia" },
@@ -96,7 +97,12 @@ function TabelaPosicoes({ ativos, hoje }) {
                 <td className="py-2 pr-3 font-mono text-xs text-investimento">
                   {rotuloIndexador(ativo.indexador, ativo.taxa)}
                 </td>
-                <td className="py-2 text-right tabular-nums">{formatarReais(ativo.base)}</td>
+                <td className="py-2 text-right tabular-nums">
+                  <span className="inline-flex items-center gap-2">
+                    {formatarReais(ativo.base)}
+                    <LiquidarAtivo ativo={ativo} vencido={vencido} />
+                  </span>
+                </td>
               </tr>
             );
           })}

@@ -1,0 +1,122 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { liquidarAtivo } from "@/lib/actions/investimentos";
+import { formatarReais } from "@/lib/moeda";
+import { formatarDataCurta } from "@/lib/datas";
+import { ROTULO_PRODUTO, rotuloIndexador } from "@/lib/ativos";
+import { CampoValor } from "@/components/campo-valor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function LiquidarAtivo({ ativo, vencido }) {
+  const router = useRouter();
+  const [aberto, setAberto] = useState(false);
+  const [data, setData] = useState(hojeISO());
+  const [valorCentavos, setValorCentavos] = useState(0);
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  async function salvar(e) {
+    e.preventDefault();
+    setErro("");
+    setCarregando(true);
+
+    const resultado = await liquidarAtivo(ativo.id, { data, valor: valorCentavos / 100 });
+
+    setCarregando(false);
+    if (resultado?.error) {
+      setErro(resultado.error);
+      return;
+    }
+
+    setAberto(false);
+    router.refresh();
+  }
+
+  return (
+    <Dialog open={aberto} onOpenChange={setAberto}>
+      <DialogTrigger asChild>
+        {/* Em destaque quando vencido: é a posição que pede ação. As demais
+            continuam liquidáveis (venda antecipada), mas discretas. */}
+        <Button
+          size="sm"
+          variant={vencido ? "default" : "ghost"}
+          className={
+            vencido
+              ? "h-7 bg-saida-credito px-2 text-xs text-background hover:bg-saida-credito"
+              : "h-7 px-2 text-xs text-muted-foreground"
+          }
+        >
+          Liquidar
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            Liquidar {ativo.emissor} · {ROTULO_PRODUTO[ativo.produto]}
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={salvar} className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            {ativo.conta.nome} · {rotuloIndexador(ativo.indexador, ativo.taxa)} · aplicado{" "}
+            {formatarReais(ativo.valorAquisicao)} · vence em {formatarDataCurta(ativo.vencimento)}
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={`liq-data-${ativo.id}`}>Data da liquidação</Label>
+            <Input
+              id={`liq-data-${ativo.id}`}
+              type="date"
+              required
+              value={data}
+              onChange={(e) => setData(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <CampoValor
+              id={`liq-valor-${ativo.id}`}
+              label="Valor recebido"
+              valorCentavos={valorCentavos}
+              onChange={setValorCentavos}
+            />
+            {/* O valor é fato, não estimativa: é o que caiu na conta, já
+                líquido de IR e IOF. No M30 vem pré-preenchido pelo cálculo. */}
+            <span className="text-xs text-muted-foreground">
+              O que caiu no saldo em conta, já líquido de IR e IOF.
+            </span>
+          </div>
+
+          {erro && <p className="text-sm text-destructive">{erro}</p>}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setAberto(false)} disabled={carregando}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={carregando}>
+              {carregando ? "Liquidando..." : "Liquidar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
