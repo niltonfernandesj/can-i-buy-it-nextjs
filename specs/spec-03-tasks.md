@@ -938,11 +938,11 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ---
 
-## Detalhamento de investimentos — M29 a M32 (planejados)
+## Detalhamento de investimentos — M29 a M33
 
-> **Estas quatro seções registram o escopo acordado.** O **M29 já tem Requisitos
+> **Estas cinco seções registram o escopo acordado.** O **M29 já tem Requisitos
 > (spec-01 §3.13), Design (spec-02 §20) e tasks escritas** — aguardando validação do
-> usuário antes da implementação. Os **M30 a M32 seguem sem tasks**, e sem seção
+> usuário antes da implementação. Os **M30 a M33 seguem sem tasks**, e sem seção
 > correspondente em Requisitos e Design. Nada aqui está pronto para codar: cada marco precisa
 > passar pelo ciclo normal — Requisitos, Design, tasks — antes da primeira linha de
 > código. O objetivo deste bloco é não perder as decisões tomadas na entrevista de
@@ -1194,6 +1194,27 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
+### M33 — Liquidação parcial (planejado)
+
+**Status:** escopo acordado; tasks **a escrever**. Depende do M30.
+
+O schema já comporta desde a Task 107: `LiquidacaoAtivo` é um evento com `data`, `valorRecebido` e `valorRemanescente`, e liquidação total é o caso em que o remanescente é zero. O que falta é a funcionalidade — **hoje o modelo suporta e nenhum marco constrói**, lacuna identificada pelo usuário ao revisar as tasks.
+
+**Por que depois do M30, e não antes.** No M29 um resgate parcial seria só dois números digitados — "tirei R$ 5.000, sobraram R$ 5.500" — sem o app calcular nada. É com o rendimento do M30 que o remanescente vira base de cálculo e a funcionalidade se paga. Construir antes significaria fazer o formulário duas vezes: uma sem cálculo, outra com.
+
+Escopo previsto:
+
+- O formulário de liquidação ganha o campo de **saldo remanescente**, e deixa de assumir zero.
+- Liquidar deixa de ser um botão que encerra a posição e passa a ser um **evento repetível** — a posição continua na listagem enquanto o remanescente for maior que zero.
+- A listagem passa a exibir a **base atual** no lugar do valor de aquisição para posições com eventos (o cálculo já nasce assim na Task 108; aqui ele deixa de ser um caso que nunca acontece).
+- O rendimento passa a ser calculado **por trechos**: base do último evento corrigida a partir da data dele.
+
+**Interação com o M32:** o IR de um resgate parcial é proporcional — cada parcela resgatada tem seu próprio prazo na tabela regressiva, contado da aplicação original. Se o M33 vier depois do M32, herda essa maquinaria pronta; se vier antes, o imposto do resgate parcial fica adiado junto com o resto do cálculo líquido.
+
+**Fora de escopo também aqui:** a mecânica de **quantidade × preço unitário** do Tesouro Direto. Modelar em reais é uma aproximação que serve para acompanhar patrimônio, mas não reproduz um extrato que fala em títulos e PU.
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1230,4 +1251,5 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M30 | *(planejado)* Rendimento pós-fixado via séries do Banco Central. Seção de Requisitos ainda a escrever |
 | M31 | *(planejado)* Rendimento pré-fixado e IPCA+. Seção de Requisitos ainda a escrever |
 | M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
+| M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
