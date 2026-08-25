@@ -4,6 +4,7 @@ import { formatarReais } from "@/lib/moeda";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { ComprarAtivo } from "./comprar-ativo";
+import { RegistrarMovimento } from "./registrar-movimento";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -143,6 +144,7 @@ function DisponivelParaInvestir({ contas }) {
               <Button size="sm" variant="outline" disabled>
                 Resgatar
               </Button>
+              <RegistrarMovimento conta={conta} />
             </span>
           </div>
         ))}
