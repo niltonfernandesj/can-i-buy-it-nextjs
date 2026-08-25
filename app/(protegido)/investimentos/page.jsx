@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
+import { ComprarAtivo } from "./comprar-ativo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -137,10 +138,8 @@ function DisponivelParaInvestir({ contas }) {
               <span className="text-sm font-semibold tabular-nums text-entrada">
                 {formatarReais(conta.emConta)}
               </span>
-              {/* Inertes nesta task — as ações chegam nas Tasks 111 e 112. */}
-              <Button size="sm" disabled>
-                Comprar ativo
-              </Button>
+              <ComprarAtivo conta={conta} />
+              {/* Inerte ainda — resgate chega na Task 114. */}
               <Button size="sm" variant="outline" disabled>
                 Resgatar
               </Button>
