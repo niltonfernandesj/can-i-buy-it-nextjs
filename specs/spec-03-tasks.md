@@ -1212,7 +1212,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 128. Cliente do BC e sincronização de lacunas**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `e2af5d3`
 
 `lib/bc.js` e `lib/actions/investimentos.js`. Design §23.2.
 
