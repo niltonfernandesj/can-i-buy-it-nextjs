@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { liquidarAtivo } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
+import { hojeISO } from "@/lib/datas";
 import { formatarDataCurta } from "@/lib/datas";
 import { ROTULO_PRODUTO, rotuloIndexador } from "@/lib/ativos";
 import { CampoValor } from "@/components/campo-valor";
@@ -18,11 +19,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export function LiquidarAtivo({ ativo, vencido }) {
   const router = useRouter();
@@ -86,6 +82,9 @@ export function LiquidarAtivo({ ativo, vencido }) {
               id={`liq-data-${ativo.id}`}
               type="date"
               required
+              // Investimento não é agendamento (Requisitos §3.13.5). O `max`
+              // é conveniência: a autoridade é a Server Action.
+              max={hojeISO()}
               value={data}
               onChange={(e) => setData(e.target.value)}
             />

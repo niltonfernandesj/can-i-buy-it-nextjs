@@ -16,6 +16,7 @@ import { formatarDataCurta, formatarMesReferencia, MESES } from "@/lib/datas";
 import { TIPO_LABELS } from "@/lib/categorias";
 import { TIPO_CONTA_LABELS, TIPO_CONTA_ICONES } from "@/lib/contas";
 import { CampoValor } from "@/components/campo-valor";
+import { hojeISO } from "@/lib/datas";
 import { CategoriaComCor } from "@/components/marcador-categoria";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,6 +287,10 @@ function CamposCompletos({ form, setForm, contas }) {
           id="edit-data"
           type="date"
           required
+          // Condicional: um aporte não pode ir para o futuro (Requisitos
+          // §3.13.5), mas uma saída comum agendada é legítima e a Projeção
+          // depende dela. Aplicar sempre tiraria essa capacidade.
+          max={form.ehInvestimento ? hojeISO() : undefined}
           value={form.dataCompra}
           onChange={(e) => setForm({ ...form, dataCompra: e.target.value })}
         />

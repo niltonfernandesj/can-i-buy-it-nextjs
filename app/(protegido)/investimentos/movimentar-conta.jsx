@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { aportar, resgatar } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
+import { hojeISO } from "@/lib/datas";
 import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
@@ -16,11 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /**
  * Aporte e resgate são a mesma operação em sentidos opostos — mesmos campos,
@@ -146,6 +142,9 @@ export function MovimentarConta({ operacao, conta, contasCorrentes, aberto, onAb
               id={`${operacao}-data`}
               type="date"
               required
+              // Investimento não é agendamento (Requisitos §3.13.5). O `max`
+              // é conveniência: a autoridade é a Server Action.
+              max={hojeISO()}
               value={form.data}
               onChange={(e) => setForm({ ...form, data: e.target.value })}
             />

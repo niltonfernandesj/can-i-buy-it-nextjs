@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarAtivo } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
+import { hojeISO } from "@/lib/datas";
 import {
   ROTULO_ESTRATEGIA,
   ROTULO_PRODUTO,
@@ -31,11 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 const FORM_INICIAL = {
   estrategia: "POS_FIXADO",
@@ -212,6 +208,9 @@ export function RegistrarAtivo({ conta, className }) {
                 id="ativo-aquisicao"
                 type="date"
                 required
+                // Só a aquisição. O `vencimento`, logo abaixo, NÃO recebe
+                // `max`: é a data em que o título vence e precisa ser futura.
+                max={hojeISO()}
                 value={form.dataAquisicao}
                 onChange={(e) => setForm({ ...form, dataAquisicao: e.target.value })}
               />

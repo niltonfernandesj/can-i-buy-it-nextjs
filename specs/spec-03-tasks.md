@@ -1143,7 +1143,7 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 ---
 
 **Task 125. Operação de investimento recusa data futura**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/datas.js`, `lib/actions/investimentos.js` e `lib/actions/transacoes.js`. Requisitos §3.13.5, Design §20.7.
 

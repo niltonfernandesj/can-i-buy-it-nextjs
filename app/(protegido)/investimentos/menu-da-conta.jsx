@@ -6,6 +6,7 @@ import { ArrowUpFromLine, MoreHorizontal, Plus } from "lucide-react";
 import { registrarMovimento } from "@/lib/actions/investimentos";
 import { MovimentarConta } from "./movimentar-conta";
 import { formatarReais } from "@/lib/moeda";
+import { hojeISO } from "@/lib/datas";
 import { MOTIVOS_POR_NATUREZA, ROTULO_MOTIVO, ROTULO_NATUREZA } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
@@ -25,11 +26,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-function hojeISO() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 const FORM_INICIAL = {
   natureza: "CREDITO",
@@ -181,6 +177,9 @@ export function MenuDaConta({ conta, contasCorrentes }) {
                   id={`mov-data-${conta.id}`}
                   type="date"
                   required
+                  // Investimento não é agendamento (Requisitos §3.13.5). O `max`
+                  // é conveniência: a autoridade é a Server Action.
+                  max={hojeISO()}
                   value={form.data}
                   onChange={(e) => setForm({ ...form, data: e.target.value })}
                 />
