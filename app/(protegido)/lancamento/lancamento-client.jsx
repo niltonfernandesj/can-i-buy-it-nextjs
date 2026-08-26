@@ -7,7 +7,6 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  PiggyBank,
   Wallet,
 } from "lucide-react";
 import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoes";
@@ -20,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 
 function hojeISO() {
   const hoje = new Date();
@@ -30,10 +28,12 @@ function hojeISO() {
   return `${ano}-${mes}-${dia}`;
 }
 
+// Dois Tipos desde o M34: esta tela cobre dinheiro que entra vindo de fora e
+// sai para fora do app. Aporte e resgate mudam de conta dentro do próprio app
+// e vivem em /investimentos (Requisitos §3.14).
 const TIPOS = [
   { valor: "SAIDA", rotulo: "Saída", Icone: ArrowUpCircle },
   { valor: "ENTRADA", rotulo: "Entrada", Icone: ArrowDownCircle },
-  { valor: "INVESTIMENTO", rotulo: "Investimento", Icone: PiggyBank },
 ];
 
 const MEIOS = [
@@ -117,8 +117,6 @@ const FORM_INICIAL = {
   numeroParcelas: 1,
   descricao: "",
   dataCompra: hojeISO(),
-  contaInvestimentoId: "",
-  ehResgate: false,
 };
 
 export function LancamentoClient({ contas, categorias }) {
@@ -135,7 +133,6 @@ export function LancamentoClient({ contas, categorias }) {
   const valorInputRef = useRef(null);
 
   const contasParaSelecao = contas.filter((c) => c.tipo !== "CONTA_INVESTIMENTO");
-  const contasInvestimento = contas.filter((c) => c.tipo === "CONTA_INVESTIMENTO");
 
   function contasDoMeio(meio) {
     const tipoConta = meio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE";
@@ -162,25 +159,12 @@ export function LancamentoClient({ contas, categorias }) {
   }
 
   function selecionarTipo(tipo) {
-    // Só Investimento força o meio (aporte sempre parte da conta corrente).
     // Entrada preserva o Meio corrente desde o M27: numa sequência de
     // lançamentos no cartão, alternar Saída → Entrada pra registrar um estorno
     // não deve pular pro débito e perder o cartão já selecionado.
-    const novoMeio = tipo === "INVESTIMENTO" ? "DEBITO" : form.meio;
-    const contaAindaValida =
-      contas.find((c) => c.id === form.contaId)?.tipo ===
-      (novoMeio === "CREDITO" ? "CARTAO_CREDITO" : "CONTA_CORRENTE");
-
     setForm({
       ...form,
       tipo,
-      meio: novoMeio,
-      contaId: contaAindaValida ? form.contaId : contasDoMeio(novoMeio)[0]?.id ?? "",
-      contaInvestimentoId:
-        tipo === "INVESTIMENTO" || tipo === "ENTRADA" ? form.contaInvestimentoId : "",
-      // Resgate só existe em Entrada — sair dela desmarca, pra a marcação não
-      // sobreviver escondida a uma troca de Tipo.
-      ehResgate: tipo === "ENTRADA" ? form.ehResgate : false,
       // Entrada não parcela: volta a 1 pra não carregar um parcelamento
       // pendente de uma saída lançada antes na mesma sequência.
       numeroParcelas: tipo === "SAIDA" ? form.numeroParcelas : 1,
@@ -220,14 +204,6 @@ export function LancamentoClient({ contas, categorias }) {
     setSucesso("");
     setCarregando(true);
 
-    // Investimento é um tipo só na UI — internamente é uma Saída marcada
-    // como aporte (Design §8.2.4, "sem mudança de schema").
-    const tipoReal = form.tipo === "INVESTIMENTO" ? "SAIDA" : form.tipo;
-    // Aporte é Tipo = Investimento; resgate é uma Entrada marcada como tal
-    // (Requisitos §3.13.6). Os dois gravam ehInvestimento com a conta de
-    // investimento vinculada — o que os distingue é o tipo da transação.
-    const ehInvestimento =
-      form.tipo === "INVESTIMENTO" || (form.tipo === "ENTRADA" && form.ehResgate);
 
     const resultado = ehParcelado
       ? await criarTransacaoParcelada({
@@ -239,14 +215,12 @@ export function LancamentoClient({ contas, categorias }) {
           numeroParcelas: form.numeroParcelas,
         })
       : await criarTransacao({
-          tipo: tipoReal,
+          tipo: form.tipo,
           valor: form.valorCentavos / 100,
           descricao: form.descricao,
           categoriaId: form.categoriaId,
           contaId: form.contaId,
           dataCompra: form.dataCompra,
-          ehInvestimento,
-          contaInvestimentoId: ehInvestimento ? form.contaInvestimentoId : undefined,
         });
 
     setCarregando(false);
@@ -257,11 +231,10 @@ export function LancamentoClient({ contas, categorias }) {
     }
 
     setSucesso("Lançamento salvo com sucesso.");
-    // Tipo, Meio, Conta, Categoria, Data e Conta de destino tendem a se
-    // repetir entre lançamentos consecutivos (ex.: várias compras seguidas
-    // no mesmo cartão, na mesma categoria, no mesmo dia; ou aportes
-    // seguidos pra mesma conta de investimento) — só esses sobrevivem ao
-    // reset (Task 80, Task 85 e Task 86).
+    // Tipo, Meio, Conta, Categoria e Data tendem a se repetir entre
+    // lançamentos consecutivos (ex.: várias compras seguidas no mesmo cartão,
+    // na mesma categoria, no mesmo dia) — só esses sobrevivem ao reset
+    // (Task 80 e Task 85).
     setForm({
       ...FORM_INICIAL,
       tipo: form.tipo,
@@ -269,8 +242,6 @@ export function LancamentoClient({ contas, categorias }) {
       contaId: form.contaId,
       categoriaId: form.categoriaId,
       dataCompra: form.dataCompra,
-      contaInvestimentoId: form.contaInvestimentoId,
-      ehResgate: form.ehResgate,
     });
     valorInputRef.current?.focus();
   }
@@ -293,66 +264,20 @@ export function LancamentoClient({ contas, categorias }) {
           <div className="flex flex-col gap-2">
             <Label>Meio</Label>
             <ToggleSegmentado
-              opcoes={
-                form.tipo === "INVESTIMENTO"
-                  ? MEIOS.filter((m) => m.valor === "DEBITO")
-                  : MEIOS
-              }
+              opcoes={MEIOS}
               valorAtual={form.meio}
               onSelecionar={selecionarMeio}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label>{form.tipo === "INVESTIMENTO" ? "Conta de origem" : "Conta"}</Label>
+            <Label>Conta</Label>
             <Chips
               opcoes={contasDoMeio(form.meio).map((c) => ({ valor: c.id, rotulo: c.nome }))}
               valorAtual={form.contaId}
               onSelecionar={selecionarConta}
             />
           </div>
-
-          {/* Resgate volta a ter conta de origem (Requisitos §3.13.6): sem o
-              vínculo removido na Task 86, o saldo em conta da corretora só
-              cresce e nenhuma conta fecha. Fica atrás de uma marcação, e não
-              como quarto Tipo, porque o toggle já estourava a largura a 390px
-              com três opções (Task 89) — e resgate é raro. */}
-          {form.tipo === "ENTRADA" && form.meio === "DEBITO" && contasInvestimento.length > 0 && (
-            <div className="flex flex-col gap-3 rounded-md border p-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="ehResgate"
-                  checked={form.ehResgate}
-                  onCheckedChange={(v) =>
-                    setForm({ ...form, ehResgate: Boolean(v), contaInvestimentoId: v ? form.contaInvestimentoId : "" })
-                  }
-                />
-                <Label htmlFor="ehResgate">É resgate de investimento</Label>
-              </div>
-
-              {form.ehResgate && (
-                <div className="flex flex-col gap-2">
-                  <Label>Conta de origem</Label>
-                  <Chips
-                    opcoes={contasInvestimento.map((c) => ({ valor: c.id, rotulo: c.nome }))}
-                    valorAtual={form.contaInvestimentoId}
-                    onSelecionar={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {form.tipo === "INVESTIMENTO" && (
-            <div className="flex flex-col gap-2">
-              <Label>Conta de destino</Label>
-              <Chips
-                opcoes={contasInvestimento.map((c) => ({ valor: c.id, rotulo: c.nome }))}
-                valorAtual={form.contaInvestimentoId}
-                onSelecionar={(contaInvestimentoId) => setForm({ ...form, contaInvestimentoId })}
-              />
-            </div>
-          )}
 
           <div className="flex flex-col gap-2">
             <Label>Categoria</Label>

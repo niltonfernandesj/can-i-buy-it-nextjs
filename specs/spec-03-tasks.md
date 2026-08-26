@@ -1311,7 +1311,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 120. Card "Contas de investimento"**
-⬜ **A implementar**
+✅ **Concluída** — commit `8ff204c`
 
 `app/(protegido)/investimentos/page.jsx`. Requisitos §3.14.4, Design §21.4.
 
