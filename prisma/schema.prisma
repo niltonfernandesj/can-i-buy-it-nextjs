@@ -326,3 +326,33 @@ model LiquidacaoAtivo {
 // Sem usuarioId, diferente das tabelas irmãs: aqui ele seria derivável do
 // ativo, e duplicar abriria a chance de uma liquidação com dono diferente
 // do da posição.
+
+// ---------------------------------------------------------------------------
+// Séries do Banco Central (M30 — Requisitos §3.16, Design §23.1)
+// ---------------------------------------------------------------------------
+
+enum SerieDiaria {
+  CDI   // SGS 12
+  SELIC // SGS 11
+}
+
+/// Um dia útil de uma série diária do BC.
+///
+/// **Sem `usuarioId`** — é a primeira tabela do projeto que não pertence a
+/// ninguém: taxa de mercado é dado público e compartilhado entre todos.
+///
+/// **O IPCA não cabe aqui** e ganha `IndiceMensal` no M31: é mensal, o valor é
+/// % ao mês (não ao dia) e atrasa quase dois meses. Uma tabela só obrigaria
+/// todo leitor a ramificar pela série antes de interpretar `valor`, e um
+/// produtório distraído misturaria as unidades sem estourar erro nenhum.
+model TaxaDiaria {
+  serie SerieDiaria
+  // @db.Date, não DateTime cheio: a série tem granularidade de dia, e guardar
+  // hora convidaria o bug de fuso que paraDataLocal existe para evitar.
+  data  DateTime    @db.Date
+  valor Decimal // % ao DIA, exatamente como o BC devolve
+
+  // O par série+data É a identidade — a PK composta dá de graça a garantia de
+  // não duplicar um dia, que é o que torna a sincronização idempotente.
+  @@id([serie, data])
+}
