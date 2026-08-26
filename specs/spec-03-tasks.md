@@ -1179,7 +1179,7 @@ Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado:
 ---
 
 **Task 126. O cálculo do rendimento, puro**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/rendimento.js` e `lib/rendimento.test.js`. Requisitos §3.16, Design §23.3.
 
