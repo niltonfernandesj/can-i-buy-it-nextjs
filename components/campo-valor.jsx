@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export const CampoValor = forwardRef(function CampoValor(
-  { id, label, valorCentavos, onChange, className = "", ariaLabel, extra },
+  { id, label, valorCentavos, onChange, className = "", ariaLabel, prefixo },
   ref
 ) {
   // Formata o valor exibido a cada tecla, então a posição do cursor dentro do
@@ -35,30 +35,41 @@ export const CampoValor = forwardRef(function CampoValor(
     }
   }
 
+  const campo = (
+    <Input
+      ref={ref}
+      id={id}
+      type="text"
+      inputMode="numeric"
+      required
+      aria-label={label ? undefined : ariaLabel}
+      value={formatarCentavosParaReais(valorCentavos)}
+      onKeyDown={handleKeyDown}
+      onPaste={(e) => e.preventDefault()}
+      onChange={() => {}}
+      // Fundido, o input não desenha borda nem anel próprios: quem cuida disso
+      // é o contêiner. Sem isto sobra um fio duplo ao lado do divisor, e o anel
+      // de foco envolveria só a metade direita, quebrando a costura.
+      className={prefixo ? "flex-1 min-w-0 rounded-none border-0 shadow-none focus-visible:ring-0" : undefined}
+    />
+  );
+
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       {label && <Label htmlFor={id}>{label}</Label>}
-      <div className="relative">
-        <Input
-          ref={ref}
-          id={id}
-          type="text"
-          inputMode="numeric"
-          required
-          aria-label={label ? undefined : ariaLabel}
-          value={formatarCentavosParaReais(valorCentavos)}
-          onKeyDown={handleKeyDown}
-          onPaste={(e) => e.preventDefault()}
-          onChange={() => {}}
-          className={extra ? "pr-24" : undefined}
-        />
-        {/* Slot pra um controle embutido dentro do próprio campo (ex.: stepper
-            de parcelas em /lancamento, Design §8.2.4) — opcional, sem efeito
-            quando omitido. */}
-        {extra && (
-          <div className="absolute right-1.5 top-1/2 -translate-y-1/2">{extra}</div>
-        )}
-      </div>
+      {/* `prefixo` é um controle **fundido** à esquerda do campo — os dois viram
+          um retângulo só, de mesma altura (Design §22.1). É irmão flex do input,
+          não filho posicionado: assim não há reserva de padding pra calcular, e
+          um valor longo nunca colide com o controle. Sem `prefixo`, renderiza
+          exatamente como antes. */}
+      {prefixo ? (
+        <div className="flex h-9 overflow-hidden rounded-md border border-input shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring">
+          {prefixo}
+          {campo}
+        </div>
+      ) : (
+        campo
+      )}
     </div>
   );
 });

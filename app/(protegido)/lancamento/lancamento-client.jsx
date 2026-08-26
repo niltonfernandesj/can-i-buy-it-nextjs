@@ -333,9 +333,9 @@ export function LancamentoClient({ contas, categorias }) {
               label={ehParcelado ? "Valor da parcela" : "Valor"}
               valorCentavos={form.valorCentavos}
               onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
-              extra={
+              prefixo={
                 podeParcelar && (
-                  <div className="flex items-center gap-1">
+                  <div className="flex flex-none items-center gap-1 border-r border-input px-2">
                     <button type="button" onClick={() => ajustarParcelas(-1)} aria-label="Menos uma parcela" className={BOTAO_PARCELA}>
                       −
                     </button>
