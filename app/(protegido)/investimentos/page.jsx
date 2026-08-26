@@ -1,6 +1,7 @@
 import { PiggyBank } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
+import { cn } from "@/lib/utils";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
@@ -126,30 +127,58 @@ function Resumo({ patrimonio, investido, emConta }) {
 // por estratégia — um botão de registro dentro de um grupo sugeriria que o
 // ativo herda aquela estratégia (Requisitos §3.13.4). Este card também
 // responde "de onde eu invisto" e "o que ainda não foi alocado" no mesmo lugar.
-function DisponivelParaInvestir({ contas, contasCorrentes }) {
+/** Um dos dois saldos da linha: rótulo curto acima, valor abaixo. */
+function SaldoDaConta({ rotulo, rotuloCurto, valor, cor }) {
+  return (
+    <span className="flex flex-col gap-0.5 sm:items-end">
+      <span className="text-[9.5px] font-bold uppercase tracking-[0.06em] text-muted-foreground">
+        {/* "Parado em conta" só onde cabe; abaixo de sm, a forma curta. */}
+        <span className="hidden sm:inline">{rotulo}</span>
+        <span className="sm:hidden">{rotuloCurto ?? rotulo}</span>
+      </span>
+      <span className={cn("text-sm font-semibold tabular-nums", cor)}>{formatarReais(valor)}</span>
+    </span>
+  );
+}
+
+function ContasDeInvestimento({ contas, contasCorrentes }) {
   return (
     <Card className="p-6">
-      <Rotulo>Disponível para investir</Rotulo>
+      <Rotulo>Contas de investimento</Rotulo>
       <div className="mt-3 flex flex-col">
         {contas.map((conta) => (
           <div
             key={conta.id}
-            className="flex flex-col gap-2 border-t border-dashed py-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 border-t border-dashed py-3 first:border-t-0 first:pt-0 sm:flex-row sm:items-center sm:gap-4"
           >
-            <span className="flex items-center gap-2 text-sm font-medium">
+            <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
               <PiggyBank className="h-4 w-4 shrink-0 text-investimento" />
-              {conta.nome}
+              <span className="truncate">{conta.nome}</span>
             </span>
-            <span className="flex items-center gap-3">
-              <span className="text-sm font-semibold tabular-nums text-entrada">
-                {formatarReais(conta.emConta)}
-              </span>
+
+            {/* No mobile os dois saldos dividem a linha; no desktop encostam
+                nas ações, à direita. */}
+            <span className="flex justify-between gap-6 sm:ml-auto">
+              <SaldoDaConta rotulo="Investido" valor={conta.investido} cor="text-investimento" />
+              <SaldoDaConta
+                rotulo="Parado em conta"
+                rotuloCurto="Parado"
+                valor={conta.emConta}
+                cor="text-entrada"
+              />
+            </span>
+
+            {/* Aportar e Registrar ativo são o dia a dia; o menu guarda o raro
+                (Requisitos §3.14.4). */}
+            <span className="flex items-center gap-2">
               <MovimentarConta operacao="aporte" conta={conta} contasCorrentes={contasCorrentes}>
                 <DialogTrigger asChild>
-                  <Button size="sm">Aportar</Button>
+                  <Button size="sm" className="flex-1 sm:flex-none">
+                    Aportar
+                  </Button>
                 </DialogTrigger>
               </MovimentarConta>
-              <RegistrarAtivo conta={conta} />
+              <RegistrarAtivo conta={conta} className="flex-1 sm:flex-none" />
               <MenuDaConta conta={conta} contasCorrentes={contasCorrentes} />
             </span>
           </div>
@@ -178,7 +207,7 @@ export default async function InvestimentosPage() {
           {/* Patrimônio é o que está na corretora: investido + parado. Não
               inclui conta corrente (Requisitos §3.13.4). */}
           <Resumo patrimonio={investido + emConta} investido={investido} emConta={emConta} />
-          <DisponivelParaInvestir contas={contas} contasCorrentes={contasCorrentes} />
+          <ContasDeInvestimento contas={contas} contasCorrentes={contasCorrentes} />
           <DetalhamentoInvestimentos
             ativos={ativos}
             patrimonio={investido + emConta}

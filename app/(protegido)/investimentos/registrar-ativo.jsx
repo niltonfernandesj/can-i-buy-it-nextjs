@@ -71,7 +71,7 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
   );
 }
 
-export function RegistrarAtivo({ conta }) {
+export function RegistrarAtivo({ conta, className }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
@@ -122,7 +122,9 @@ export function RegistrarAtivo({ conta }) {
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger asChild>
-        <Button size="sm">Registrar ativo</Button>
+        <Button size="sm" variant="outline" className={className}>
+          Registrar ativo
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>

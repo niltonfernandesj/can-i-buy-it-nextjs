@@ -1299,7 +1299,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 119. Resgatar em Investimentos**
-⬜ **A implementar**
+✅ **Concluída** — commit `f719841`
 
 `lib/actions/investimentos.js` e formulário. Requisitos §3.14.3, Design §21.3.
 
