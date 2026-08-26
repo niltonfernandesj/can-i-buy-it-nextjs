@@ -312,6 +312,44 @@ Na tela de Projeção, o valor **Disponível** de cada mês é um número absolu
 - **Percentual acima de 100%:** possível quando as saídas do mês são negativas (mês dominado por estornos, §3.11). Entra na primeira faixa como qualquer valor acima de 40%.
 - **Simulação ativa (§3.7):** o card mostra "antes → depois", e o percentual acompanha o **valor simulado** — o número que passa a valer. Não são exibidos dois percentuais.
 
+### 3.15 Especificação — Parcelamento com controle fundido ao Valor (M35)
+
+**Origem:** feedback de uso real — a esposa do usuário relatou que lançar uma saída parcelada no crédito é pouco intuitivo. O controle atual é um stepper `− 1x +` embutido dentro do campo Valor, criado na Task 85 (M22).
+
+**Mock aprovado:** https://claude.ai/code/artifact/a2c1a106-f737-4d78-b041-dfd457e488fe — estados, medidas e regras. É a referência visual normativa deste marco.
+
+#### 3.15.1 O que está errado hoje
+
+Quatro problemas, encontrados na análise do código:
+
+1. **O `1x` não anuncia nada.** Um número solto, em cinza, do tamanho de um ícone, encostado na borda do campo — lê-se como enfeite. Nada ali diz que dá para parcelar.
+2. **O stepper não escala.** Chegar a 12x custa **onze toques**. Stepper serve para faixas de 1 a 5, não de 1 a 99.
+3. **O campo muda de significado.** Em 1x o rótulo é "Valor"; a partir de 2x, "Valor da parcela".
+4. **O controle disputa espaço com o número.** Sobreposto à direita do input, cuja reserva de `pr-24` é fixa enquanto o valor digitado cresce justamente naquela direção.
+
+#### 3.15.2 A solução
+
+**Controle e campo viram um retângulo só** — mesma altura, borda externa compartilhada, um fio de 1px separando as metades. O controle fica **à esquerda**, e a leitura da esquerda para a direita forma a frase: *12x · R$ 300,00*.
+
+O botão é um **dropdown** cujo rótulo padrão é **"À vista"**. Esse rótulo é o centro da mudança: ele nomeia o estado na língua de quem compra e, por contraste, revela que existe a outra opção. **O botão nunca exibe `1x`** — é exatamente o rótulo que a mudança existe para eliminar.
+
+A lista traz **À vista**, depois **2x a 12x**, depois **Outro…**, que abre um campo numérico livre no próprio menu para os casos raros (18x, 24x). Cada opção mostra **quanto a compra fica no total** naquele número de vezes, calculado a partir do valor já digitado — responde "em quantas eu ponho?" no instante da decisão.
+
+#### 3.15.3 O que **não** muda
+
+O rótulo continua alternando entre "Valor" e "Valor da parcela", e a **legenda com o total permanece abaixo do campo**, como já é hoje. O valor digitado segue sendo o **da parcela**.
+
+Consequência aceita e consciente: quem conhece a compra pelo total ainda divide de cabeça antes de digitar. Inverter o campo para "Valor da compra" foi considerado e descartado — resolveria isso, mas obrigaria a decidir onde vai o centavo quando o total não divide exato (R$ 100 em 3x). Fica disponível como marco futuro se o atrito persistir.
+
+O controle **só existe em Saída no crédito**, a mesma condição do stepper de hoje.
+
+#### 3.15.4 O que fundir resolve de quebra
+
+Duas coisas somem sem precisar de solução:
+
+- **A reserva de padding calculada à mão.** O botão passa a ser irmão flex do campo: ocupa o que precisa, o campo fica com o resto. Nenhuma medida mágica atrelada ao rótulo mais largo.
+- **A colisão com valores longos.** Sem sobreposição, o campo encolhe e o número continua legível, seja R$ 9 ou R$ 90.000.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

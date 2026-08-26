@@ -1544,3 +1544,37 @@ A correção é `viewport-fit=cover` no viewport mais `env(safe-area-inset-*)` n
 Verificável por asserção, sem o aparelho: o manifest responde `200` com `Content-Type` de manifest (e **não** um redirecionamento para o login), os campos obrigatórios estão presentes, cada ícone declarado existe e tem as dimensões e a opacidade prometidas, e as meta tags do iOS estão no HTML servido.
 
 **Não** verificável aqui: o gesto de Adicionar à Tela de Início, a aparência real do ícone no springboard e o recorte da área segura no aparelho do usuário. Isso depende de um iPhone real e fica como confirmação dele.
+## 22. Parcelamento com controle fundido ao Valor (M35)
+
+Requisitos §3.15. **Mock normativo:** https://claude.ai/code/artifact/a2c1a106-f737-4d78-b041-dfd457e488fe — traz os seis estados, a tabela de medidas e as regras. Consultar antes de escrever CSS: as classes exatas estão lá.
+
+### 22.1 `CampoValor` troca `extra` por `prefixo`
+
+O `extra` de hoje é um **slot absoluto dentro** do campo (`absolute right-1.5 top-1/2`), com `pr-24` no input reservando espaço. Fundir exige o oposto: um irmão flex, não um filho posicionado.
+
+```
+<div class="flex h-9 rounded-md border border-input overflow-hidden focus-within:ring-1 focus-within:ring-ring">
+  {prefixo}                     ← flex-none, border-r border-input
+  <input class="flex-1 min-w-0 border-0 bg-muted focus-visible:ring-0" />
+</div>
+```
+
+**Três mudanças no componente, e a terceira é a que quebra se esquecida:**
+
+1. `extra` **sai** e `prefixo` entra. `CampoValor` é usado em **9 lugares**, mas **só `/lancamento` passa `extra`** — não há consumidor órfão, então a troca é limpa e não precisa manter os dois.
+2. Sem `prefixo`, o componente renderiza **exatamente como hoje** — o `<div>` extra não pode alterar altura, borda ou espaçamento nas outras 8 telas.
+3. **O anel de foco muda de dono.** O `Input` traz `focus-visible:ring-1 ring-ring` nele mesmo; fundido, isso desenharia o anel só na metade direita e quebraria a costura. O anel sobe para o contêiner via `focus-within`, e o do input é anulado com `focus-visible:ring-0`. A borda do input também some (`border-0`), senão fica um fio duplo ao lado do divisor.
+
+### 22.2 O dropdown de parcelas
+
+**Não usar `Select` do Radix.** Ele captura o teclado para busca por digitação (typeahead) e trata `Esc` por conta própria — o campo numérico de "Outro" brigaria com o componente. Isso não é hipótese: o QA da Task 112 (M29) já esbarrou no `Esc` do `Select` fechando o `Dialog` inteiro. Usar **`DropdownMenu`**, já instalado e em uso em `menu-da-conta.jsx`.
+
+**Estrutura da lista:** `À vista` · separador · `2x` a `12x` (roláveis, `max-h` ~170px) · separador · `Outro…`.
+
+**O total por opção** vem de `valorCentavos * n`, o mesmo cálculo que a legenda já faz. Com valor zero, a lista mostra só o número de parcelas — evitar `R$ 0,00` repetido onze vezes.
+
+**"Outro…"** troca o conteúdo do menu por um campo numérico com botão de confirmar, sem fechar o dropdown. Ao confirmar, o gatilho passa a exibir `18x`. Voltar ao à vista é reabrir e escolher "À vista", que fica no topo, fora da área rolável — por isso ele está separado do bloco de 2x a 12x.
+
+### 22.3 O que sai e o que fica em `/lancamento`
+
+Saem `BOTAO_PARCELA` e `ajustarParcelas`. `numeroParcelas` no estado, `podeParcelar`, `ehParcelado`, o rótulo alternado e a legenda do total **continuam iguais** — a mudança é de controle, não de regra. Nenhuma Server Action é tocada: `criarTransacaoParcelada` recebe o mesmo `numeroParcelas` de sempre.

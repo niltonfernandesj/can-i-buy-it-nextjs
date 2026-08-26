@@ -938,6 +938,52 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ---
 
+### M35 — Parcelamento com controle fundido ao Valor
+
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.15, Design §22.
+
+**Mock normativo:** https://claude.ai/code/artifact/a2c1a106-f737-4d78-b041-dfd457e488fe
+Traz os **seis estados** (repouso, parcelado, foco, aberto, "Outro", valor longo), uma tabela de **medidas** com as classes exatas, e as **regras** da interface. Quem implementar deve abrir o mock antes de escrever CSS — ele é a fonte, não este texto.
+
+Nasce de feedback de uso real: lançar saída parcelada no crédito é pouco intuitivo. Substitui o stepper `− 1x +` da Task 85 (M22) por um dropdown fundido ao campo, com **"À vista"** como rótulo padrão.
+
+**Nenhuma Server Action é tocada** e nenhuma regra muda — `criarTransacaoParcelada` recebe o mesmo `numeroParcelas` de sempre. É mudança de controle, não de comportamento.
+
+---
+
+**Task 123. `CampoValor` troca `extra` por `prefixo`**
+⬜ **A implementar**
+
+`components/campo-valor.jsx`. Design §22.1.
+
+Separada da 124 porque `CampoValor` é usado em **9 lugares** e as outras 8 telas não podem regredir — é a task de risco do marco, e o risco é de regressão silenciosa, não de bug visível.
+
+- `extra` (slot absoluto dentro do campo, com `pr-24` no input) **sai**; `prefixo` (irmão flex, `flex-none`, `border-r border-input`) entra. Só `/lancamento` passava `extra`, então não fica consumidor órfão.
+- O contêiner vira `flex h-9 rounded-md border border-input overflow-hidden`, e o input perde borda e anel próprios (`border-0 focus-visible:ring-0`).
+- **O anel de foco sobe para o contêiner** via `focus-within:ring-1 ring-ring`. Sem isso o anel envolve só a metade direita e a costura quebra.
+- Sem `prefixo`, renderiza **idêntico a hoje**.
+
+*(Checkpoint: QA de interface nas telas que usam `CampoValor` **sem** prefixo — `/valores-padrao`, `/projecao` e o modal de edição de `/transacoes` bastam como amostra. Medir `boundingBox()` do campo antes e depois: altura, largura e posição não podem mudar. Conferir que o anel de foco aparece ao focar o input.)*
+
+---
+
+**Task 124. Dropdown de parcelas com "À vista"**
+⬜ **A implementar**
+
+`app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.15, Design §22.2 e §22.3.
+
+Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lançar acima de 12x entre um commit e outro — hoje o stepper vai até 99.
+
+- `DropdownMenu`, **não `Select`** — o typeahead e o `Esc` do `Select` brigam com o campo livre de "Outro". O QA da Task 112 já esbarrou nisso.
+- Lista: `À vista` · separador · `2x` a `12x` roláveis · separador · `Outro…`. "À vista" fora da área rolável, para o caminho de volta ser sempre alcançável.
+- Cada opção mostra **o total da compra** naquele número de vezes (`valorCentavos * n`). Com valor zero, só o número de parcelas.
+- **O gatilho nunca exibe `1x`** — é "À vista". É o ponto da mudança.
+- Saem `BOTAO_PARCELA` e `ajustarParcelas`. Rótulo alternado, legenda do total, `numeroParcelas`, `podeParcelar` e `ehParcelado` ficam **como estão**.
+
+*(Checkpoint: QA de interface nos dois viewports, conferindo contra o mock. O gatilho diz "À vista" em repouso e "12x" após escolher; o rótulo vira "Valor da parcela" e a legenda mostra o total; "Outro" aceita 18 e o gatilho passa a "18x"; escolher "À vista" volta o rótulo para "Valor" e some a legenda. No banco: uma compra 12x cria 12 parcelas com o mesmo `numeroParcelas` de antes — a prova de que nenhuma regra mudou. Medir a 390px que o grupo não estoura a largura com um valor de cinco dígitos.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -970,3 +1016,4 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 | M26 | Requisitos não funcionais — instalação na tela inicial do iPhone (spec-01 §4), sem offline e sem push |
 | M27 | Escopo item 2 revisado — estorno no crédito (spec-01 §3.11), com os ajustes decorrentes na Visão mensal (§3.1), na tabela de transações (§3.3) e na regra do teto de despesa padrão no crédito (§3.5) |
 | M28 | Escopo item 13 revisado — percentual do disponível em relação às Entradas, na Projeção (spec-01 §3.12) |
+| M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
