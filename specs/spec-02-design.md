@@ -1981,7 +1981,11 @@ fator = Π [ (1 + taxa_do_dia) × (1 + spread)^(1/252) ]
 
 **O corte é `min(último dia publicado, vencimento)`** — vencido não rende (Requisitos §3.16.3).
 
-**Dias contados:** os dias úteis com `data > dataAquisicao` e `data <= corte`. A aquisição não rende no próprio dia. É uma aproximação de ±1 dia em relação à convenção da corretora, e está registrada aqui de propósito: quem comparar com o extrato vai encontrar centavos de diferença, e é melhor saber por quê.
+**Dias contados:** os dias úteis com `data >= dataAquisicao` e `data <= corte`.
+
+**A aquisição rende no próprio dia** — corrigido na Task 130, contra o extrato real. A versão original excluía o dia da compra e chamava isso de "aproximação de ±1 dia"; não era aproximação, era erro. Conferido contra a corretora numa posição de 87 dias úteis: com o dia da aquisição incluído o app devolve **R$ 5.251,92** e o extrato diz **R$ 5.251,92** — diferença de zero. Sem ele, R$ 3,04 a menos.
+
+**A ponta do vencimento continua não verificada.** A convenção de mercado costuma contar da aplicação (inclusive) até o vencimento (exclusive), o que seria `data < vencimento` em vez de `<=`. A diferença só aparece numa posição já vencida, e nenhuma das reais venceu ainda — quando a primeira vencer, vale conferir contra o valor de resgate antes de mudar.
 
 ### 23.4 O que muda na tela
 

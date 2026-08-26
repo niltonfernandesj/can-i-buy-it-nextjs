@@ -1164,7 +1164,9 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 
 ### M30 — Rendimento pós-fixado: integração com o Banco Central ✅
 
-**Status:** ✅ **concluído.** Requisitos §3.16, Design §23 e as quatro tasks abaixo, todas commitadas.
+**Status:** ✅ **concluído.** Requisitos §3.16, Design §23 e as tasks abaixo, todas commitadas.
+
+**Task 130 acrescentada depois**, quando o usuário comparou com o extrato da corretora e a diferença apareceu.
 
 Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado: %CDI, %Selic, CDI+ e Selic+.
 
@@ -1236,6 +1238,21 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 - Pré-fixado e IPCA+ seguem no custo, **sem marcação** (decisão do usuário, Requisitos §3.16.5).
 
 *(Checkpoint: QA de interface + conferência de número. Um ativo pós-fixado conhecido tem seu valor corrigido conferido contra o cálculo feito à parte; a soma das linhas bate com o total do grupo e com o patrimônio. **Asserção explícita de que o Disponível da Visão mensal não mudou** — rendimento não é caixa, e é a decisão mais fácil de quebrar sem perceber.)*
+
+---
+
+**Task 130. O dia da aquisição rende**
+✅ **Concluída** — commit `(este)`
+
+`lib/rendimento.js`. Design §23.3.
+
+**Achado contra o extrato real**, não em teste sintético. A Task 126 excluía o dia da compra e o Design chamava isso de "aproximação de ±1 dia". Não era: numa posição de 87 dias úteis, o app dizia R$ 5.248,88 e a corretora, R$ 5.251,92.
+
+- `taxasAplicaveis` passa de `t.dia > dataAquisicao` para `t.dia >= dataAquisicao`.
+- Efeito medido nas posições reais: +R$ 3,05, +R$ 2,35, +R$ 5,68 e +R$ 0,01. Uma posição adquirida num domingo não muda — não há taxa naquele dia, e a regra lida com isso sozinha.
+- **A ponta do vencimento não muda.** A convenção de mercado sugere `< vencimento`, mas nenhuma posição real venceu ainda para conferir. Fica registrado no Design como não verificado.
+
+*(Checkpoint: teste unitário — o dia da aquisição passa a contar, e uma aquisição em dia sem taxa continua rendendo zero naquele dia. Reconferir na tela que a posição do Topázio mostra R$ 5.251,92, o número do extrato.)*
 
 ---
 
