@@ -532,6 +532,46 @@ Duas coisas somem sem precisar de solução:
 
 > **Superado pelo M34 (§3.14).** O vínculo continua existindo, mas não na tela de lançamento: resgate passa a ser lançado em `/investimentos`. O problema que esta seção resolveu — o saldo em conta que só cresce — segue resolvido, por outra porta.
 
+### 3.16 Especificação — Rendimento pós-fixado (M30)
+
+Primeira integração externa do projeto. Até aqui, um ativo vivo vale o que custou; a partir daqui, o pós-fixado vale **o que rendeu**.
+
+#### 3.16.1 A fonte
+
+Séries do **Banco Central (SGS)**: **12** para o CDI e **11** para a Selic, ambas em **% ao dia**. Três características medidas contra a API em 26/08/2026, e que moldam o resto:
+
+- **Só dias úteis.** Fim de semana e feriado não aparecem na série. Não é preciso manter calendário de feriados: o rendimento é o produtório dos fatores que a série devolver.
+- **A série atrasa.** No dia 26/08 o último ponto publicado era 25/08. **O rendimento nunca está "em hoje"** — é sempre até o último dia útil publicado.
+- **Intervalo sem dia útil devolve 404**, não lista vazia. Pedir um fim de semana é indistinguível, pelo status, de erro real.
+
+Velocidade: um ano custa 0,15s e 11KB; cinco anos custam 7,7s. A busca é **por série, não por ativo** — todas as posições em %CDI leem a mesma série.
+
+#### 3.16.2 O que a tela passa a mostrar
+
+**O valor corrigido substitui o custo em todo lugar:** na coluna de saldo bruto de cada posição, no total de cada grupo, no investido de cada conta e no patrimônio. Os percentuais de composição passam a ser calculados sobre valores corrigidos.
+
+Consequência aceita: **o patrimônio passa a subir sozinho**, sem lançamento nenhum. É o comportamento esperado de uma carteira.
+
+**Uma linha discreta diz até quando o valor vale** — "Rendimento até 25/08". Sem ela, um número parado por três dias num feriado prolongado parece travado.
+
+**O rendimento não é dinheiro em caixa.** Não entra em Entradas, não muda o Disponível, não aparece na Visão mensal nem na Projeção. Só vira caixa na liquidação, que já é uma operação com valor informado.
+
+#### 3.16.3 Ativo vencido não rende
+
+Já decidido no M29 e agora com efeito: o vencido **continua contando no saldo**, mas a correção **para na data de vencimento**. Um título que venceu há dois meses vale hoje o que valia no dia em que venceu.
+
+#### 3.16.4 Quando o Banco Central não responde
+
+As séries passadas **nunca mudam**, então ficam guardadas no banco e só o intervalo que falta é buscado. Com isso, a indisponibilidade do BC deixa de ser um caso especial: o cálculo roda com o que a tabela já tem, e a linha "Rendimento até…" simplesmente mostra uma data mais antiga.
+
+Não existe "último resultado salvo" — o resultado é derivado da série, que é o que se guarda. Um mecanismo só cobre o cache, o comportamento em falha e a data exibida.
+
+#### 3.16.5 Pré-fixado e IPCA+ continuam sem rendimento
+
+Só o pós-fixado rende no M30. Uma posição pré-fixada ou IPCA+ continua mostrando o valor de aquisição, **sem marcação nenhuma** (decisão do usuário).
+
+Limitação conhecida e aceita: com posições dos dois tipos na mesma tabela, uma rendendo e outra não, a diferença pode ser lida como defeito. Resolve-se sozinha no M31.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

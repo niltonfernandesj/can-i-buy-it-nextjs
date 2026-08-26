@@ -1162,19 +1162,77 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 
 ---
 
-### M30 — Rendimento pós-fixado: integração com o Banco Central (planejado)
+### M30 — Rendimento pós-fixado: integração com o Banco Central
 
-**Status:** escopo acordado; tasks **a escrever**. Depende do M29.
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.16, Design §23.
 
-Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado: %CDI, %Selic,
-CDI+ e Selic+.
+Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado: %CDI, %Selic, CDI+ e Selic+.
 
-- Séries SGS: **12** (CDI) e **11** (Selic), ambas em **% ao dia**.
-- **Achado que reduz o risco, verificado contra a API em 2026-08-25:** a série já vem **só com dias úteis** — fim de semana e feriado simplesmente não aparecem. Não será preciso manter tabela de feriados ANBIMA; o rendimento é o produtório dos fatores que a série devolver.
-- Séries passadas nunca mudam, então cabe guardá-las no banco e buscar só o que falta.
+**Medido contra a API em 26/08/2026**, e é o que molda o desenho: a série traz **só dias úteis** (sem necessidade de calendário de feriados), **atrasa pelo menos um dia** (o rendimento nunca está "em hoje"), e devolve **404 para intervalo sem dia útil** — que é sucesso com zero linhas, não erro. Um ano custa 0,15s; cinco anos, 7,7s.
 
-A decidir na spec: o que a tela mostra quando o BC não responde (valor de custo, último
-cálculo conhecido, ou erro), e onde o cálculo roda (a cada leitura, com cache, ou um job).
+**As três decisões que estavam em aberto foram resolvidas por um mecanismo só.** Guardar a série no banco cobre o cache, o comportamento quando o BC cai (calcula com o que há) e a data exibida (fica mais antiga sozinha). Não existe "último resultado salvo" — o resultado é derivado da série, e é a série que se guarda.
+
+**Ordem:** a Task 126 é pura e não depende de nada. Vai primeiro de propósito — é a matemática do marco, e prová-la isolada antes de haver schema, rede ou tela é o que impede um erro de fórmula de se esconder atrás de um bug de integração.
+
+---
+
+**Task 126. O cálculo do rendimento, puro**
+⬜ **A implementar**
+
+`lib/rendimento.js` e `lib/rendimento.test.js`. Requisitos §3.16, Design §23.3.
+
+Sem `db` e sem `fetch`: recebe a lista de taxas já carregada. Mesmo desenho de `lib/fatura.js`.
+
+- Produtório com a **convenção ANBIMA**: `Π (1 + taxa_do_dia × percentual)`, e **não** `(1 + taxa)^percentual`.
+- Spread proporcional a 252 dias úteis: `Π [ (1 + taxa) × (1 + spread)^(1/252) ]`.
+- Base é **`baseAtual(ativo)`**, não `valorAquisicao` — o remanescente da última liquidação.
+- Corte em **`min(último dia publicado, vencimento)`**: vencido não rende.
+- Conta os dias com `data > dataAquisicao` e `data <= corte`.
+
+*(Checkpoint: só teste unitário — não há UI. Casos: um dia; um ano contra número conferido à mão; percentual de 100% batendo com o CDI puro; vencimento no meio da série truncando o resultado; ativo adquirido depois do último dia publicado rendendo zero; e lista de taxas vazia devolvendo a base intacta, que é o caminho de quando o BC nunca respondeu.)*
+
+---
+
+**Task 127. Tabela das séries do Banco Central**
+⬜ **A implementar**
+
+`prisma/schema.prisma` e migration. Design §23.1.
+
+- Enum `SerieBC` com `CDI`, `SELIC` e `IPCA` — o IPCA entra agora e só é usado no M31; acrescentar valor a enum depois custa outra migration.
+- `TaxaDiaria` com **chave composta `@@id([serie, data])`** — o par é a identidade, e a PK dá de graça a garantia de não duplicar um dia.
+- **Sem `usuarioId`:** taxa de mercado é dado público. É a primeira tabela do projeto que não pertence a ninguém, e isso é deliberado.
+- `@db.Date`, não `DateTime` cheio — a série tem granularidade de dia, e guardar hora convidaria o bug de fuso.
+
+*(Checkpoint: sem UI, sem Playwright. Conferir no banco que a PK composta existe e recusa duplicata, e que a coluna é `date`.)*
+
+---
+
+**Task 128. Cliente do BC e sincronização de lacunas**
+⬜ **A implementar**
+
+`lib/bc.js` e `lib/actions/investimentos.js`. Design §23.2.
+
+- Busca por intervalo, com **timeout**, parseando as duas armadilhas: data em `dd/MM/yyyy` (não ISO) e valor em **string**.
+- **404 é sucesso com zero linhas.** Tratar como erro quebraria a tela todo sábado.
+- Qualquer outra falha **não propaga**: registra e segue com o que a tabela tem.
+- Sincroniza as **duas bordas** — o que falta no fim e o que falta no começo —, sem assumir que o guardado é contíguo.
+- Janela: da aquisição mais antiga entre as posições vivas até hoje.
+
+*(Checkpoint: teste do parse e do 404 com resposta simulada. Contra a API real, uma vez: sincronizar, conferir as linhas no banco, e **sincronizar de novo conferindo que a segunda chamada não busca nada** — é o que prova que o "só o que falta" funciona. Simular falha apontando para host inválido e verificar que a página ainda renderiza.)*
+
+---
+
+**Task 129. A tela mostra o valor corrigido**
+⬜ **A implementar**
+
+`app/(protegido)/investimentos/`. Requisitos §3.16.2, Design §23.4.
+
+- O corrigido substitui o custo em **quatro lugares**: coluna de saldo bruto, total do grupo, investido da conta e patrimônio. Percentuais passam a ser sobre corrigidos.
+- Linha **"Rendimento até DD/MM"**, com a maior data presente na tabela.
+- `saldoEmConta` **não muda** — caixa é caixa. Só `saldoInvestido` passa a somar corrigido.
+- Pré-fixado e IPCA+ seguem no custo, **sem marcação** (decisão do usuário, Requisitos §3.16.5).
+
+*(Checkpoint: QA de interface + conferência de número. Um ativo pós-fixado conhecido tem seu valor corrigido conferido contra o cálculo feito à parte; a soma das linhas bate com o total do grupo e com o patrimônio; a linha de data aparece. **Asserção explícita de que o Disponível da Visão mensal não mudou** — rendimento não é caixa, e é a decisão mais fácil de quebrar sem perceber.)*
 
 ---
 
@@ -1411,7 +1469,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M27 | Escopo item 2 revisado — estorno no crédito (spec-01 §3.11), com os ajustes decorrentes na Visão mensal (§3.1), na tabela de transações (§3.3) e na regra do teto de despesa padrão no crédito (§3.5) |
 | M28 | Escopo item 13 revisado — percentual do disponível em relação às Entradas, na Projeção (spec-01 §3.12) |
 | M29 | *(planejado)* Detalhamento de investimentos — ativos, saldo em conta e saldo investido. Seção de Requisitos ainda a escrever |
-| M30 | *(planejado)* Rendimento pós-fixado via séries do Banco Central. Seção de Requisitos ainda a escrever |
+| M30 | Escopo item 14 revisado — rendimento pós-fixado das posições, via séries do Banco Central (spec-01 §3.16). Primeira integração externa do projeto |
 | M31 | *(planejado)* Rendimento pré-fixado e IPCA+. Seção de Requisitos ainda a escrever |
 | M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
 | M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |

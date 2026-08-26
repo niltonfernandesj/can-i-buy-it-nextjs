@@ -1892,3 +1892,82 @@ O `extra` de hoje é um **slot absoluto dentro** do campo (`absolute right-1.5 t
 ### 22.3 O que sai e o que fica em `/lancamento`
 
 Saem `BOTAO_PARCELA` e `ajustarParcelas`. `numeroParcelas` no estado, `podeParcelar`, `ehParcelado`, o rótulo alternado e a legenda do total **continuam iguais** — a mudança é de controle, não de regra. Nenhuma Server Action é tocada: `criarTransacaoParcelada` recebe o mesmo `numeroParcelas` de sempre.
+
+---
+
+## 23. Rendimento pós-fixado (M30)
+
+Requisitos §3.16. Primeira chamada externa do projeto.
+
+### 23.1 A tabela de séries
+
+```prisma
+enum SerieBC {
+  CDI     // SGS 12
+  SELIC   // SGS 11
+  IPCA    // SGS 433 — cabe no enum desde já; só é usada no M31
+}
+
+model TaxaDiaria {
+  serie SerieBC
+  data  DateTime @db.Date
+  valor Decimal  // % ao dia, exatamente como o BC devolve
+
+  @@id([serie, data])
+}
+```
+
+**Sem `usuarioId`.** Taxa de mercado é dado público e compartilhado — é a primeira tabela do projeto que não pertence a ninguém. Chave composta em vez de `id` próprio: o par série+data **é** a identidade, e a PK composta dá de graça a garantia de não duplicar um dia.
+
+`@db.Date` e não `DateTime` cheio: a série tem granularidade de dia, e guardar hora convidaria o bug de fuso que `paraDataLocal` existe para evitar.
+
+### 23.2 Buscar só o que falta
+
+A janela necessária vai da **aquisição mais antiga entre as posições vivas** até hoje.
+
+Duas bordas, não uma:
+
+```
+faltaNoFim    = [max(data guardada) + 1 dia, hoje]
+faltaNoComeço = [início necessário, min(data guardada) − 1 dia]
+```
+
+Cobrir as duas evita assumir que o que está guardado é contíguo — e é o que acontece de verdade quando uma posição antiga é cadastrada depois de a tabela já ter os dias recentes.
+
+**404 é sucesso com zero linhas.** Um intervalo sem dia útil — um fim de semana, ou "do último dia guardado até hoje" quando não há nada novo — devolve `404` com corpo `{"erro": ...}`. Tratar como erro faria a tela quebrar todo sábado. Qualquer outro status, timeout ou corpo ilegível é falha de verdade: **registra e segue com o que a tabela tem**, nunca propaga exceção para a página.
+
+O parse tem duas armadilhas: a data vem `dd/MM/yyyy` (não ISO) e o valor vem **string** (`"0.051660"`), não número.
+
+### 23.3 O cálculo, e por que ele é puro
+
+`lib/rendimento.js`, sem `db` e sem `fetch` — recebe a lista de taxas já carregada. É o mesmo desenho de `lib/fatura.js` e `lib/investimentos.js`, e é o que permite testar a matemática sem banco nem rede.
+
+**Convenção do mercado (ANBIMA)** para percentual do índice:
+
+```
+fator = Π (1 + taxa_do_dia × percentual)
+```
+
+Não `(1 + taxa)^percentual`. Medido contra a série real: a diferença entre as duas é de **R$ 0,05 em R$ 10.000 num ano** — irrelevante no valor, mas a primeira é a do mercado e é a que se pode conferir contra o extrato da corretora.
+
+**Spread (CDI+ / Selic+)** é proporcional a 252 dias úteis:
+
+```
+fator = Π [ (1 + taxa_do_dia) × (1 + spread)^(1/252) ]
+```
+
+**A base é `baseAtual(ativo)`**, não `valorAquisicao` — o remanescente da última liquidação, que já existe desde o M29 e é o que torna o M33 possível sem refazer nada.
+
+**O corte é `min(último dia publicado, vencimento)`** — vencido não rende (Requisitos §3.16.3).
+
+**Dias contados:** os dias úteis com `data > dataAquisicao` e `data <= corte`. A aquisição não rende no próprio dia. É uma aproximação de ±1 dia em relação à convenção da corretora, e está registrada aqui de propósito: quem comparar com o extrato vai encontrar centavos de diferença, e é melhor saber por quê.
+
+### 23.4 O que muda na tela
+
+O valor corrigido substitui o custo em **quatro lugares** — a coluna de saldo bruto, o total de cada grupo, o investido de cada conta e o patrimônio. Os percentuais passam a ser sobre valores corrigidos.
+
+`saldoEmConta` **não muda**: caixa é caixa, e rendimento não realizado não é caixa. Só `saldoInvestido` passa a somar valor corrigido em vez de `baseAtual`.
+
+A linha "Rendimento até DD/MM" fica junto do detalhamento e mostra a **maior data presente na tabela** — que é mais antiga automaticamente quando o BC falhou.
+
+**Nada disso toca `comporMes`, a consolidação ou a Projeção.** Rendimento não realizado não é transação.
