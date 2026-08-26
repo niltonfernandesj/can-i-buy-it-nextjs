@@ -990,7 +990,7 @@ Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas oper
 ---
 
 **Task 106. Navegação: quarta aba e rótulos por breakpoint**
-✅ **Concluída** — commit `3d488da`
+✅ **Concluída** — commit `290eb93`
 
 `components/navegacao/navegacao-principal.jsx`, `components/navegacao/abas-dados.jsx` e uma rota `/investimentos` mínima. Design §20.5, Requisitos §3.13.4.
 
@@ -1004,7 +1004,7 @@ Primeira fatia: o ativo passa a existir, os dois saldos aparecem, e as duas oper
 ---
 
 **Task 107. Schema: enums, o modelo Ativo e os movimentos**
-✅ **Concluída** — commit `e7594b7`
+✅ **Concluída** — commit `faafe7c`
 
 `prisma/schema.prisma` e migration. Design §20.1. Sem UI.
 
@@ -1023,7 +1023,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 108. Cálculo de saldos e agrupamento**
-✅ **Concluída** — commit `af06907`
+✅ **Concluída** — commit `c9eeeb6`
 
 `lib/investimentos.js` e `lib/investimentos.test.js`, ambos novos. Design §20.2. Sem UI.
 
@@ -1040,7 +1040,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 109. Rota `/investimentos`: resumo e disponível para investir**
-✅ **Concluída** — commit `5b09a4c`
+✅ **Concluída** — commit `8169ab7`
 
 `app/(protegido)/investimentos/`. Requisitos §3.13.3, Design §20.3.
 
@@ -1053,7 +1053,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 110. Detalhamento agrupado por estratégia ou mercado**
-✅ **Concluída** — commit `98faaaa`
+✅ **Concluída** — commit `0d308ee`
 
 `investimentos-client.jsx`. Requisitos §3.13.3, Design §20.3.
 
@@ -1068,7 +1068,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 111. Compra de ativo**
-✅ **Concluída** — commit `f6b3e2f`
+✅ **Concluída** — commit `a95966b`
 
 `lib/actions/investimentos.js` e o formulário. Requisitos §3.13.1 e §3.13.2, Design §20.4.
 
@@ -1078,12 +1078,12 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 
 *(Checkpoint: QA de interface + confirmação no banco. Comprar debita o saldo em conta e credita o investido; uma compra acima do saldo é recusada com mensagem; e **nenhuma linha nova aparece em `/transacoes`** nem muda o Disponível do mês — asserção explícita, é a decisão mais fácil de quebrar sem perceber.)*
 
-> **Renomeada depois (fora de SDD).** O vocabulário desta ação passou de "comprar" para "registrar": o ativo já foi comprado na corretora, e o app apenas registra o fato. `criarAtivo` → `registrarAtivo`, `ComprarAtivo` → `RegistrarAtivo`, `comprar-ativo.jsx` → `registrar-ativo.jsx`, e o botão/modal viraram "Registrar ativo". O texto acima fica como está por ser o registro do que foi entregue no commit `f6b3e2f`; Requisitos §3.13 e Design §20 já falam o vocabulário novo.
+> **Renomeada depois (fora de SDD).** O vocabulário desta ação passou de "comprar" para "registrar": o ativo já foi comprado na corretora, e o app apenas registra o fato. `criarAtivo` → `registrarAtivo`, `ComprarAtivo` → `RegistrarAtivo`, `comprar-ativo.jsx` → `registrar-ativo.jsx`, e o botão/modal viraram "Registrar ativo". O texto acima fica como está por ser o registro do que foi entregue no commit `a95966b`; Requisitos §3.13 e Design §20 já falam o vocabulário novo.
 
 ---
 
 **Task 112. Liquidação**
-✅ **Concluída** — commit `583f30c`
+✅ **Concluída** — commit `950f0bd`
 
 `liquidarAtivo` e o formulário. Requisitos §3.13.2, Design §20.4.
 
@@ -1096,7 +1096,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 113. Registrar movimento avulso**
-✅ **Concluída** — commit `f7e3a76`
+✅ **Concluída** — commit `3d0af18`
 
 `lib/actions/investimentos.js`, o `DropdownMenu` na linha da conta e o formulário. Requisitos §3.13.3, Design §20.3 e §20.4.
 
@@ -1110,7 +1110,7 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 ---
 
 **Task 114. Resgate volta a vincular a conta de investimento**
-✅ **Concluída** — commit `f94a33e`
+✅ **Concluída** — commit `4eb00c0`
 
 `app/(protegido)/lancamento/lancamento-client.jsx` e `lib/actions/transacoes.js`. Requisitos §3.13.5.
 
@@ -1123,7 +1123,7 @@ Reabre a superfície removida na Task 86: uma entrada marcada como resgate volta
 #### Tasks de revisão (M29 reaberto)
 
 **Task 115. Título "Carteira" acima do detalhamento**
-✅ **Concluída** — commit `f55b45d`
+✅ **Concluída** — commit `61abefa`
 
 `app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.13.4, Design §20.3.
 
@@ -1213,7 +1213,7 @@ A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra
 ---
 
 **Task 116. `categoriaId` opcional na transação**
-✅ **Concluída** — commit `c34d1b7`
+✅ **Concluída** — commit `2ba6620`
 
 `prisma/schema.prisma`, migration e `lib/actions/transacoes.js`. Requisitos §3.14.2, Design §21.2.
 
@@ -1225,7 +1225,7 @@ A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra
 ---
 
 **Task 117. Categoria nula na leitura**
-✅ **Concluída** — commit `d9c3771`
+✅ **Concluída** — commit `1680b73`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Design §21.2.
 
@@ -1240,7 +1240,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 118. Aportar em Investimentos**
-✅ **Concluída** — commit `008beee`
+✅ **Concluída** — commit `239a161`
 
 `lib/actions/investimentos.js` e um formulário novo. Requisitos §3.14.3, Design §21.3.
 
@@ -1253,7 +1253,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 119. Resgatar em Investimentos**
-✅ **Concluída** — commit `f719841`
+✅ **Concluída** — commit `2499e7c`
 
 `lib/actions/investimentos.js` e formulário. Requisitos §3.14.3, Design §21.3.
 
@@ -1265,7 +1265,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 120. Card "Contas de investimento"**
-✅ **Concluída** — commit `8ff204c`
+✅ **Concluída** — commit `dc26c21`
 
 `app/(protegido)/investimentos/page.jsx`. Requisitos §3.14.4, Design §21.4.
 
@@ -1281,7 +1281,7 @@ Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele
 ---
 
 **Task 121. Lançamento perde o Tipo Investimento e o resgate**
-✅ **Concluída** — commit `c8aa00b`
+✅ **Concluída** — commit `da81fb8`
 
 `app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.14.6, Design §21.5. **Reverte a Task 114** e o Tipo criado na Task 86.
 
@@ -1294,7 +1294,7 @@ Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele
 ---
 
 **Task 122. Transações perde o checkbox "É investimento"**
-✅ **Concluída** — commit `f64560a`
+✅ **Concluída** — commit `e47265c`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Requisitos §3.14.5, Design §21.6.
 
@@ -1316,6 +1316,8 @@ Traz os **seis estados** (repouso, parcelado, foco, aberto, "Outro", valor longo
 Nasce de feedback de uso real: lançar saída parcelada no crédito é pouco intuitivo. Substitui o stepper `− 1x +` da Task 85 (M22) por um dropdown fundido ao campo, com **"À vista"** como rótulo padrão.
 
 **Nenhuma Server Action é tocada** e nenhuma regra muda — `criarTransacaoParcelada` recebe o mesmo `numeroParcelas` de sempre. É mudança de controle, não de comportamento.
+
+> **Reordenação do histórico (26/08/2026).** Este marco foi construído numa branch a partir de `56b4d2c` — o commit que fecha o M28 — para poder ir a produção **antes** do M29. Os 27 commits de M29 e M34 foram então rebaseados por cima dele, o que **reescreveu todos os seus hashes**: a Task 106, por exemplo, era `3d488da` e passou a ser `290eb93`. Os hashes registrados nas tasks acima já apontam para os commits novos. Se você encontrar um hash de sete dígitos que o `git show` não resolve, ele é de antes desta reordenação.
 
 ---
 
