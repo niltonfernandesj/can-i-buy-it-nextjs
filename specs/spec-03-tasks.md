@@ -1170,7 +1170,9 @@ Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado:
 
 **Medido contra a API em 26/08/2026**, e é o que molda o desenho: a série traz **só dias úteis** (sem necessidade de calendário de feriados), **atrasa pelo menos um dia** (o rendimento nunca está "em hoje"), e devolve **404 para intervalo sem dia útil** — que é sucesso com zero linhas, não erro. Um ano custa 0,15s; cinco anos, 7,7s.
 
-**As três decisões que estavam em aberto foram resolvidas por um mecanismo só.** Guardar a série no banco cobre o cache, o comportamento quando o BC cai (calcula com o que há) e a data exibida (fica mais antiga sozinha). Não existe "último resultado salvo" — o resultado é derivado da série, e é a série que se guarda.
+**As decisões que estavam em aberto foram resolvidas por um mecanismo só.** Guardar a série no banco cobre o cache e o comportamento quando o BC cai — o cálculo roda com o que há. Não existe "último resultado salvo": o resultado é derivado da série, e é a série que se guarda.
+
+**A tela não mostra até quando o valor vale** (decisão revista pelo usuário depois de a versão com rótulo ter sido aprovada). Limitação aceita: com o BC fora do ar, o número para de subir em silêncio.
 
 **Ordem:** a Task 126 é pura e não depende de nada. Vai primeiro de propósito — é a matemática do marco, e prová-la isolada antes de haver schema, rede ou tela é o que impede um erro de fórmula de se esconder atrás de um bug de integração.
 
@@ -1193,12 +1195,14 @@ Sem `db` e sem `fetch`: recebe a lista de taxas já carregada. Mesmo desenho de 
 
 ---
 
-**Task 127. Tabela das séries do Banco Central**
+**Task 127. Tabela da série diária**
 ⬜ **A implementar**
 
 `prisma/schema.prisma` e migration. Design §23.1.
 
-- Enum `SerieBC` com `CDI`, `SELIC` e `IPCA` — o IPCA entra agora e só é usado no M31; acrescentar valor a enum depois custa outra migration.
+Revisão feita a pedido do usuário antes de implementar: o levantamento dos seis indexadores mostrou que **o IPCA não cabe na mesma tabela** que CDI e Selic — mensal contra diário, % ao mês contra % ao dia, dois meses de atraso contra um dia. São **duas tabelas**, e o M30 só precisa da diária.
+
+- Enum `SerieDiaria` com **apenas `CDI` e `SELIC`**. O IPCA não entra aqui: ele vai para `IndiceMensal` no M31, cuja forma já está desenhada no Design §23.1 para o marco seguinte não reabrir a discussão.
 - `TaxaDiaria` com **chave composta `@@id([serie, data])`** — o par é a identidade, e a PK dá de graça a garantia de não duplicar um dia.
 - **Sem `usuarioId`:** taxa de mercado é dado público. É a primeira tabela do projeto que não pertence a ninguém, e isso é deliberado.
 - `@db.Date`, não `DateTime` cheio — a série tem granularidade de dia, e guardar hora convidaria o bug de fuso.
@@ -1228,11 +1232,10 @@ Sem `db` e sem `fetch`: recebe a lista de taxas já carregada. Mesmo desenho de 
 `app/(protegido)/investimentos/`. Requisitos §3.16.2, Design §23.4.
 
 - O corrigido substitui o custo em **quatro lugares**: coluna de saldo bruto, total do grupo, investido da conta e patrimônio. Percentuais passam a ser sobre corrigidos.
-- Linha **"Rendimento até DD/MM"**, com a maior data presente na tabela.
 - `saldoEmConta` **não muda** — caixa é caixa. Só `saldoInvestido` passa a somar corrigido.
 - Pré-fixado e IPCA+ seguem no custo, **sem marcação** (decisão do usuário, Requisitos §3.16.5).
 
-*(Checkpoint: QA de interface + conferência de número. Um ativo pós-fixado conhecido tem seu valor corrigido conferido contra o cálculo feito à parte; a soma das linhas bate com o total do grupo e com o patrimônio; a linha de data aparece. **Asserção explícita de que o Disponível da Visão mensal não mudou** — rendimento não é caixa, e é a decisão mais fácil de quebrar sem perceber.)*
+*(Checkpoint: QA de interface + conferência de número. Um ativo pós-fixado conhecido tem seu valor corrigido conferido contra o cálculo feito à parte; a soma das linhas bate com o total do grupo e com o patrimônio. **Asserção explícita de que o Disponível da Visão mensal não mudou** — rendimento não é caixa, e é a decisão mais fácil de quebrar sem perceber.)*
 
 ---
 

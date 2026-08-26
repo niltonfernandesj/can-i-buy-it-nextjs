@@ -536,9 +536,28 @@ Duas coisas somem sem precisar de solução:
 
 Primeira integração externa do projeto. Até aqui, um ativo vivo vale o que custou; a partir daqui, o pós-fixado vale **o que rendeu**.
 
-#### 3.16.1 A fonte
+#### 3.16.1 As séries de todos os indexadores
 
-Séries do **Banco Central (SGS)**: **12** para o CDI e **11** para a Selic, ambas em **% ao dia**. Três características medidas contra a API em 26/08/2026, e que moldam o resto:
+Levantamento dos **seis indexadores** do app, feito contra a API em 26/08/2026 — não só os deste marco, para o schema nascer reaproveitável:
+
+| Indexador | Série SGS | Frequência | Unidade | Marco |
+|---|---|---|---|---|
+| `PERCENTUAL_CDI`, `CDI_MAIS` | **12** | diária (dias úteis) | % ao dia | M30 |
+| `PERCENTUAL_SELIC`, `SELIC_MAIS` | **11** | diária (dias úteis) | % ao dia | M30 |
+| `IPCA_MAIS` | **433** | **mensal** | **% ao mês** | M31 |
+| `PREFIXADO` | — | não usa série | — | M31 |
+
+**O IPCA é incompatível com as diárias em três eixos**, e é por isso que não divide tabela com elas:
+
+1. **Frequência.** Vem uma vez por mês, datado no dia 1º do mês de referência.
+2. **Unidade.** `0.67` é 0,67% **ao mês**; `0.051660` do CDI é 0,0516% **ao dia**. Um produtório que misturasse as duas erraria por ordens de grandeza.
+3. **Atraso.** Em 26/08 o último IPCA publicado era o de **julho** — quase dois meses. O CDI atrasa um dia.
+
+**Pré-fixado não consulta nada** — é `(1 + taxa)^(dias úteis/252)`, calculado da própria taxa do papel.
+
+#### 3.16.2 A fonte no M30
+
+Séries **12** (CDI) e **11** (Selic), ambas em **% ao dia**. Três características que moldam o resto:
 
 - **Só dias úteis.** Fim de semana e feriado não aparecem na série. Não é preciso manter calendário de feriados: o rendimento é o produtório dos fatores que a série devolver.
 - **A série atrasa.** No dia 26/08 o último ponto publicado era 25/08. **O rendimento nunca está "em hoje"** — é sempre até o último dia útil publicado.
@@ -546,27 +565,27 @@ Séries do **Banco Central (SGS)**: **12** para o CDI e **11** para a Selic, amb
 
 Velocidade: um ano custa 0,15s e 11KB; cinco anos custam 7,7s. A busca é **por série, não por ativo** — todas as posições em %CDI leem a mesma série.
 
-#### 3.16.2 O que a tela passa a mostrar
+#### 3.16.3 O que a tela passa a mostrar
 
 **O valor corrigido substitui o custo em todo lugar:** na coluna de saldo bruto de cada posição, no total de cada grupo, no investido de cada conta e no patrimônio. Os percentuais de composição passam a ser calculados sobre valores corrigidos.
 
 Consequência aceita: **o patrimônio passa a subir sozinho**, sem lançamento nenhum. É o comportamento esperado de uma carteira.
 
-**Uma linha discreta diz até quando o valor vale** — "Rendimento até 25/08". Sem ela, um número parado por três dias num feriado prolongado parece travado.
-
 **O rendimento não é dinheiro em caixa.** Não entra em Entradas, não muda o Disponível, não aparece na Visão mensal nem na Projeção. Só vira caixa na liquidação, que já é uma operação com valor informado.
 
-#### 3.16.3 Ativo vencido não rende
+#### 3.16.4 Ativo vencido não rende
 
 Já decidido no M29 e agora com efeito: o vencido **continua contando no saldo**, mas a correção **para na data de vencimento**. Um título que venceu há dois meses vale hoje o que valia no dia em que venceu.
 
-#### 3.16.4 Quando o Banco Central não responde
+#### 3.16.5 Quando o Banco Central não responde
 
-As séries passadas **nunca mudam**, então ficam guardadas no banco e só o intervalo que falta é buscado. Com isso, a indisponibilidade do BC deixa de ser um caso especial: o cálculo roda com o que a tabela já tem, e a linha "Rendimento até…" simplesmente mostra uma data mais antiga.
+As séries passadas **nunca mudam**, então ficam guardadas no banco e só o intervalo que falta é buscado. Com isso, a indisponibilidade do BC deixa de ser um caso especial: o cálculo roda com o que a tabela já tem, e o valor exibido fica simplesmente mais antigo.
 
-Não existe "último resultado salvo" — o resultado é derivado da série, que é o que se guarda. Um mecanismo só cobre o cache, o comportamento em falha e a data exibida.
+Não existe "último resultado salvo" — o resultado é derivado da série, que é o que se guarda. Um mecanismo só cobre o cache e o comportamento em falha.
 
-#### 3.16.5 Pré-fixado e IPCA+ continuam sem rendimento
+**A tela não indica até quando o valor vale** (decisão do usuário, revista em 26/08/2026 depois de a versão com rótulo ter sido aprovada). Limitação conhecida e aceita: se o BC ficar fora do ar por vários dias, o número para de subir **em silêncio**, sem nada na tela explicando por quê. Também não se distingue disso um feriado prolongado, em que a série legitimamente não avança.
+
+#### 3.16.6 Pré-fixado e IPCA+ continuam sem rendimento
 
 Só o pós-fixado rende no M30. Uma posição pré-fixada ou IPCA+ continua mostrando o valor de aquisição, **sem marcação nenhuma** (decisão do usuário).
 

@@ -1899,27 +1899,46 @@ Saem `BOTAO_PARCELA` e `ajustarParcelas`. `numeroParcelas` no estado, `podeParce
 
 Requisitos §3.16. Primeira chamada externa do projeto.
 
-### 23.1 A tabela de séries
+### 23.1 Duas tabelas, não uma
+
+O levantamento dos seis indexadores (Requisitos §3.16.1) mostrou que o IPCA **não cabe** junto das séries diárias: frequência mensal, valor em % ao mês e quase dois meses de atraso. Uma tabela única exigiria que todo leitor soubesse ramificar pela série antes de interpretar o `valor` — e um produtório escrito distraidamente misturaria % ao dia com % ao mês, errando por ordens de grandeza sem estourar erro nenhum.
+
+**No M30, só a diária existe:**
 
 ```prisma
-enum SerieBC {
+enum SerieDiaria {
   CDI     // SGS 12
   SELIC   // SGS 11
-  IPCA    // SGS 433 — cabe no enum desde já; só é usada no M31
 }
 
 model TaxaDiaria {
-  serie SerieBC
+  serie SerieDiaria
   data  DateTime @db.Date
-  valor Decimal  // % ao dia, exatamente como o BC devolve
+  valor Decimal  // % ao DIA, exatamente como o BC devolve
 
   @@id([serie, data])
 }
 ```
 
-**Sem `usuarioId`.** Taxa de mercado é dado público e compartilhado — é a primeira tabela do projeto que não pertence a ninguém. Chave composta em vez de `id` próprio: o par série+data **é** a identidade, e a PK composta dá de graça a garantia de não duplicar um dia.
+**Sem `usuarioId`.** Taxa de mercado é dado público e compartilhado — é a primeira tabela do projeto que não pertence a ninguém. Chave composta em vez de `id` próprio: o par série+data **é** a identidade, e a PK dá de graça a garantia de não duplicar um dia.
 
 `@db.Date` e não `DateTime` cheio: a série tem granularidade de dia, e guardar hora convidaria o bug de fuso que `paraDataLocal` existe para evitar.
+
+**O IPCA ganha a sua no M31**, com a forma já decidida aqui para o marco seguinte não reabrir a discussão:
+
+```prisma
+model IndiceMensal {
+  serie SerieMensal   // IPCA (SGS 433); IGP-M caberia depois
+  mes   DateTime @db.Date  // sempre o dia 1º do mês de referência
+  valor Decimal            // % ao MÊS
+
+  @@id([serie, mes])
+}
+```
+
+O campo se chama `mes`, não `data`: o nome carrega a granularidade, e é o que impede alguém de tratá-lo como dia. **A lógica de sincronização é escrita uma vez** e parametrizada por tabela — o que difere entre as duas é o intervalo pedido e onde grava, não o algoritmo.
+
+**Nota para o M31:** Tesouro IPCA+ no mercado usa VNA com projeção de IPCA-15 para o mês corrente. Aplicar só os meses fechados é aproximação deliberada, e precisa ser decidida explicitamente lá — não herdada em silêncio daqui.
 
 ### 23.2 Buscar só o que falta
 
@@ -1968,6 +1987,6 @@ O valor corrigido substitui o custo em **quatro lugares** — a coluna de saldo 
 
 `saldoEmConta` **não muda**: caixa é caixa, e rendimento não realizado não é caixa. Só `saldoInvestido` passa a somar valor corrigido em vez de `baseAtual`.
 
-A linha "Rendimento até DD/MM" fica junto do detalhamento e mostra a **maior data presente na tabela** — que é mais antiga automaticamente quando o BC falhou.
+**Sem rótulo de data na tela** (Requisitos §3.16.5). Consequência a registrar: CDI e Selic têm atrasos **diferentes entre si** — medido em 26/08, o CDI ia até 25/08 e a Selic até 26/08 —, então duas posições equivalentes em índices diferentes podem estar corrigidas até dias distintos, sem nada na interface indicando isso.
 
 **Nada disso toca `comporMes`, a consolidação ou a Projeção.** Rendimento não realizado não é transação.
