@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
+import { SERIE_DO_INDEXADOR, valorCorrigido } from "@/lib/rendimento";
+import { sincronizarSerie } from "@/lib/actions/investimentos";
+import { hojeISO, paraDiaISO } from "@/lib/datas";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
 import { MenuDaConta } from "./menu-da-conta";
@@ -15,6 +18,57 @@ import { Button } from "@/components/ui/button";
 // no Postgres — uma linha por conta, não o histórico trazido pro JS (Design
 // §20.2). Os ativos vêm inteiros porque a listagem precisa deles de qualquer
 // forma, e o saldo em conta depende de cada evento de liquidação.
+/**
+ * Valor corrigido de cada posição viva, por id (Requisitos §3.16).
+ *
+ * Sincroniza só as séries que as posições de fato usam, e uma vez cada — a
+ * busca é por série, não por ativo: dez CDBs em %CDI leem a mesma série 12.
+ *
+ * A janela vai da aquisição mais antiga até hoje. Posições sem série
+ * (pré-fixado, IPCA+) ficam de fora do mapa e seguem valendo a base.
+ */
+async function corrigirPosicoes(vivas) {
+  const seriesNecessarias = [
+    ...new Set(vivas.map((a) => SERIE_DO_INDEXADOR[a.indexador]).filter(Boolean)),
+  ];
+  if (seriesNecessarias.length === 0) return new Map();
+
+  const desdeQuando = vivas
+    .map((a) => paraDiaISO(a.dataAquisicao))
+    .reduce((menor, dia) => (dia < menor ? dia : menor));
+
+  const taxasPorSerie = new Map(
+    await Promise.all(
+      seriesNecessarias.map(async (serie) => [
+        serie,
+        await sincronizarSerie(serie, desdeQuando, hojeISO()),
+      ]),
+    ),
+  );
+
+  return new Map(
+    vivas
+      .map((ativo) => {
+        const serie = SERIE_DO_INDEXADOR[ativo.indexador];
+        if (!serie) return null;
+        return [
+          ativo.id,
+          valorCorrigido(
+            {
+              base: baseAtual(ativo),
+              indexador: ativo.indexador,
+              taxa: Number(ativo.taxa),
+              dataAquisicao: paraDiaISO(ativo.dataAquisicao),
+              vencimento: paraDiaISO(ativo.vencimento),
+            },
+            taxasPorSerie.get(serie),
+          ),
+        ];
+      })
+      .filter(Boolean),
+  );
+}
+
 async function carregar() {
   const [contas, contasCorrentes, ativos, aportes, resgates, movimentos] = await Promise.all([
     db.conta.findMany({ where: { tipo: "CONTA_INVESTIMENTO" }, orderBy: { nome: "asc" } }),
@@ -49,6 +103,8 @@ async function carregar() {
     "contaId",
   );
 
+  const correcao = await corrigirPosicoes(apenasVivas(ativos));
+
   // Decimal do Prisma não é serializável cruzando Server → Client Component,
   // e `base` já vem calculada pra o cliente não repetir a regra.
   const ativosParaCliente = apenasVivas(ativos).map((ativo) => ({
@@ -65,10 +121,14 @@ async function carregar() {
     vencimento: ativo.vencimento,
     valorAquisicao: Number(ativo.valorAquisicao),
     base: baseAtual(ativo),
+    // Ausente em pré-fixado e IPCA+, que seguem valendo a base (M31).
+    valor: correcao.get(ativo.id),
   }));
 
   const porConta = contas.map((conta) => {
-    const ativosDaConta = ativos.filter((a) => a.contaId === conta.id);
+    const ativosDaConta = ativos
+      .filter((a) => a.contaId === conta.id)
+      .map((a) => ({ ...a, valor: correcao.get(a.id) }));
     return {
       id: conta.id,
       nome: conta.nome,

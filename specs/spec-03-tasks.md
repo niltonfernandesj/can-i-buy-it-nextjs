@@ -1162,9 +1162,9 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 
 ---
 
-### M30 — Rendimento pós-fixado: integração com o Banco Central
+### M30 — Rendimento pós-fixado: integração com o Banco Central ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.16, Design §23.
+**Status:** ✅ **concluído.** Requisitos §3.16, Design §23 e as quatro tasks abaixo, todas commitadas.
 
 Primeira chamada externa do projeto. Cobre as quatro variações de pós-fixado: %CDI, %Selic, CDI+ e Selic+.
 
@@ -1227,7 +1227,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 129. A tela mostra o valor corrigido**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `app/(protegido)/investimentos/`. Requisitos §3.16.2, Design §23.4.
 

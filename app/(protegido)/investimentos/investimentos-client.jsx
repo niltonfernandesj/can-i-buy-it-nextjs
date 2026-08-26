@@ -111,7 +111,8 @@ function TabelaPosicoes({ ativos, hoje }) {
                 </td>
                 <td className="py-2 text-right tabular-nums">
                   <span className="inline-flex items-center gap-2">
-                    {formatarReais(ativo.base)}
+                    {/* Corrigido quando o indexador rende; base nos demais. */}
+                    {formatarReais(ativo.valor ?? ativo.base)}
                     <LiquidarAtivo ativo={ativo} vencido={vencido} />
                   </span>
                 </td>
