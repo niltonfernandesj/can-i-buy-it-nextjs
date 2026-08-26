@@ -1286,7 +1286,7 @@ Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exi
 ---
 
 **Task 118. Aportar em Investimentos**
-⬜ **A implementar**
+✅ **Concluída** — commit `008beee`
 
 `lib/actions/investimentos.js` e um formulário novo. Requisitos §3.14.3, Design §21.3.
 

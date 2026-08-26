@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { ArrowUpFromLine, MoreHorizontal, Plus } from "lucide-react";
 import { registrarMovimento } from "@/lib/actions/investimentos";
+import { MovimentarConta } from "./movimentar-conta";
 import { formatarReais } from "@/lib/moeda";
 import { MOTIVOS_POR_NATUREZA, ROTULO_MOTIVO, ROTULO_NATUREZA } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
@@ -60,9 +61,15 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
   );
 }
 
-export function RegistrarMovimento({ conta }) {
+/**
+ * O menu de mais ações da linha da conta. Guarda o que é raro: resgate
+ * acontece no vencimento ou numa necessidade, e cupom e taxa duas vezes por
+ * ano por posição — precisam ser acháveis, não rápidos (Requisitos §3.14.4).
+ */
+export function MenuDaConta({ conta, contasCorrentes }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
+  const [resgateAberto, setResgateAberto] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
@@ -105,9 +112,8 @@ export function RegistrarMovimento({ conta }) {
 
   return (
     <>
-      {/* As duas ações frequentes ficam visíveis; o menu guarda a rara. Cupom
-          e taxa acontecem duas vezes por ano por posição — precisam ser
-          acháveis, não rápidos de alcançar (Design §20.3). */}
+      {/* Aportar e Registrar ativo ficam visíveis na linha; aqui moram as
+          raras (Requisitos §3.14.4). */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="outline" aria-label={`Mais ações em ${conta.nome}`}>
@@ -115,12 +121,24 @@ export function RegistrarMovimento({ conta }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setResgateAberto(true)}>
+            <ArrowUpFromLine className="mr-2 h-3.5 w-3.5" />
+            Resgatar
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => setAberto(true)}>
             <Plus className="mr-2 h-3.5 w-3.5" />
             Registrar movimento
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <MovimentarConta
+        operacao="resgate"
+        conta={conta}
+        contasCorrentes={contasCorrentes}
+        aberto={resgateAberto}
+        onAbertoMudou={setResgateAberto}
+      />
 
       <Dialog open={aberto} onOpenChange={setAberto}>
         <DialogContent>

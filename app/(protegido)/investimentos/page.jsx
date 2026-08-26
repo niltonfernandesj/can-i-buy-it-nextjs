@@ -4,7 +4,7 @@ import { formatarReais } from "@/lib/moeda";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
-import { RegistrarMovimento } from "./registrar-movimento";
+import { MenuDaConta } from "./menu-da-conta";
 import { MovimentarConta } from "./movimentar-conta";
 import { DialogTrigger } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
@@ -150,11 +150,7 @@ function DisponivelParaInvestir({ contas, contasCorrentes }) {
                 </DialogTrigger>
               </MovimentarConta>
               <RegistrarAtivo conta={conta} />
-              {/* Inerte ainda — resgate chega na Task 119. */}
-              <Button size="sm" variant="outline" disabled>
-                Resgatar
-              </Button>
-              <RegistrarMovimento conta={conta} />
+              <MenuDaConta conta={conta} contasCorrentes={contasCorrentes} />
             </span>
           </div>
         ))}
