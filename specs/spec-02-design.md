@@ -1985,6 +1985,17 @@ fator = Π [ (1 + taxa_do_dia) × (1 + spread)^(1/252) ]
 
 **A aquisição rende no próprio dia** — corrigido na Task 130, contra o extrato real. A versão original excluía o dia da compra e chamava isso de "aproximação de ±1 dia"; não era aproximação, era erro. Conferido contra a corretora numa posição de 87 dias úteis: com o dia da aquisição incluído o app devolve **R$ 5.251,92** e o extrato diz **R$ 5.251,92** — diferença de zero. Sem ele, R$ 3,04 a menos.
 
+**Conferido contra a corretora em 26/08/2026, duas posições independentes:**
+
+| Posição | Indexador | Dias úteis | App | Extrato |
+|---|---|---|---|---|
+| CDB Banco Topázio | 107% CDI | 87 | R$ 5.251,92 | R$ 5.251,92 |
+| LCI Banco Inter | 87,5% CDI | 46 | R$ 5.106,27 | R$ 5.106,27 |
+
+Produtos diferentes, percentuais diferentes (um acima e outro abaixo de 100%), janelas de tamanhos diferentes, uma tributada e outra isenta. Isso valida em conjunto: a convenção ANBIMA do percentual, o produtório sobre a série 12, e a contagem de dias a partir da aquisição inclusive.
+
+**O que segue sem validação:** o spread (`CDI_MAIS`, `SELIC_MAIS`), porque não há posição real com ele; a série da Selic, cuja única posição tem um dia de história; e a ponta do vencimento.
+
 **A ponta do vencimento continua não verificada.** A convenção de mercado costuma contar da aplicação (inclusive) até o vencimento (exclusive), o que seria `data < vencimento` em vez de `<=`. A diferença só aparece numa posição já vencida, e nenhuma das reais venceu ainda — quando a primeira vencer, vale conferir contra o valor de resgate antes de mudar.
 
 ### 23.4 O que muda na tela
