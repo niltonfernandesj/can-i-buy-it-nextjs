@@ -1273,13 +1273,13 @@ A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra
 **Task 117. Categoria nula na leitura**
 ⬜ **A implementar**
 
-`components/marcador-categoria.jsx`, `components/visao-mensal/detalhe-diario.jsx`, `app/(protegido)/transacoes/transacoes-client.jsx`. Design §21.2.
+`app/(protegido)/transacoes/transacoes-client.jsx`. Design §21.2.
 
 Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exibição que quebra na cara do usuário.
 
-- Guarda em `MarcadorCategoria`, o componente compartilhado — os chamadores herdam.
-- Sem categoria exibe **travessão** (`—`) em `text-muted-foreground`. Célula vazia lê como dado faltando; travessão lê como "não se aplica".
-- O `<select>` do modal de edição aceita "sem categoria".
+**A auditoria encolheu a task.** `CategoriaComCor` já tinha guarda de nulo e já renderizava travessão — a afirmação contrária no Design §21.2 estava errada e foi corrigida. `detalhe-diario` e a célula da tabela herdam essa guarda, e o filtro por `filterFn: "equals"` trata nulo corretamente.
+
+- Resta o modal de edição: `form.categoriaId` caía para `""`, então o `<select>` aparecia **em branco** ao editar um aporte. O campo passa a sumir quando `form.ehInvestimento` é verdadeiro.
 
 *(Checkpoint: QA de interface. O caminho real é um **resgate na lista de Entradas** da Visão mensal, cujo detalhe diário renderiza a categoria. Criar um resgate sem categoria via script e conferir que a Visão mensal e `/transacoes` renderizam sem erro — este é o teste que a Task 116 sozinha não faz.)*
 

@@ -455,6 +455,10 @@ function DetalheTransacaoConteudo({ transacao, contas, categorias, onSalvo, onAp
         onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
       />
 
+      {/* Aporte e resgate não têm categoria (Design §21.2) — o campo some em
+          vez de aparecer vazio. Um select em branco convidaria a preencher o
+          que a regra manda deixar nulo. */}
+      {!form.ehInvestimento && (
       <div className="flex flex-col gap-2">
         <Label htmlFor="edit-categoria">Categoria</Label>
         <Select
@@ -479,6 +483,7 @@ function DetalheTransacaoConteudo({ transacao, contas, categorias, onSalvo, onAp
           </SelectContent>
         </Select>
       </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="edit-descricao">Descrição</Label>

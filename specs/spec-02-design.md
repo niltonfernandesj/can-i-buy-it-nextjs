@@ -1776,13 +1776,15 @@ categoria   Categoria? @relation(fields: [categoriaId], references: [id], onDele
 
 **A regra de obrigatoriedade muda de lugar:** sai da coluna e vai para `validarTransacao`, que passa a exigir categoria **exceto** quando `ehInvestimento` é verdadeiro. O banco deixa de ser a trava, e a Server Action passa a ser — é a mesma inversão que `ValorPadrao` já fez.
 
-**Auditoria dos leitores.** `categoria` nula chega à UI por um caminho real: um **resgate aparece na lista de Entradas** da Visão mensal (§8.3), e o detalhe diário renderiza a categoria de cada linha. Os pontos que desreferenciam sem guarda:
+**Auditoria dos leitores.** `categoria` nula chega à UI por um caminho real: um **resgate aparece na lista de Entradas** da Visão mensal (§8.3), e o detalhe diário renderiza a categoria de cada linha.
 
-- `components/marcador-categoria.jsx` — lê `categoria.cor` e `categoria.nome`. É o componente compartilhado; a guarda vai **aqui**, e os dois chamadores herdam.
-- `components/visao-mensal/detalhe-diario.jsx` — passa `t.categoria`.
-- `app/(protegido)/transacoes/transacoes-client.jsx` — a célula de categoria da tabela, e o `<select>` do modal de edição, que precisa aceitar "sem categoria".
+**A leitura já estava protegida** — verificado na Task 117, corrigindo o que esta seção afirmava antes:
 
-Sem categoria, a célula mostra **travessão** (`—`) em `text-muted-foreground`, não string vazia: célula vazia lê como dado faltando; travessão lê como "não se aplica".
+- `components/marcador-categoria.jsx` — `CategoriaComCor` já tinha guarda de nulo e já renderizava **travessão** (`—`) em `text-muted-foreground`. Célula vazia leria como dado faltando; travessão lê como "não se aplica". Nada a fazer.
+- `components/visao-mensal/detalhe-diario.jsx` e a célula da tabela em `transacoes-client.jsx` passam por `CategoriaComCor` e herdam a guarda.
+- O filtro por categoria usa `filterFn: "equals"` sobre `categoriaId`: uma linha nula nunca casa com categoria selecionada, que é o comportamento correto — aporte não deve aparecer ao filtrar por "Alimentação".
+
+**O que de fato faltava** é o modal de edição: `form.categoriaId` já caía para `""` com `?? ""`, então o `<select>` aparecia **em branco** ao editar um aporte, convidando a preencher o que a regra manda deixar nulo. O campo passa a **sumir** quando `form.ehInvestimento` é verdadeiro.
 
 ### 21.3 Aportar e Resgatar
 
