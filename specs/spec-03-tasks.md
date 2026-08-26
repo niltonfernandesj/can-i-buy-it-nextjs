@@ -1340,7 +1340,7 @@ Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele
 ---
 
 **Task 122. Transações perde o checkbox "É investimento"**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `f64560a`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Requisitos §3.14.5, Design §21.6.
 
