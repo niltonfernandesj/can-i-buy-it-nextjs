@@ -605,6 +605,44 @@ Só o pós-fixado rende no M30. Uma posição pré-fixada ou IPCA+ continua most
 
 Limitação conhecida e aceita: com posições dos dois tipos na mesma tabela, uma rendendo e outra não, a diferença pode ser lida como defeito. Resolve-se sozinha no M31.
 
+### 3.17 Especificação — Rendimento pré-fixado (M31)
+
+Segunda fatia do rendimento. **Não traz integração nova** — o pré-fixado não consulta taxa nenhuma: a taxa está no próprio papel.
+
+#### 3.17.1 A fórmula
+
+```
+valor = base × (1 + taxa) ^ (dias úteis / 252)
+```
+
+`taxa` é a contratada, ao ano. Uma LCA a 15% a.a. rende 15% em 252 dias úteis, proporcionalmente menos em menos tempo.
+
+#### 3.17.2 A série do CDI vira calendário
+
+Aqui está a sutileza: o pré-fixado **não precisa da API para a taxa, mas precisa para o calendário**. `dias úteis` exige saber quais dias são úteis, e o app não tem tabela de feriados — decisão tomada no M30, quando se descobriu que a série do BC já vem só com dias úteis.
+
+**A própria série 12 é a lista de dias úteis.** O app a reutiliza como calendário, ignorando os valores. Consequências:
+
+- Uma carteira só de pré-fixados ainda sincroniza o CDI, agora só para contar dias.
+- O pré-fixado herda a mesma defasagem de um dia do CDI, o que é coerente: todas as posições passam a estar corrigidas até a mesma data.
+
+#### 3.17.3 O que não muda
+
+Contagem a partir da aquisição **inclusive** e parada no vencimento, como no M30 (§3.16). Curva do papel, não marcação a mercado (§3.16.6) — e no pré-fixado essa distinção é **maior**, porque um prefixado longo oscila muito no mercado secundário. Para LCI e LCA, que não têm mercado secundário para pessoa física, curva e mercado coincidem.
+
+### 3.18 Especificação — Rendimento IPCA+ (M36, planejado)
+
+Separado do M31 (decisão do usuário) porque é de outra natureza: traz tabela nova, migration e uma defasagem que não se resolve esperando.
+
+**Decisões já tomadas**, para o marco não reabri-las:
+
+- **Série 433**, mensal, sempre datada no dia 1º do mês de referência, valor em **% ao mês**.
+- **Tabela `IndiceMensal`**, separada de `TaxaDiaria` — a forma está em Design §23.1.
+- **Só meses fechados.** O IPCA de julho era o último publicado em 26/08: quase dois meses de defasagem. Os meses em aberto rendem **apenas o spread**, e nada é projetado. O valor é sempre um piso conservador.
+- **Consequência aceita:** um IPCA+ aparece permanentemente subvalorizado, e o extrato do Tesouro nunca vai bater — nem pela defasagem, nem pela marcação a mercado (§3.16.6).
+
+**Sem posição real para conferir.** Ao contrário de todos os outros indexadores, o usuário não tem nenhum IPCA+ hoje, então este marco nascerá validado só por teste.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

@@ -2009,3 +2009,35 @@ O valor corrigido substitui o custo em **quatro lugares** — a coluna de saldo 
 **Sem rótulo de data na tela** (Requisitos §3.16.5). Consequência a registrar: CDI e Selic têm atrasos **diferentes entre si** — medido em 26/08, o CDI ia até 25/08 e a Selic até 26/08 —, então duas posições equivalentes em índices diferentes podem estar corrigidas até dias distintos, sem nada na interface indicando isso.
 
 **Nada disso toca `comporMes`, a consolidação ou a Projeção.** Rendimento não realizado não é transação.
+
+---
+
+## 24. Rendimento pré-fixado (M31)
+
+Requisitos §3.17. Sem integração nova.
+
+### 24.1 O fator, e o truque do calendário
+
+```
+fator = (1 + taxa) ^ (dias úteis / 252)
+```
+
+`fatorAcumulado` ganha um terceiro modo. Os dois existentes consomem os **valores** das taxas; o pré-fixado consome só a **quantidade** — a lista entra como calendário, e os valores são ignorados:
+
+```js
+if (prefixado) return (1 + prefixado) ** (taxas.length / DIAS_UTEIS_NO_ANO);
+```
+
+Isso mantém `taxasAplicaveis` valendo sem alteração: o recorte por aquisição e vencimento é o mesmo, e é ele que define quantos dias contam. **Um caminho de código a menos** do que ter uma função separada para pré-fixado.
+
+`SERIE_DO_INDEXADOR.PREFIXADO` passa de `null` para `"CDI"`. O nome do campo fica ligeiramente impreciso — ali o CDI não é a fonte da taxa, é a fonte dos dias —, e o comentário no código diz isso, porque é o tipo de coisa que alguém "corrige" de volta para `null` sem entender.
+
+### 24.2 O que isso arrasta
+
+Uma carteira só de pré-fixados passa a sincronizar o CDI. É uma chamada, para contar dias — e sem ela não há como saber quantos dias úteis se passaram.
+
+O pré-fixado herda a defasagem de um dia do CDI. **Isso é desejável:** todas as posições ficam corrigidas até a mesma data, e o patrimônio não mistura números de dias diferentes.
+
+### 24.3 Validação disponível
+
+Ao contrário do IPCA+, o pré-fixado tem posição real para conferir: a **LCA do BTG a 15% a.a.**, isenta de IR — bruto e líquido coincidem, e não há mercado secundário para pessoa física, então curva e mercado também coincidem. É o teste mais limpo possível do M31.

@@ -1256,9 +1256,38 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 
 ---
 
-### M31 — Pré-fixado e IPCA+ (planejado)
+### M31 — Rendimento pré-fixado
 
-**Status:** escopo acordado; tasks **a escrever**. Depende do M30.
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.17, Design §24. Depende do M30.
+
+**Separado do IPCA+** (decisão do usuário, 26/08/2026): eram duas coisas de tamanhos muito diferentes num marco só. O pré-fixado é fórmula pura, sem tabela nem integração nova, e tem posição real para conferir. O IPCA+ virou o **M36** — traz tabela mensal, migration, defasagem de dois meses, e nenhuma posição real para validar.
+
+**Sem integração nova**, mas com uma dependência que não é óbvia: a série do CDI passa a ser usada como **calendário de dias úteis**. O pré-fixado não precisa dela para a taxa; precisa para saber quantos dias contar.
+
+---
+
+**Task 131. O fator pré-fixado**
+⬜ **A implementar**
+
+`lib/rendimento.js` e seus testes. Design §24.1.
+
+- `parametrosDoIndexador` passa a devolver `{ prefixado }` para `PREFIXADO`.
+- `fatorAcumulado` ganha o terceiro modo: `(1 + taxa) ** (taxas.length / 252)`. Os dois modos existentes consomem os **valores** das taxas; este consome só a **quantidade** — a lista entra como calendário.
+- `taxasAplicaveis` **não muda**: o recorte por aquisição e vencimento é o mesmo, e é ele que define quantos dias contam.
+
+*(Checkpoint: teste unitário. 252 dias a 15% devolvem exatamente 15%; meia janela devolve a raiz; zero dias devolvem a base; o vencimento trunca a contagem. E um teste de que o pré-fixado **ignora os valores** das taxas — alimentar a mesma janela com taxas absurdas não pode mudar o resultado.)*
+
+---
+
+**Task 132. A tela corrige o pré-fixado**
+⬜ **A implementar**
+
+`lib/rendimento.js` (o mapa) e QA. Design §24.2.
+
+- `SERIE_DO_INDEXADOR.PREFIXADO` passa de `null` para `"CDI"`, com comentário explicando que ali o CDI é **calendário, não taxa** — é o tipo de coisa que alguém devolve para `null` sem entender.
+- `page.jsx` não muda: `corrigirPosicoes` já sincroniza a série que o mapa indicar.
+
+*(Checkpoint: QA de interface conferindo contra o extrato real. A **LCA do BTG a 15% a.a.** é o teste mais limpo do marco — isenta de IR e sem mercado secundário para pessoa física, então bruto = líquido e curva = mercado. A prévia calculada em 26/08 dava R$ 5.388,73. Conferir também que uma carteira com pré-fixado sincroniza o CDI mesmo sem nenhuma posição pós-fixada.)*
 
 - **Pré-fixado:** `(1 + taxa)^(du/252)`, usando o mesmo calendário implícito da série do M30.
 - **IPCA+:** série SGS **433**, mensal.
@@ -1267,6 +1296,16 @@ O ponto difícil é a **defasagem**: o IPCA sai com cerca de dez dias de atraso,
 usa o índice defasado (15 dias ou um mês, conforme o papel). Enquanto o índice do mês não
 sai, um IPCA+ não tem valor exato — vai exigir uma convenção explícita na spec e um aviso
 na tela de que o número é provisório.
+
+---
+
+### M36 — Rendimento IPCA+ (planejado)
+
+**Status:** escopo acordado; tasks **a escrever**. Requisitos §3.18. Depende do M30.
+
+Separado do M31. Traz `IndiceMensal` (forma em Design §23.1), a série 433 e a defasagem de ~2 meses. **Só meses fechados** — os meses em aberto rendem apenas o spread, e nada é projetado.
+
+Nenhuma posição real para conferir: nascerá validado só por teste.
 
 ---
 
@@ -1490,8 +1529,9 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M28 | Escopo item 13 revisado — percentual do disponível em relação às Entradas, na Projeção (spec-01 §3.12) |
 | M29 | *(planejado)* Detalhamento de investimentos — ativos, saldo em conta e saldo investido. Seção de Requisitos ainda a escrever |
 | M30 | Escopo item 14 revisado — rendimento pós-fixado das posições, via séries do Banco Central (spec-01 §3.16). Primeira integração externa do projeto |
-| M31 | *(planejado)* Rendimento pré-fixado e IPCA+. Seção de Requisitos ainda a escrever |
+| M31 | Escopo item 14 revisado — rendimento pré-fixado, com a série do CDI reusada como calendário de dias úteis (spec-01 §3.17) |
 | M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
 | M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |
 | M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
+| M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.18) |
