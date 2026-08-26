@@ -291,37 +291,29 @@ function CamposCompletos({ form, setForm, contas }) {
         />
       </div>
 
-      {ehContaCorrente && (
-        <div className="flex flex-col gap-4 rounded-md border p-4">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="edit-ehInvestimento"
-              checked={form.ehInvestimento}
-              onCheckedChange={(v) => setForm({ ...form, ehInvestimento: v })}
-            />
-            <Label htmlFor="edit-ehInvestimento">É investimento</Label>
-          </div>
-
-          {form.ehInvestimento && (
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="edit-contaInvestimentoId">Conta de investimento</Label>
-              <Select
-                value={form.contaInvestimentoId}
-                onValueChange={(v) => setForm({ ...form, contaInvestimentoId: v })}
-              >
-                <SelectTrigger id="edit-contaInvestimentoId">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contasInvestimento.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+      {/* Sem checkbox desde o M34: esta tela edita e apaga, não cria nem
+          converte. Uma saída comum não vira aporte por edição — apaga-se e
+          lança-se em /investimentos (Requisitos §3.14.5). O seletor de conta
+          fica, condicionado ao que a transação **já é**, para dar como
+          corrigir a corretora de um aporte existente. */}
+      {ehContaCorrente && form.ehInvestimento && (
+        <div className="flex flex-col gap-2 rounded-md border p-4">
+          <Label htmlFor="edit-contaInvestimentoId">Conta de investimento</Label>
+          <Select
+            value={form.contaInvestimentoId}
+            onValueChange={(v) => setForm({ ...form, contaInvestimentoId: v })}
+          >
+            <SelectTrigger id="edit-contaInvestimentoId">
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {contasInvestimento.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
     </>

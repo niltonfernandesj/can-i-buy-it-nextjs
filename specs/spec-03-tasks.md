@@ -1244,9 +1244,9 @@ Escopo previsto:
 
 ---
 
-### M34 — Movimentação de investimento concentrada em Investimentos
+### M34 — Movimentação de investimento concentrada em Investimentos ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.14, Design §21.
+**Status:** ✅ **concluído.** Requisitos §3.14, Design §21 e as sete tasks abaixo, todas commitadas.
 
 A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra vindo de fora e sai para fora do conjunto de contas do app. Aporte e resgate não são nem um nem outro — o dinheiro muda de conta dentro do próprio app — e migram para `/investimentos`.
 
@@ -1327,7 +1327,7 @@ Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele
 ---
 
 **Task 121. Lançamento perde o Tipo Investimento e o resgate**
-⬜ **A implementar**
+✅ **Concluída** — commit `c8aa00b`
 
 `app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.14.6, Design §21.5. **Reverte a Task 114** e o Tipo criado na Task 86.
 
@@ -1340,7 +1340,7 @@ Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele
 ---
 
 **Task 122. Transações perde o checkbox "É investimento"**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Requisitos §3.14.5, Design §21.6.
 
