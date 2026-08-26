@@ -1227,7 +1227,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 129. A tela mostra o valor corrigido**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `42b93b6`
 
 `app/(protegido)/investimentos/`. Requisitos §3.16.2, Design §23.4.
 
