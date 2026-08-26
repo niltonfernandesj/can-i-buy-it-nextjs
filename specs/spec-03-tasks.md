@@ -968,7 +968,7 @@ Separada da 124 porque `CampoValor` é usado em **9 lugares** e as outras 8 tela
 ---
 
 **Task 124. Dropdown de parcelas com "À vista"**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `40a546e`
 
 `app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.15, Design §22.2 e §22.3.
 
