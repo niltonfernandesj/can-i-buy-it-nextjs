@@ -1196,7 +1196,7 @@ Sem `db` e sem `fetch`: recebe a lista de taxas já carregada. Mesmo desenho de 
 ---
 
 **Task 127. Tabela da série diária**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `452ad3e`
 
 `prisma/schema.prisma` e migration. Design §23.1.
 
