@@ -128,10 +128,13 @@ model Transacao {
   valor     Decimal // sempre positivo; sinal é dado pelo `tipo`
   descricao String
 
-  categoriaId String
+  // Opcional desde o M34 (Design §21.2): aporte e resgate não têm categoria —
+  // investir não é despesa de consumo. A obrigatoriedade para lançamento comum
+  // saiu da coluna e virou regra de `validarTransacao`.
+  categoriaId String?
   // onDelete: Restrict — a regra "não exclui categoria em uso" (Design §18.3)
   // é checada na Server Action, mas a FK é a garantia final.
-  categoria   Categoria @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  categoria   Categoria? @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
 
   contaId String
   conta   Conta  @relation("ContaPrincipal", fields: [contaId], references: [id])
