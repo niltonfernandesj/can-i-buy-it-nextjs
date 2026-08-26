@@ -938,9 +938,9 @@ Régua e formato validados com o usuário via mock em HTML antes da primeira tas
 
 ---
 
-### M35 — Parcelamento com controle fundido ao Valor
+### M35 — Parcelamento com controle fundido ao Valor ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.15, Design §22.
+**Status:** ✅ **concluído.** Requisitos §3.15, Design §22.
 
 **Mock normativo:** https://claude.ai/code/artifact/a2c1a106-f737-4d78-b041-dfd457e488fe
 Traz os **seis estados** (repouso, parcelado, foco, aberto, "Outro", valor longo), uma tabela de **medidas** com as classes exatas, e as **regras** da interface. Quem implementar deve abrir o mock antes de escrever CSS — ele é a fonte, não este texto.
@@ -952,7 +952,7 @@ Nasce de feedback de uso real: lançar saída parcelada no crédito é pouco int
 ---
 
 **Task 123. `CampoValor` troca `extra` por `prefixo`**
-⬜ **A implementar**
+✅ **Concluída** — commit `86319fe`
 
 `components/campo-valor.jsx`. Design §22.1.
 
@@ -968,7 +968,7 @@ Separada da 124 porque `CampoValor` é usado em **9 lugares** e as outras 8 tela
 ---
 
 **Task 124. Dropdown de parcelas com "À vista"**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.15, Design §22.2 e §22.3.
 

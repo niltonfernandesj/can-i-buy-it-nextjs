@@ -14,6 +14,7 @@ import { criarTransacao, criarTransacaoParcelada } from "@/lib/actions/transacoe
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { CampoValor } from "@/components/campo-valor";
+import { SeletorParcelas } from "./seletor-parcelas";
 import { MarcadorCor } from "@/components/marcador-categoria";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,8 +107,6 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
 }
 
 const BOTAO_DIA = "flex w-10 shrink-0 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
-const BOTAO_PARCELA = "flex h-6 w-6 items-center justify-center rounded border bg-muted text-sm font-semibold text-muted-foreground hover:text-foreground";
-
 const FORM_INICIAL = {
   tipo: "SAIDA",
   meio: "CREDITO",
@@ -184,10 +183,6 @@ export function LancamentoClient({ contas, categorias }) {
 
   function selecionarConta(contaId) {
     setForm({ ...form, contaId });
-  }
-
-  function ajustarParcelas(delta) {
-    setForm({ ...form, numeroParcelas: Math.max(1, Math.min(99, form.numeroParcelas + delta)) });
   }
 
   // Clicar em qualquer ponto do campo abre o calendário, não só no ícone
@@ -335,17 +330,11 @@ export function LancamentoClient({ contas, categorias }) {
               onChange={(valorCentavos) => setForm({ ...form, valorCentavos })}
               prefixo={
                 podeParcelar && (
-                  <div className="flex flex-none items-center gap-1 border-r border-input px-2">
-                    <button type="button" onClick={() => ajustarParcelas(-1)} aria-label="Menos uma parcela" className={BOTAO_PARCELA}>
-                      −
-                    </button>
-                    <span className="min-w-[1.75rem] text-center text-xs font-semibold tabular-nums">
-                      {form.numeroParcelas}x
-                    </span>
-                    <button type="button" onClick={() => ajustarParcelas(1)} aria-label="Mais uma parcela" className={BOTAO_PARCELA}>
-                      +
-                    </button>
-                  </div>
+                  <SeletorParcelas
+                    numeroParcelas={form.numeroParcelas}
+                    valorCentavos={form.valorCentavos}
+                    onMudar={(numeroParcelas) => setForm({ ...form, numeroParcelas })}
+                  />
                 )
               }
             />

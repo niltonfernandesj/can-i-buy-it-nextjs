@@ -50,7 +50,10 @@ export const CampoValor = forwardRef(function CampoValor(
       // Fundido, o input não desenha borda nem anel próprios: quem cuida disso
       // é o contêiner. Sem isto sobra um fio duplo ao lado do divisor, e o anel
       // de foco envolveria só a metade direita, quebrando a costura.
-      className={prefixo ? "flex-1 min-w-0 rounded-none border-0 shadow-none focus-visible:ring-0" : undefined}
+      // h-full, não h-9: o contêiner tem 36px *incluindo* as bordas, então a
+      // caixa interna mede 34px — um input de 36px sobraria e seria cortado
+      // pelo overflow-hidden, deixando controle e campo com alturas diferentes.
+      className={prefixo ? "h-full flex-1 min-w-0 rounded-none border-0 shadow-none focus-visible:ring-0" : undefined}
     />
   );
 
