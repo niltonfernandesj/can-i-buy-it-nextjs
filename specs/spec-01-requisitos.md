@@ -466,6 +466,58 @@ Duas coisas somem sem precisar de solução:
 - **A reserva de padding calculada à mão.** O botão passa a ser irmão flex do campo: ocupa o que precisa, o campo fica com o resto. Nenhuma medida mágica atrelada ao rótulo mais largo.
 - **A colisão com valores longos.** Sem sobreposição, o campo encolhe e o número continua legível, seja R$ 9 ou R$ 90.000.
 
+> **Superado pelo M34 (§3.14).** O vínculo continua existindo, mas não na tela de lançamento: resgate passa a ser lançado em `/investimentos`. O problema que esta seção resolveu — o saldo em conta que só cresce — segue resolvido, por outra porta.
+
+### 3.14 Especificação — Movimentação de investimento concentrada em Investimentos (M34)
+
+**A tela de Lançamento passa a ter uma responsabilidade declarada:** registrar dinheiro que **entra vindo de fora** e que **sai para fora** do conjunto de contas do app. Aporte e resgate não são nem uma coisa nem outra — o dinheiro apenas muda de conta dentro do próprio app —, então saem de lá e passam a ser lançados em `/investimentos`, junto das demais operações de investimento.
+
+Isso desfaz duas decisões anteriores, conscientemente: o Tipo "Investimento" criado na Task 86 (M22) e o vínculo de resgate reaberto na Task 114 (M29). Nenhuma das duas estava errada quando foi tomada — o que mudou é a existência de `/investimentos`, que não havia.
+
+#### 3.14.1 O que **não** muda: o modelo
+
+Aporte e resgate continuam sendo `Transacao`, com `ehInvestimento` e a conta de investimento vinculada. **O Disponível continua subtraindo o aporte** e continua somando o resgate em Entradas.
+
+Isso não é inércia: aporte e resgate passam no critério que separa transação de movimento interno (§3.13.1) — *isso muda quanto a família pode gastar neste mês?* Sim. Investir compromete dinheiro do mês. A mudança é de **onde se lança**, não de **o que se grava**, e nenhum número da Visão mensal ou da Projeção muda de valor.
+
+A contradição de vocabulário — um aporte é gravado como `SAIDA` sem ser "saída para fora" — fica registrada e aceita. Modelá-lo como transferência de verdade seria mais correto, e mexeria em `comporMes`, na consolidação e na Projeção; é marco próprio, não parte deste.
+
+#### 3.14.2 Categoria deixa de ser obrigatória
+
+Aporte e resgate não têm categoria: investir não é uma despesa de consumo, e resgatar não é uma receita. Hoje o campo é obrigatório e vinha sendo preenchido com "Outros" por obrigação, não por significado.
+
+`categoriaId` passa a ser **opcional** na transação. O efeito é só de escrita e exibição — **nenhum relatório muda**, porque todo agrupamento por categoria já exclui `ehInvestimento`. Um lançamento comum (entrada ou saída) continua **exigindo** categoria: a opcionalidade vale exclusivamente para aporte e resgate.
+
+**As transações já existentes não são alteradas.** Os dois aportes atuais continuam em "Outros". Mexer em dado financeiro real para corrigir estética de histórico é risco sem retorno; a partir da mudança, os novos nascem sem categoria.
+
+#### 3.14.3 As duas operações em Investimentos
+
+**Aportar** e **Resgatar** nascem no card de contas de investimento. As duas cruzam a fronteira com a conta corrente — são as únicas de `/investimentos` que fazem isso — então pedem um campo que a tela não tinha: a **conta corrente** de origem (no aporte) ou de destino (no resgate). A conta de investimento vem da própria linha.
+
+Travas, as mesmas que já valem para as demais operações da tela: um resgate não pode exceder o saldo em conta da corretora, e o aporte exige uma conta corrente escolhida.
+
+#### 3.14.4 O card passa a se chamar "Contas de investimento"
+
+Deixa de ser só "o que sobrou para investir" e passa a resumir a conta: **valor investido** e **parado em conta**, lado a lado, por linha.
+
+Quatro ações por conta, com hierarquia por frequência:
+- **Visíveis:** **Aportar** (primária) e **Registrar ativo** — as duas do dia a dia.
+- **No menu de mais ações:** **Resgatar** e **Registrar movimento** — resgate acontece no vencimento ou numa necessidade; cupom e taxa, duas vezes por ano por posição. Precisam ser **acháveis**, não rápidas.
+
+Assimetria aceita: Resgatar é o inverso de Aportar e não tem o mesmo peso visual. A frequência real justifica; quem procurar "o contrário de aportar" ao lado dele não vai achar.
+
+#### 3.14.5 A porta lateral em Transações
+
+O modal de edição de `/transacoes` tem hoje um checkbox "É investimento" que **converte uma saída comum em aporte** — uma terceira porta de criação para a mesma responsabilidade. O checkbox sai.
+
+**Editar e apagar continuam em `/transacoes`**, inclusive para aporte e resgate: corrigir valor ou data de um lançamento é responsabilidade da tela de transações, não da de investimentos. O que deixa de existir é criar ou converter por lá. Consequência aceita: uma saída lançada por engano como comum não vira aporte por edição — apaga-se e lança-se de novo em `/investimentos`.
+
+#### 3.14.6 O que fica no lugar em Lançamento
+
+Nada. O toggle de Tipo volta a ter **dois** valores, Entrada e Saída, e some o checkbox de resgate. De brinde, resolve o aperto de largura no mobile que a Task 89 teve de consertar quando o terceiro Tipo entrou.
+
+Sem ponteiro e sem atalho: usuário único, aprendizado de uma vez só, e um aviso de transição vira entulho em duas semanas.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

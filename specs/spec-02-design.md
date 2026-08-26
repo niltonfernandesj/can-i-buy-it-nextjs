@@ -1747,6 +1747,77 @@ A correção é `viewport-fit=cover` no viewport mais `env(safe-area-inset-*)` n
 Verificável por asserção, sem o aparelho: o manifest responde `200` com `Content-Type` de manifest (e **não** um redirecionamento para o login), os campos obrigatórios estão presentes, cada ícone declarado existe e tem as dimensões e a opacidade prometidas, e as meta tags do iOS estão no HTML servido.
 
 **Não** verificável aqui: o gesto de Adicionar à Tela de Início, a aparência real do ícone no springboard e o recorte da área segura no aparelho do usuário. Isso depende de um iPhone real e fica como confirmação dele.
+
+
+---
+
+## 21. Movimentação de investimento concentrada em Investimentos (M34)
+
+Requisitos §3.14. Redistribuição de responsabilidade entre três telas, mais uma migration. **Nenhum cálculo muda** — nem `comporMes`, nem a consolidação, nem a Projeção.
+
+### 21.1 O que sai de onde
+
+| Superfície | Antes | Depois |
+|---|---|---|
+| `/lancamento` | Tipo "Investimento" (aporte) e checkbox de resgate | Nada. Toggle volta a Entrada/Saída |
+| `/transacoes` | Cria (converte) aporte pelo checkbox, edita e apaga | Só edita e apaga |
+| `/investimentos` | Registrar ativo, Registrar movimento, Liquidar | Ganha **Aportar** e **Resgatar** |
+
+### 21.2 `categoriaId` opcional
+
+```prisma
+categoriaId String?
+categoria   Categoria? @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+```
+
+`ValorPadrao.categoriaId` já é opcional desde o M18 — não é padrão novo no schema, é o mesmo aplicado a outra tabela.
+
+**A migration é só de schema.** Nenhum `UPDATE` em linha existente: os dois aportes atuais continuam em "Outros" (Requisitos §3.14.2).
+
+**A regra de obrigatoriedade muda de lugar:** sai da coluna e vai para `validarTransacao`, que passa a exigir categoria **exceto** quando `ehInvestimento` é verdadeiro. O banco deixa de ser a trava, e a Server Action passa a ser — é a mesma inversão que `ValorPadrao` já fez.
+
+**Auditoria dos leitores.** `categoria` nula chega à UI por um caminho real: um **resgate aparece na lista de Entradas** da Visão mensal (§8.3), e o detalhe diário renderiza a categoria de cada linha. Os pontos que desreferenciam sem guarda:
+
+- `components/marcador-categoria.jsx` — lê `categoria.cor` e `categoria.nome`. É o componente compartilhado; a guarda vai **aqui**, e os dois chamadores herdam.
+- `components/visao-mensal/detalhe-diario.jsx` — passa `t.categoria`.
+- `app/(protegido)/transacoes/transacoes-client.jsx` — a célula de categoria da tabela, e o `<select>` do modal de edição, que precisa aceitar "sem categoria".
+
+Sem categoria, a célula mostra **travessão** (`—`) em `text-muted-foreground`, não string vazia: célula vazia lê como dado faltando; travessão lê como "não se aplica".
+
+### 21.3 Aportar e Resgatar
+
+Duas Server Actions novas em `lib/actions/investimentos.js`, mas que **gravam `Transacao`** — são as únicas do arquivo que fazem isso, e a exceção é o próprio ponto da §3.14.1.
+
+- `aportar({ contaInvestimentoId, contaCorrenteId, valor, data })` — grava `tipo: "SAIDA"`, `ehInvestimento: true`, `contaId` da conta corrente, `contaInvestimentoId` do destino, `categoriaId: null`.
+- `resgatar({ contaInvestimentoId, contaCorrenteId, valor, data })` — grava `tipo: "ENTRADA"`, mesmo par de contas invertido no sentido, `categoriaId: null`. Recusa valor acima do saldo em conta da corretora (`saldoParadoDe`).
+
+**Revalidação:** as duas revalidam `/investimentos`, `/visao-mensal` **e** `/transacoes` — ao contrário de todas as outras ações do arquivo. Elas criam transação, então as três telas mudam. Essa é exatamente a diferença que a §20.4 registra sobre as demais.
+
+`mesReferencia`/`anoReferencia` saem de `calcularReferencia`, como qualquer transação em conta corrente — não há caminho especial.
+
+### 21.4 O card "Contas de investimento"
+
+Mesma `Card` + linha por conta de hoje. Muda o rótulo, os saldos e a hierarquia de ações.
+
+**Dois saldos por linha.** Investido em `--investimento`, parado em `--entrada` — as cores que a tela já usa para os dois conceitos no Resumo. Rótulo curto acima de cada número, no mesmo token do `Rotulo` do card. "Parado em conta" a partir de `sm`, "Parado" abaixo — só onde falta largura.
+
+**Ações.** `Aportar` (variante padrão, é a primária) e `Registrar ativo` (`outline`) visíveis; `DropdownMenu` com `Resgatar` e `Registrar movimento`. O `DropdownMenu` já está montado no componente `RegistrarMovimento` — ganha um item, não uma dependência.
+
+**Mobile.** A linha vira `flex-col`: nome, depois os dois saldos dividindo a largura, depois os botões em linha cheia com o `⋯` fixo à direita. `Registrar ativo` é o rótulo mais longo e é ele que define se cabe. Se não couber a 390px, o plano é **trocar o botão pelo ícone `Plus` com `aria-label`** — nunca abreviar o texto, que vira adivinhação.
+
+**O card passa a repetir o Resumo do topo**, agora por conta em vez de somado. Aceito e registrado: o Resumo é composição do patrimônio, o card é acionável por conta — a mesma justificativa que já separa o parado do Resumo do parado do `CardParado` (§20.3).
+
+### 21.5 O que sai do Lançamento
+
+`TIPOS` volta a duas entradas. Some `ehResgate`, `contaInvestimentoId` do formulário, o filtro `contasInvestimento` e o mapeamento `INVESTIMENTO → SAIDA` de `handleSubmit`. `contasParaSelecao` já excluía conta de investimento e continua como está.
+
+**`validarTransacao` mantém o suporte a `ehInvestimento`** — não é código morto: as ações novas passam por ele, e `/transacoes` continua editando aporte e resgate existentes.
+
+### 21.6 O que sai de Transações
+
+Some o checkbox "É investimento" do modal de edição. O `<select>` de conta de investimento **fica**, condicionado a `transacao.ehInvestimento` em vez de ao estado do checkbox: dá para corrigir a corretora de um aporte existente, mas não dá para transformar uma saída comum em aporte.
+
+O badge "Aporte"/"Resgate" da listagem não muda.
 ## 22. Parcelamento com controle fundido ao Valor (M35)
 
 Requisitos §3.15. **Mock normativo:** https://claude.ai/code/artifact/a2c1a106-f737-4d78-b041-dfd457e488fe — traz os seis estados, a tabela de medidas e as regras. Consultar antes de escrever CSS: as classes exatas estão lá.

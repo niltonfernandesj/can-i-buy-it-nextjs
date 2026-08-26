@@ -5,7 +5,11 @@ import { ChevronDown, PiggyBank } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta } from "@/lib/datas";
 import { agruparPor, percentualNoPatrimonio } from "@/lib/investimentos";
-import { ROTULO_ESTRATEGIA, ROTULO_PRODUTO, rotuloIndexador } from "@/lib/ativos";
+import {
+  ROTULO_ESTRATEGIA,
+  ROTULO_PRODUTO,
+  rotuloIndexador,
+} from "@/lib/ativos";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { LiquidarAtivo } from "./liquidar-ativo";
@@ -57,7 +61,8 @@ function Percentual({ valor }) {
 // vencido amanhã (Design §20.3).
 function estaVencido(ativo, hoje) {
   const venc = new Date(ativo.vencimento);
-  const soData = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const soData = (d) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   return soData(venc) < soData(hoje);
 }
 
@@ -77,7 +82,10 @@ function TabelaPosicoes({ ativos, hoje }) {
           {ativos.map((ativo) => {
             const vencido = estaVencido(ativo, hoje);
             return (
-              <tr key={ativo.id} className={cn("border-t", vencido && "bg-destructive/10")}>
+              <tr
+                key={ativo.id}
+                className={cn("border-t", vencido && "bg-destructive/10")}
+              >
                 <td className="py-2 pr-3">
                   <span className="font-medium">{ativo.emissor}</span>
                   <span className="block text-xs text-muted-foreground">
@@ -85,7 +93,11 @@ function TabelaPosicoes({ ativos, hoje }) {
                   </span>
                 </td>
                 <td className="py-2 pr-3 text-xs tabular-nums text-muted-foreground">
-                  <span className={cn(vencido && "font-semibold text-saida-credito")}>
+                  <span
+                    className={cn(
+                      vencido && "font-semibold text-saida-credito",
+                    )}
+                  >
                     {formatarDataCurta(ativo.vencimento)}
                   </span>
                   {vencido && (
@@ -128,7 +140,9 @@ function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
           <span className="truncate font-semibold">{rotulo}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2.5">
-          <span className="font-semibold tabular-nums">{formatarReais(grupo.total)}</span>
+          <span className="font-semibold tabular-nums">
+            {formatarReais(grupo.total)}
+          </span>
           <ChevronDown
             className={cn(
               "h-4 w-4 text-muted-foreground transition-transform",
@@ -141,7 +155,10 @@ function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
       {expandido && (
         <div className="flex flex-col gap-5 px-5 pb-5">
           {grupo.contas.map((conta, i) => (
-            <div key={conta.contaId} className={cn(i > 0 && "border-t border-dashed pt-4")}>
+            <div
+              key={conta.contaId}
+              className={cn(i > 0 && "border-t border-dashed pt-4")}
+            >
               <div className="mb-2 flex items-center justify-between gap-4">
                 <span className="flex items-center gap-2 text-sm font-semibold">
                   <PiggyBank className="h-[0.9rem] w-[0.9rem] shrink-0 text-investimento" />
@@ -169,9 +186,13 @@ function CardParado({ total, patrimonio }) {
     <Card className="flex items-center justify-between gap-4 p-4 px-5">
       <span className="flex min-w-0 items-baseline gap-2.5">
         <Percentual valor={percentualNoPatrimonio(total, patrimonio)} />
-        <span className="truncate font-semibold text-muted-foreground">Disponível em conta</span>
+        <span className="truncate font-semibold text-muted-foreground">
+          Disponível em conta
+        </span>
       </span>
-      <span className="font-semibold tabular-nums text-entrada">{formatarReais(total)}</span>
+      <span className="font-semibold tabular-nums text-entrada">
+        {formatarReais(total)}
+      </span>
     </Card>
   );
 }
@@ -185,11 +206,13 @@ export function DetalhamentoInvestimentos({ ativos, patrimonio, parado }) {
   const vazio = grupos.length === 0 && parado <= 0;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 mt-2">
       {/* "Carteira", e não "Ativos": a seção termina no CardParado, que não é
           ativo nenhum (Requisitos §3.13.4). Fica fora do estado vazio porque
           lá a própria mensagem já explica o bloco. */}
-      {!vazio && <h2 className="text-sm font-semibold uppercase tracking-wide">Carteira</h2>}
+      {!vazio && (
+        <h2 className="text-lg font-semibold tracking-wide">Carteira</h2>
+      )}
 
       <ToggleVisao visao={visao} onMudar={setVisao} />
 

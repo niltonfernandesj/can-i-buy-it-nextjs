@@ -1244,6 +1244,114 @@ Escopo previsto:
 
 ---
 
+### M34 — Movimentação de investimento concentrada em Investimentos
+
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.14, Design §21.
+
+A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra vindo de fora e sai para fora do conjunto de contas do app. Aporte e resgate não são nem um nem outro — o dinheiro muda de conta dentro do próprio app — e migram para `/investimentos`.
+
+**Desfaz duas decisões anteriores, conscientemente:** o Tipo "Investimento" da Task 86 (M22) e o vínculo de resgate da Task 114 (M29). Nenhuma estava errada quando foi tomada; o que mudou é que `/investimentos` passou a existir.
+
+**Não depende do M30–M33** e pode ser feito antes deles. A numeração é identidade, não ordem.
+
+**Ordem obrigatória:** a Task 118 (Aportar) tem de estar de pé **antes** da Task 121, que remove a única forma atual de lançar aporte. Inverter deixa o app sem meio de aportar entre um commit e outro.
+
+---
+
+**Task 116. `categoriaId` opcional na transação**
+⬜ **A implementar**
+
+`prisma/schema.prisma`, migration e `lib/actions/transacoes.js`. Requisitos §3.14.2, Design §21.2.
+
+- `categoriaId String?` com a relação opcional. **Migration só de schema — nenhum `UPDATE`**: os dois aportes existentes continuam em "Outros".
+- A obrigatoriedade muda de lugar: `validarTransacao` passa a exigir categoria **exceto** quando `ehInvestimento` é verdadeiro. Um lançamento comum continua recusado sem categoria.
+
+*(Checkpoint: teste unitário de `validarTransacao` nos dois ramos — comum sem categoria recusa, investimento sem categoria aceita. Sem UI ainda, então sem Playwright.)*
+
+---
+
+**Task 117. Categoria nula na leitura**
+⬜ **A implementar**
+
+`components/marcador-categoria.jsx`, `components/visao-mensal/detalhe-diario.jsx`, `app/(protegido)/transacoes/transacoes-client.jsx`. Design §21.2.
+
+Separada da 116 de propósito: uma é escrita, a outra é exibição, e é a exibição que quebra na cara do usuário.
+
+- Guarda em `MarcadorCategoria`, o componente compartilhado — os chamadores herdam.
+- Sem categoria exibe **travessão** (`—`) em `text-muted-foreground`. Célula vazia lê como dado faltando; travessão lê como "não se aplica".
+- O `<select>` do modal de edição aceita "sem categoria".
+
+*(Checkpoint: QA de interface. O caminho real é um **resgate na lista de Entradas** da Visão mensal, cujo detalhe diário renderiza a categoria. Criar um resgate sem categoria via script e conferir que a Visão mensal e `/transacoes` renderizam sem erro — este é o teste que a Task 116 sozinha não faz.)*
+
+---
+
+**Task 118. Aportar em Investimentos**
+⬜ **A implementar**
+
+`lib/actions/investimentos.js` e um formulário novo. Requisitos §3.14.3, Design §21.3.
+
+- `aportar({ contaInvestimentoId, contaCorrenteId, valor, data })` grava `Transacao` com `tipo: "SAIDA"`, `ehInvestimento: true`, `categoriaId: null`.
+- **Revalida `/investimentos`, `/visao-mensal` e `/transacoes`** — ao contrário de todas as outras ações do arquivo, esta cria transação. A divergência é deliberada e está registrada no Design §20.4.
+- A página passa a carregar as contas correntes; o formulário pede origem, valor e data, com a conta de investimento vindo da linha.
+
+*(Checkpoint: QA de interface + banco. A transação nasce com `ehInvestimento: true`, `categoriaId` nulo e o par de contas correto; o saldo parado da corretora sobe; e **o Disponível do mês cai** no valor aportado — asserção explícita, é o que prova que o modelo não mudou.)*
+
+---
+
+**Task 119. Resgatar em Investimentos**
+⬜ **A implementar**
+
+`lib/actions/investimentos.js` e formulário. Requisitos §3.14.3, Design §21.3.
+
+- `resgatar(...)` grava `tipo: "ENTRADA"`, mesma dupla de contas no sentido inverso, `categoriaId: null`. Recusa valor acima do saldo em conta, via `saldoParadoDe`.
+- Mesma revalidação tripla da 118.
+
+*(Checkpoint: QA de interface + banco. O saldo parado cai; a entrada aparece na Visão mensal com a tag Resgate; e um resgate acima do saldo é recusado com mensagem.)*
+
+---
+
+**Task 120. Card "Contas de investimento"**
+⬜ **A implementar**
+
+`app/(protegido)/investimentos/page.jsx`. Requisitos §3.14.4, Design §21.4.
+
+Depois de 118 e 119 de propósito: remodelar o card antes obrigaria a mexer nele duas vezes.
+
+- Rótulo passa a **"Contas de investimento"**.
+- Dois saldos por linha: investido em `--investimento`, parado em `--entrada`. "Parado em conta" a partir de `sm`, "Parado" abaixo.
+- `Aportar` (primária) e `Registrar ativo` visíveis; `Resgatar` e `Registrar movimento` no `DropdownMenu` que já existe.
+- Mobile: linha em `flex-col`, saldos dividindo a largura, botões em linha cheia com o `⋯` fixo.
+
+*(Checkpoint: QA de interface nos dois viewports. Medir a linha a 390px: se `Registrar ativo` não couber, trocar por ícone `Plus` com `aria-label` — **não** abreviar o rótulo. Conferir que o menu abre com os dois itens.)*
+
+---
+
+**Task 121. Lançamento perde o Tipo Investimento e o resgate**
+⬜ **A implementar**
+
+`app/(protegido)/lancamento/lancamento-client.jsx`. Requisitos §3.14.6, Design §21.5. **Reverte a Task 114** e o Tipo criado na Task 86.
+
+- `TIPOS` volta a Entrada e Saída. Saem `ehResgate`, `contaInvestimentoId` do formulário, o filtro `contasInvestimento` e o mapeamento `INVESTIMENTO → SAIDA`.
+- Nada fica no lugar: sem ponteiro, sem atalho.
+- `validarTransacao` **mantém** o suporte a `ehInvestimento` — as ações novas passam por ele.
+
+*(Checkpoint: QA de interface. O toggle tem dois Tipos e **cabe a 390px** sem o aperto que a Task 89 consertou; nenhum caminho da tela grava `ehInvestimento: true`; e um lançamento comum continua exigindo categoria.)*
+
+---
+
+**Task 122. Transações perde o checkbox "É investimento"**
+⬜ **A implementar**
+
+`app/(protegido)/transacoes/transacoes-client.jsx`. Requisitos §3.14.5, Design §21.6.
+
+- Some o checkbox que converte saída comum em aporte.
+- O `<select>` de conta de investimento **fica**, agora condicionado a `transacao.ehInvestimento` em vez do estado do checkbox — dá para corrigir a corretora de um aporte, não para criar um.
+- Editar e apagar continuam funcionando para aporte e resgate.
+
+*(Checkpoint: QA de interface + banco. Editar o valor de um aporte existente altera a linha e o saldo da corretora; e **nenhum caminho da tela transforma uma saída comum em aporte** — asserção explícita, é o objetivo da task.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1281,4 +1389,5 @@ Escopo previsto:
 | M31 | *(planejado)* Rendimento pré-fixado e IPCA+. Seção de Requisitos ainda a escrever |
 | M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
 | M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |
+| M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
