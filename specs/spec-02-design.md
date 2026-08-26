@@ -1716,6 +1716,13 @@ Vive em `lib/datas.js`, junto de `paraDataLocal`, e é **pura** — testável se
 
 **Nenhuma leitura muda.** Os cálculos de `page.jsx` e `saldoParadoDe` continuam somando tudo, sem filtro de data — porque, com a trava, não existe mais nada no futuro para filtrar. Filtrar na leitura *e* travar na escrita seria redundante, e a redundância aqui esconde qual das duas está de fato valendo.
 
+**`max` no input, além da trava no servidor.** Os mesmos seis campos recebem `max={hojeISO()}`: o calendário nativo cinza as datas posteriores, e como todos os formulários são `<form onSubmit>` com `required`, o navegador recusa o submit antes de a Server Action ser chamada. É **camada de UX, não garantia** — não impede valor programático —, então não substitui a validação no servidor; soma-se a ela, no mesmo desenho de `resolverCategoria`, onde a regra vive na action e não na coluna.
+
+Duas exceções que, se esquecidas, quebram funcionalidade existente:
+
+- **`vencimento` NÃO recebe `max`.** Em `registrar-ativo.jsx` ele fica logo abaixo de "Data de aquisição", no mesmo bloco, e é a data de vencimento do título — precisa ser futura. Travá-lo inutilizaria o cadastro. (O que ele pediria é um `min`; fora do escopo desta task.)
+- **Em `/transacoes` o `max` é condicional a `form.ehInvestimento`.** O campo de data é o mesmo para transação comum e para aporte; aplicá-lo sempre tiraria a capacidade de agendar uma despesa, que a Projeção usa.
+
 ### 20.6 Resgate volta a ter conta de origem
 
 Resolve Requisitos §3.13.7. A Task 86 tirou da tela de lançamento a capacidade de vincular uma entrada a uma conta de investimento; sem ela o saldo em conta da corretora **só cresce**, porque nada o debita do lado do resgate.

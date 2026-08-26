@@ -1156,8 +1156,9 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 - **O sexto ponto é o que fecha o vazamento:** `validarTransacao` recusa data futura **quando `ehInvestimento`**. Sem isso, editar a data de um aporte em `/transacoes` recoloca o valor no futuro e a regra vira decorativa.
 - **Transação comum continua aceitando data futura** — a Projeção depende disso. Uma despesa agendada é legítima.
 - Registros anteriores não são alterados (decisão do usuário): existe um aporte real de 27/08 que deixa de ser futuro sozinho.
+- **`max={hoje}` nos mesmos seis campos**, para o calendário nativo já não oferecer a data. Duas exceções: **`vencimento` não recebe** (é a data de vencimento do título, tem de ser futura), e em `/transacoes` o `max` é **condicional a `ehInvestimento`**.
 
-*(Checkpoint: teste unitário de `ehFutura` — ontem, hoje de manhã, hoje 23h59, amanhã. QA de interface + banco: cada uma das cinco operações recusa amanhã com mensagem e **não grava nada**; todas aceitam hoje; editar um aporte em `/transacoes` para amanhã é recusado, mas uma **saída comum** para amanhã continua sendo aceita — é a asserção que separa a regra nova do comportamento que não pode quebrar.)*
+*(Checkpoint: teste unitário de `ehFutura` — ontem, hoje de manhã, hoje 23h59, amanhã. QA de interface + banco: cada uma das cinco operações recusa amanhã com mensagem e **não grava nada**; todas aceitam hoje; editar um aporte em `/transacoes` para amanhã é recusado, mas uma **saída comum** para amanhã continua sendo aceita. Conferir o `max` lendo o atributo dos seis campos, e **asseverar que `#ativo-vencimento` NÃO o tem** — travar o vencimento por engano inutilizaria o cadastro de ativo, e é o erro mais fácil de cometer aqui.)*
 
 ---
 
