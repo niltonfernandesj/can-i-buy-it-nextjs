@@ -1596,7 +1596,7 @@ model MovimentoInvestimento {
 }
 ```
 
-**Por que liquidação é tabela, e por que ela guarda o remanescente.** Duas colunas em `Ativo` só suportam uma liquidação total. Com resgate parcial, `valorAquisicao × fator(dataAquisicao → hoje)` deixa de valer: a base encolheu e o trecho seguinte começa noutra data. Como o produtório dos fatores diários é **multiplicativo** — `fator(t0→t2) = fator(t0→t1) × fator(t1→t2)` —, quebrar o intervalo no dia do resgate é exato, e a posição passa a valer `valorRemanescente × fator(data do evento → hoje)`. O caso sem nenhum evento cai na mesma fórmula, com a compra como "último evento": não são dois caminhos de código.
+**Por que liquidação é tabela, e por que ela guarda o remanescente.** Duas colunas em `Ativo` só suportam uma liquidação total. Com resgate parcial, `valorAquisicao × fator(dataAquisicao → hoje)` deixa de valer: a base encolheu e o trecho seguinte começa noutra data. Como o produtório dos fatores diários é **multiplicativo** — `fator(t0→t2) = fator(t0→t1) × fator(t1→t2)` —, quebrar o intervalo no dia do resgate é exato, e a posição passa a valer `valorRemanescente × fator(data do evento → hoje)`. O caso sem nenhum evento cai na mesma fórmula, com a aquisição como "último evento": não são dois caminhos de código.
 
 O remanescente é **guardado, não derivado**. Derivar exigiria que o nosso cálculo do trecho anterior batesse com o da corretora, incluindo arredondamento, e que soubéssemos o valor **bruto** retirado (guardamos o líquido, que é o que caiu na conta). Guardado, ele é um fato lido do extrato e **reancora** a conta a cada evento, sem acumular erro entre trechos — mesmo princípio já adotado para o valor recebido.
 
@@ -1606,11 +1606,11 @@ O remanescente é **guardado, não derivado**. Derivar exigiria que o nosso cál
 
 **Por que os movimentos não reaproveitam `Transacao`.** A pergunta é legítima — seria uma tabela a menos. Mas toda `Transacao` com `mesReferencia` entra em `comporMes`: um cupom viraria receita e uma taxa de custódia, saída no débito, mudando o Disponível de um mês por dinheiro que ninguém pode gastar. Evitar isso exigiria um filtro novo em **seis** pontos de leitura (`comporMes`, as três buscas de `lib/consolidacao.js`, `/transacoes` e a Projeção) que ninguém pode esquecer — e o M27 mostrou o preço disso. Some-se que `categoriaId` é obrigatório com FK `Restrict` (que categoria é uma taxa da B3? e, pela regra de "não exclui categoria em uso", a categoria inventada ficaria indeletável), que `mesReferencia`/`anoReferencia` são obrigatórios e sem sentido aqui, e que `validarTransacao` **já recusa** `contaId` de uma conta de investimento — trava que existe justamente para manter essa semântica.
 
-O critério que separa os dois casos: **isso muda quanto a família pode gastar neste mês?** Aporte e resgate, sim. Compra, liquidação e movimento avulso, não.
+O critério que separa os dois casos: **isso muda quanto a família pode gastar neste mês?** Aporte e resgate, sim. Registro de ativo, liquidação e movimento avulso, não.
 
 **O contra assumido:** passa a haver mais de um lugar onde "dinheiro se moveu", então o futuro extrato por conta terá que unir três fontes. É trabalho de leitura, não risco de correção.
 
-**Por que compra e liquidação não geram `Transacao`.** São movimentos internos da corretora (Requisitos §3.13.1). Modelá-los como transação os faria aparecer em `/transacoes` e entrar em `comporMes`, contaminando Entradas/Saídas de um mês em que nada saiu do bolso do usuário. A compra é o próprio registro do `Ativo`; a liquidação é o preenchimento de `dataLiquidacao`/`valorLiquidacao`.
+**Por que registro de ativo e liquidação não geram `Transacao`.** São movimentos internos da corretora (Requisitos §3.13.1). Modelá-los como transação os faria aparecer em `/transacoes` e entrar em `comporMes`, contaminando Entradas/Saídas de um mês em que nada saiu do bolso do usuário. O registro é a própria linha de `Ativo`; a liquidação é uma linha de `LiquidacaoAtivo`.
 
 ### 20.2 Cálculo dos saldos
 
@@ -1640,7 +1640,7 @@ patrimonio            = Σ (saldoEmConta + saldoInvestido) de todas as contas de
 
 Duas sutilezas que a fórmula esconde:
 
-- **A compra debita para sempre.** O `− Σ valorAquisicao` percorre inclusive os ativos já liquidados: o dinheiro saiu do caixa no dia da compra e voltou pelos eventos de liquidação, possivelmente com valor diferente. Somar só os vivos faria o caixa reaparecer sozinho na liquidação.
+- **A aquisição debita para sempre.** O `− Σ valorAquisicao` percorre inclusive os ativos já liquidados: o dinheiro saiu do caixa no dia da aquisição e voltou pelos eventos de liquidação, possivelmente com valor diferente. Somar só os vivos faria o caixa reaparecer sozinho na liquidação.
 - **Ativo vencido e não liquidado continua em `saldoInvestido`** (Requisitos §3.13.2) — o que tira a posição do saldo é o remanescente ter chegado a zero, não o vencimento ter passado.
 
 **Agrupamento:** uma função recebe os ativos vivos e a chave (`estrategia` ou `mercado`) e devolve os grupos, cada um com seu total e as contas dentro. Não há duas implementações por visão — é a mesma função com chave diferente, no espírito do que `agruparPorCartao` já faz na Visão mensal.
@@ -1655,9 +1655,9 @@ Rota `/investimentos`, Server Component lendo os dados e passando a um Client Co
 
 **Resumo.** Um `Card` com layout divergente por breakpoint: `flex-row` com o divisor de 1px a partir de `md`, `flex-col` sem divisor abaixo dele. A quebra é por classe, **não** por medição — o requisito é "sempre duas linhas no mobile", independente do tamanho dos números.
 
-**Card "Disponível para investir".** Uma linha por conta de investimento, com saldo parado e as duas ações. Fica **entre** o resumo e o detalhamento, e existe porque comprar e resgatar são operações **por conta**, enquanto o detalhamento agrupa por estratégia — o raciocínio completo está em Requisitos §3.13.3.
+**Card "Disponível para investir".** Uma linha por conta de investimento, com saldo parado e as duas ações. Fica **entre** o resumo e o detalhamento, e existe porque registrar e resgatar são operações **por conta**, enquanto o detalhamento agrupa por estratégia — o raciocínio completo está em Requisitos §3.13.3.
 
-**Registrar movimento** entra por um `DropdownMenu` na linha da conta, dentro do card "Disponível para investir" — o componente já está instalado e em uso no menu do usuário, então não entra dependência nova. As duas ações frequentes (comprar, resgatar) ficam visíveis e o menu guarda a rara: cupom e taxa acontecem duas vezes por ano por posição, então precisam ser **acháveis**, não rápidas de alcançar. O formulário nasce com a conta já escolhida, e o motivo é filtrado pela natureza — mesmo padrão de restrição que a estratégia faz sobre o indexador.
+**Registrar movimento** entra por um `DropdownMenu` na linha da conta, dentro do card "Disponível para investir" — o componente já está instalado e em uso no menu do usuário, então não entra dependência nova. As duas ações frequentes (registrar, resgatar) ficam visíveis e o menu guarda a rara: cupom e taxa acontecem duas vezes por ano por posição, então precisam ser **acháveis**, não rápidas de alcançar. O formulário nasce com a conta já escolhida, e o motivo é filtrado pela natureza — mesmo padrão de restrição que a estratégia faz sobre o indexador.
 
 **Detalhamento.** Alternância "Por estratégia" / "Por mercado" com o mesmo par de `<button role="tab">` construído à mão já usado em Saídas no crédito (§8.3.16) — sem puxar `@radix-ui/react-tabs` para uma escolha binária. Estratégia é o padrão.
 
@@ -1665,7 +1665,7 @@ Cada grupo é um card recolhível no mesmo padrão de `CabecalhoBloco` e de `Gru
 
 **O card de saldo parado é a exceção**: mesmo cabeçalho, mas sem gatilho e sem `ChevronDown` — não é um `<button>`, é uma linha estática. A ausência do chevron é o que comunica que ali não há o que abrir, sem precisar de rótulo explicando.
 
-Ele repete um número que o card "Disponível para investir" já mostra, agora somado em vez de por conta. Não é descuido: lá o parado é **acionável** (de qual conta eu compro), aqui ele é **composição** (quanto da carteira não está alocado). São duas perguntas diferentes sobre o mesmo valor.
+Ele repete um número que o card "Disponível para investir" já mostra, agora somado em vez de por conta. Não é descuido: lá o parado é **acionável** (de qual conta eu invisto), aqui ele é **composição** (quanto da carteira não está alocado). São duas perguntas diferentes sobre o mesmo valor.
 
 **Posição vencida:** `vencimento < hoje && dataLiquidacao == null`. Ganha fundo destacado, marcação "Vencido" e o botão de liquidar na própria linha. A comparação é por **dia**, não por instante — um título que vence hoje só conta como vencido amanhã.
 
@@ -1673,13 +1673,13 @@ Ele repete um número que o card "Disponível para investir" já mostra, agora s
 
 Em `lib/actions/investimentos.js`, seguindo o padrão das demais (sessão, validação, `revalidatePath`):
 
-- `criarAtivo(dados)` — valida que a conta é `CONTA_INVESTIMENTO`, que o indexador pertence à estratégia, e que `valorAquisicao <= saldoEmConta` da conta. Cria o `Ativo`.
+- `registrarAtivo(dados)` — valida que a conta é `CONTA_INVESTIMENTO`, que o indexador pertence à estratégia, e que `valorAquisicao <= saldoEmConta` da conta. Cria o `Ativo`.
 - `liquidarAtivo(id, { data, valor })` — valida que a posição existe e ainda está viva; cria um `LiquidacaoAtivo` com `valorRemanescente = 0` (no M29 toda liquidação é total).
 - `apagarAtivo(id)` — desfaz um cadastro errado, devolvendo o valor ao saldo em conta por consequência da fórmula.
 - `registrarMovimento(dados)` — valida a conta, que o motivo pertence à natureza, e que um débito não excede o saldo em conta.
 - `apagarMovimento(id)` — desfaz um registro errado.
 
-Todas revalidam `/investimentos`. **Nenhuma revalida `/visao-mensal` ou `/transacoes`** — compra e liquidação não tocam em transação nenhuma, e revalidar essas rotas sugeriria o contrário.
+Todas revalidam `/investimentos`. **Nenhuma revalida `/visao-mensal` ou `/transacoes`** — registro de ativo e liquidação não tocam em transação nenhuma, e revalidar essas rotas sugeriria o contrário.
 
 **A trava de saldo é da Server Action, não do banco.** O saldo é derivado, então não existe constraint que o expresse — mesma situação da regra "não exclui categoria em uso" (§18.3), checada na action com a FK como garantia final.
 

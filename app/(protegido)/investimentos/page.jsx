@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
-import { ComprarAtivo } from "./comprar-ativo";
+import { RegistrarAtivo } from "./registrar-ativo";
 import { RegistrarMovimento } from "./registrar-movimento";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -117,10 +117,10 @@ function Resumo({ patrimonio, investido, emConta }) {
   );
 }
 
-// Comprar e resgatar são ações POR CONTA, enquanto o detalhamento agrupa por
-// estratégia — um botão de compra dentro de um grupo sugeriria que a compra
-// herda aquela estratégia (Requisitos §3.13.4). Este card também responde
-// "de onde eu compro" e "o que ainda não foi alocado" no mesmo lugar.
+// Registrar e resgatar são ações POR CONTA, enquanto o detalhamento agrupa
+// por estratégia — um botão de registro dentro de um grupo sugeriria que o
+// ativo herda aquela estratégia (Requisitos §3.13.4). Este card também
+// responde "de onde eu invisto" e "o que ainda não foi alocado" no mesmo lugar.
 function DisponivelParaInvestir({ contas }) {
   return (
     <Card className="p-6">
@@ -139,7 +139,7 @@ function DisponivelParaInvestir({ contas }) {
               <span className="text-sm font-semibold tabular-nums text-entrada">
                 {formatarReais(conta.emConta)}
               </span>
-              <ComprarAtivo conta={conta} />
+              <RegistrarAtivo conta={conta} />
               {/* Inerte ainda — resgate chega na Task 114. */}
               <Button size="sm" variant="outline" disabled>
                 Resgatar

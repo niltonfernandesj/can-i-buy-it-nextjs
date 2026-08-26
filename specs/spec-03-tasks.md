@@ -1078,6 +1078,8 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 
 *(Checkpoint: QA de interface + confirmação no banco. Comprar debita o saldo em conta e credita o investido; uma compra acima do saldo é recusada com mensagem; e **nenhuma linha nova aparece em `/transacoes`** nem muda o Disponível do mês — asserção explícita, é a decisão mais fácil de quebrar sem perceber.)*
 
+> **Renomeada depois (fora de SDD).** O vocabulário desta ação passou de "comprar" para "registrar": o ativo já foi comprado na corretora, e o app apenas registra o fato. `criarAtivo` → `registrarAtivo`, `ComprarAtivo` → `RegistrarAtivo`, `comprar-ativo.jsx` → `registrar-ativo.jsx`, e o botão/modal viraram "Registrar ativo". O texto acima fica como está por ser o registro do que foi entregue no commit `f6b3e2f`; Requisitos §3.13 e Design §20 já falam o vocabulário novo.
+
 ---
 
 **Task 112. Liquidação**

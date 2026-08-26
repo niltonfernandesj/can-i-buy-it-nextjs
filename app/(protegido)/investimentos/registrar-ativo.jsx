@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { criarAtivo } from "@/lib/actions/investimentos";
+import { registrarAtivo } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
 import {
   ROTULO_ESTRATEGIA,
@@ -71,7 +71,7 @@ function Chips({ opcoes, valorAtual, onSelecionar }) {
   );
 }
 
-export function ComprarAtivo({ conta }) {
+export function RegistrarAtivo({ conta }) {
   const router = useRouter();
   const [aberto, setAberto] = useState(false);
   const [form, setForm] = useState(FORM_INICIAL);
@@ -94,7 +94,7 @@ export function ComprarAtivo({ conta }) {
     setErro("");
     setCarregando(true);
 
-    const resultado = await criarAtivo({
+    const resultado = await registrarAtivo({
       contaId: conta.id,
       estrategia: form.estrategia,
       produto: form.produto,
@@ -122,11 +122,11 @@ export function ComprarAtivo({ conta }) {
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
       <DialogTrigger asChild>
-        <Button size="sm">Comprar ativo</Button>
+        <Button size="sm">Registrar ativo</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Comprar ativo em {conta.nome}</DialogTitle>
+          <DialogTitle>Registrar ativo em {conta.nome}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={salvar} className="flex flex-col gap-4">
@@ -246,7 +246,7 @@ export function ComprarAtivo({ conta }) {
               Cancelar
             </Button>
             <Button type="submit" disabled={carregando}>
-              {carregando ? "Comprando..." : "Comprar"}
+              {carregando ? "Registrando..." : "Registrar"}
             </Button>
           </DialogFooter>
         </form>

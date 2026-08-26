@@ -333,14 +333,14 @@ E quatro fluxos, dois deles novos:
 | Fluxo | De → Para | Natureza |
 |---|---|---|
 | Aporte | Conta corrente → saldo em conta | Transação (já existe) |
-| **Compra de ativo** | Saldo em conta → saldo investido | **Novo — não é transação** |
+| **Registro de ativo** | Saldo em conta → saldo investido | **Novo — não é transação** |
 | **Liquidação do ativo** | Saldo investido → saldo em conta | **Novo — não é transação** |
 | Resgate | Saldo em conta → conta corrente | Transação (existe; o vínculo com a conta volta nesta fatia) |
 | **Movimento avulso** | Entra ou sai do saldo em conta | **Novo — não é transação** |
 
-**Compra e liquidação não são transações** (decisão do usuário): são movimentos internos da corretora. Não aparecem em `/transacoes`, não têm categoria, e **não afetam Entradas, Saídas nem o Disponível de mês nenhum**. Só aporte e resgate cruzam a fronteira com a conta corrente, e esses já são transações.
+**Registro de ativo e liquidação não são transações** (decisão do usuário): são movimentos internos da corretora. Não aparecem em `/transacoes`, não têm categoria, e **não afetam Entradas, Saídas nem o Disponível de mês nenhum**. Só aporte e resgate cruzam a fronteira com a conta corrente, e esses já são transações.
 
-**Integridade:** uma compra não pode exceder o saldo em conta daquela corretora, e um resgate também não. É a mesma classe de trava que já impede um aporte sem conta de destino.
+**Integridade:** o registro de um ativo não pode exceder o saldo em conta daquela corretora, e um resgate também não. É a mesma classe de trava que já impede um aporte sem conta de destino.
 
 #### 3.13.2 O ativo
 
@@ -359,7 +359,7 @@ Um ativo é uma posição de **renda fixa** dentro de uma conta de investimento,
 
 **Liquidação parcial está fora desta fatia** — nesta fatia, um ativo é liquidado inteiro. O **modelo**, porém, já a comporta: uma liquidação é um evento com data, valor recebido e **saldo remanescente**, e a liquidação total é simplesmente aquela em que o remanescente é zero.
 
-O saldo remanescente não é enfeite: depois de um resgate parcial, `valor de aquisição × correção desde a compra` deixa de valer, porque a base encolheu e o trecho seguinte começa noutra data. Como o fator de correção é multiplicativo, quebrar o intervalo no dia do resgate é exato — a posição passa a valer *base nova × correção desde aquele evento*. Sem esse campo, o rendimento de uma posição parcialmente resgatada seria incalculável.
+O saldo remanescente não é enfeite: depois de um resgate parcial, `valor de aquisição × correção desde a aquisição` deixa de valer, porque a base encolheu e o trecho seguinte começa noutra data. Como o fator de correção é multiplicativo, quebrar o intervalo no dia do resgate é exato — a posição passa a valer *base nova × correção desde aquele evento*. Sem esse campo, o rendimento de uma posição parcialmente resgatada seria incalculável.
 
 **Uma posição totalmente liquidada sai da listagem.** A tela mostra as posições vivas — o que ainda rende. O histórico de posições encerradas fica para depois (ver seção 7).
 
@@ -369,7 +369,7 @@ O saldo remanescente não é enfeite: depois de um resgate parcial, `valor de aq
 
 #### 3.13.3 Movimentos avulsos da corretora
 
-Nem todo dinheiro que entra ou sai do saldo em conta vem de aporte, resgate, compra ou liquidação. Com **Tesouro Direto** na lista de produtos, dois casos deixam de ser exóticos e viram rotina: o **cupom semestral** (Tesouro IPCA+ e Prefixado com juros) e a **taxa de custódia da B3**, cobrada semestralmente sobre posições acima de R$ 10 mil. Nos dois, o dinheiro se move **sem que nenhuma posição seja comprada ou liquidada**.
+Nem todo dinheiro que entra ou sai do saldo em conta vem de aporte, resgate, registro de ativo ou liquidação. Com **Tesouro Direto** na lista de produtos, dois casos deixam de ser exóticos e viram rotina: o **cupom semestral** (Tesouro IPCA+ e Prefixado com juros) e a **taxa de custódia da B3**, cobrada semestralmente sobre posições acima de R$ 10 mil. Nos dois, o dinheiro se move **sem que nenhuma posição seja registrada ou liquidada**.
 
 Sem uma forma de registrar isso, em até seis meses o saldo do app deixa de bater com o da corretora, e a única saída seria lançar um aporte falso para compensar — exatamente a gambiarra que corromperia a derivação em que o saldo se apoia.
 
@@ -399,7 +399,7 @@ Título: **Investimentos**.
 - **Mobile:** **sempre** em duas linhas — Patrimônio em destaque acima; Investido e Parado em conta abaixo. **O separador de 1px não existe no mobile.** A quebra é fixa, não depende do tamanho dos números.
 - **Patrimônio** = investido + parado, somando todas as contas de investimento. **Não inclui conta corrente** — é o que está na corretora.
 
-**Card "Disponível para investir"**, entre o resumo e o detalhamento: uma linha por conta de investimento, com o saldo parado e as ações **Comprar ativo** e **Resgatar**. Existe porque as duas ações são **por conta**, e no detalhamento a conta virou uma seção aninhada dentro do grupo — um botão de compra ali dentro sugeriria, erradamente, que a compra herda a estratégia do grupo. O card também responde "de onde eu compro" e "o que ainda não foi alocado" no mesmo lugar.
+**Card "Disponível para investir"**, entre o resumo e o detalhamento: uma linha por conta de investimento, com o saldo parado e as ações **Registrar ativo** e **Resgatar**. Existe porque as duas ações são **por conta**, e no detalhamento a conta virou uma seção aninhada dentro do grupo — um botão de registro ali dentro sugeriria, erradamente, que o ativo herda a estratégia do grupo. O card também responde "de onde eu invisto" e "o que ainda não foi alocado" no mesmo lugar.
 
 As duas ações frequentes de cada linha ficam visíveis; um **menu de mais ações** guarda o que é raro — é dele que sai **Registrar movimento**. A escolha do lugar tem motivo: esse card é o único que fala do caixa da corretora, e todo movimento avulso mexe nesse caixa. Como a conta já está escolhida na linha, o formulário nasce com um campo a menos.
 
@@ -659,18 +659,18 @@ Detalhamento de investimentos (M29, seção 3.13):
 - [ ] No mobile, o grupo Dados exibe quatro abas com ícone e rótulo curto: "Mês", "Transações", "Projeção" e "Investir", sem transbordar a 390px.
 - [ ] A tela `/investimentos` exibe Patrimônio, Investido e Parado em conta, somando todas as contas de investimento e sem incluir conta corrente.
 - [ ] No desktop o resumo fica numa linha só, com separador de 1px; no mobile quebra sempre em duas linhas, sem separador.
-- [ ] O card "Disponível para investir" lista uma linha por conta de investimento, com o saldo parado e as ações Comprar ativo e Resgatar.
+- [ ] O card "Disponível para investir" lista uma linha por conta de investimento, com o saldo parado e as ações Registrar ativo e Resgatar.
 - [ ] O detalhamento abre agrupado por Estratégia, e o usuário consegue alternar para Mercado.
 - [ ] Cada grupo aparece recolhido, com o percentual sobre o patrimônio e o nome à esquerda e o valor bruto à direita.
 - [ ] Havendo saldo parado, um card "Disponível em conta" aparece depois dos grupos, sem controle de expandir, e os percentuais de todos os cards somam 100%.
 - [ ] Com saldo parado zerado, esse card não aparece.
 - [ ] Ao expandir um grupo, aparece uma seção por conta com posição nele, com a tabela Produto / Vencimento / Taxa / Saldo bruto.
-- [ ] Comprar um ativo debita o saldo em conta da corretora escolhida e credita o saldo investido, sem criar transação alguma.
+- [ ] Registrar um ativo debita o saldo em conta da corretora escolhida e credita o saldo investido, sem criar transação alguma.
 - [ ] Uma compra maior que o saldo em conta é recusada.
 - [ ] O indexador oferecido é restrito pela estratégia escolhida.
 - [ ] Um ativo com vencimento no passado aparece destacado, com a ação Liquidar, e continua contando no saldo investido.
 - [ ] Liquidar um ativo devolve o valor informado ao saldo em conta daquela corretora, e a posição sai do detalhamento.
-- [ ] Nem compra nem liquidação aparecem em `/transacoes`, e nenhuma das duas altera Entradas, Saídas ou Disponível de qualquer mês.
+- [ ] Nem o registro de ativo nem a liquidação aparecem em `/transacoes`, e nenhuma das duas altera Entradas, Saídas ou Disponível de qualquer mês.
 - [ ] O menu de mais ações da linha de cada conta oferece "Registrar movimento".
 - [ ] Um movimento de crédito aumenta o saldo em conta daquela corretora; um de débito diminui.
 - [ ] O motivo oferecido é restrito pela natureza: cupom só aparece em crédito; taxa e corretagem, só em débito; ajuste nos dois.

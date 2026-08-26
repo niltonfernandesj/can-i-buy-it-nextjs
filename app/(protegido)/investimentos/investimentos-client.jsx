@@ -189,7 +189,7 @@ export function DetalhamentoInvestimentos({ ativos, patrimonio, parado }) {
 
       {grupos.length === 0 && parado <= 0 ? (
         <Card className="p-6 text-sm text-muted-foreground">
-          Nenhuma posição ainda. Compre um ativo para começar a acompanhar.
+          Nenhuma posição ainda. Registre um ativo para começar a acompanhar.
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
