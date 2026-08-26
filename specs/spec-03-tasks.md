@@ -1259,7 +1259,7 @@ A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra
 ---
 
 **Task 116. `categoriaId` opcional na transação**
-⬜ **A implementar**
+✅ **Concluída** — commit `c34d1b7`
 
 `prisma/schema.prisma`, migration e `lib/actions/transacoes.js`. Requisitos §3.14.2, Design §21.2.
 
@@ -1271,7 +1271,7 @@ A tela de Lançamento passa a ter responsabilidade declarada: dinheiro que entra
 ---
 
 **Task 117. Categoria nula na leitura**
-⬜ **A implementar**
+✅ **Concluída** — commit `d9c3771`
 
 `app/(protegido)/transacoes/transacoes-client.jsx`. Design §21.2.
 

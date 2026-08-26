@@ -5,6 +5,8 @@ import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/inve
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
 import { RegistrarMovimento } from "./registrar-movimento";
+import { MovimentarConta } from "./movimentar-conta";
+import { DialogTrigger } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -13,8 +15,11 @@ import { Button } from "@/components/ui/button";
 // §20.2). Os ativos vêm inteiros porque a listagem precisa deles de qualquer
 // forma, e o saldo em conta depende de cada evento de liquidação.
 async function carregar() {
-  const [contas, ativos, aportes, resgates, movimentos] = await Promise.all([
+  const [contas, contasCorrentes, ativos, aportes, resgates, movimentos] = await Promise.all([
     db.conta.findMany({ where: { tipo: "CONTA_INVESTIMENTO" }, orderBy: { nome: "asc" } }),
+    // Aportar e resgatar precisam da origem/destino — a única informação de
+    // fora do mundo de investimento que esta tela carrega (Design §21.3).
+    db.conta.findMany({ where: { tipo: "CONTA_CORRENTE" }, orderBy: { nome: "asc" } }),
     db.ativo.findMany({ include: { conta: true, liquidacoes: true } }),
     db.transacao.groupBy({
       by: ["contaInvestimentoId"],
@@ -77,7 +82,7 @@ async function carregar() {
     };
   });
 
-  return { contas: porConta, ativos: ativosParaCliente };
+  return { contas: porConta, contasCorrentes, ativos: ativosParaCliente };
 }
 
 function Rotulo({ children }) {
@@ -121,7 +126,7 @@ function Resumo({ patrimonio, investido, emConta }) {
 // por estratégia — um botão de registro dentro de um grupo sugeriria que o
 // ativo herda aquela estratégia (Requisitos §3.13.4). Este card também
 // responde "de onde eu invisto" e "o que ainda não foi alocado" no mesmo lugar.
-function DisponivelParaInvestir({ contas }) {
+function DisponivelParaInvestir({ contas, contasCorrentes }) {
   return (
     <Card className="p-6">
       <Rotulo>Disponível para investir</Rotulo>
@@ -139,8 +144,13 @@ function DisponivelParaInvestir({ contas }) {
               <span className="text-sm font-semibold tabular-nums text-entrada">
                 {formatarReais(conta.emConta)}
               </span>
+              <MovimentarConta operacao="aporte" conta={conta} contasCorrentes={contasCorrentes}>
+                <DialogTrigger asChild>
+                  <Button size="sm">Aportar</Button>
+                </DialogTrigger>
+              </MovimentarConta>
               <RegistrarAtivo conta={conta} />
-              {/* Inerte ainda — resgate chega na Task 114. */}
+              {/* Inerte ainda — resgate chega na Task 119. */}
               <Button size="sm" variant="outline" disabled>
                 Resgatar
               </Button>
@@ -154,7 +164,7 @@ function DisponivelParaInvestir({ contas }) {
 }
 
 export default async function InvestimentosPage() {
-  const { contas, ativos } = await carregar();
+  const { contas, contasCorrentes, ativos } = await carregar();
 
   const investido = contas.reduce((soma, c) => soma + c.investido, 0);
   const emConta = contas.reduce((soma, c) => soma + c.emConta, 0);
@@ -172,7 +182,7 @@ export default async function InvestimentosPage() {
           {/* Patrimônio é o que está na corretora: investido + parado. Não
               inclui conta corrente (Requisitos §3.13.4). */}
           <Resumo patrimonio={investido + emConta} investido={investido} emConta={emConta} />
-          <DisponivelParaInvestir contas={contas} />
+          <DisponivelParaInvestir contas={contas} contasCorrentes={contasCorrentes} />
           <DetalhamentoInvestimentos
             ativos={ativos}
             patrimonio={investido + emConta}
