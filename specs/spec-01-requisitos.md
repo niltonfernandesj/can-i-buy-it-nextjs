@@ -585,7 +585,21 @@ Não existe "último resultado salvo" — o resultado é derivado da série, que
 
 **A tela não indica até quando o valor vale** (decisão do usuário, revista em 26/08/2026 depois de a versão com rótulo ter sido aprovada). Limitação conhecida e aceita: se o BC ficar fora do ar por vários dias, o número para de subir **em silêncio**, sem nada na tela explicando por quê. Também não se distingue disso um feriado prolongado, em que a série legitimamente não avança.
 
-#### 3.16.6 Pré-fixado e IPCA+ continuam sem rendimento
+#### 3.16.6 O app segue a curva do papel, não o mercado
+
+**Decisão registrada em 26/08/2026, ao conferir um Tesouro Selic contra o extrato.**
+
+O app calcula quanto a posição rende **se levada até o vencimento pela taxa contratada** — a *curva do papel*. O Tesouro Direto mostra por quanto o título seria vendido **hoje**, o que depende da taxa de mercado corrente. São perguntas diferentes, e as respostas divergem.
+
+**Nos CDBs isso não aparece**, e por isso as duas conferências anteriores bateram até o centavo: CDB não tem mercado secundário para pessoa física, então curva e mercado são o mesmo número. O Tesouro tem.
+
+**Medido:** um Tesouro Selic 2031 comprado a Selic + 0,10% mostrava R$ 10.817,95 no extrato contra R$ 10.821,40 no app — 0,03%. A conta reversa mostra que o ágio de mercado passou de 0,100% para 0,107% a.a., sete pontos-base.
+
+**Por que 0,03% não mede o risco.** Numa LFT o efeito é mínimo — é para isso que ela existe. O mesmo mecanismo num **Tesouro Prefixado ou IPCA+ longo** produz oscilações de vários pontos percentuais. O M31 herda esta decisão sabendo disso: se a divergência incomodar, a saída é buscar as taxas do arquivo de transparência do Tesouro, que é integração externa nova e marco próprio.
+
+**A escolha é deliberada:** para um controle de patrimônio familiar, "quanto isto vale se eu levar ao vencimento" é a pergunta mais útil, e é estável — não oscila com o humor do mercado.
+
+#### 3.16.7 Pré-fixado e IPCA+ continuam sem rendimento
 
 Só o pós-fixado rende no M30. Uma posição pré-fixada ou IPCA+ continua mostrando o valor de aquisição, **sem marcação nenhuma** (decisão do usuário).
 

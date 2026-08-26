@@ -1994,7 +1994,9 @@ fator = Π [ (1 + taxa_do_dia) × (1 + spread)^(1/252) ]
 
 Produtos diferentes, percentuais diferentes (um acima e outro abaixo de 100%), janelas de tamanhos diferentes, uma tributada e outra isenta. Isso valida em conjunto: a convenção ANBIMA do percentual, o produtório sobre a série 12, e a contagem de dias a partir da aquisição inclusive.
 
-**O que segue sem validação:** o spread (`CDI_MAIS`, `SELIC_MAIS`), porque não há posição real com ele; a série da Selic, cuja única posição tem um dia de história; e a ponta do vencimento.
+**Terceira conferência, num Tesouro Selic 2031 a Selic + 0,10%:** extrato R$ 10.817,95, app R$ 10.821,40 — 0,03% de diferença, e **não é erro de cálculo**. É a distinção entre curva do papel e marcação a mercado (Requisitos §3.16.6). Ela valida o que dava para validar: a série 11 da Selic com 157 dias úteis de história, o spread `SELIC_MAIS`, e a sincronização estendendo a série **para trás** quando uma aquisição mais antiga aparece — a segunda borda da §23.2, que até então só tinha teste.
+
+**O que segue sem validação:** a ponta do vencimento, e o comportamento de qualquer título do Tesouro cuja marcação a mercado seja relevante (prefixado e IPCA+, no M31).
 
 **A ponta do vencimento continua não verificada.** A convenção de mercado costuma contar da aplicação (inclusive) até o vencimento (exclusive), o que seria `data < vencimento` em vez de `<=`. A diferença só aparece numa posição já vencida, e nenhuma das reais venceu ainda — quando a primeira vencer, vale conferir contra o valor de resgate antes de mudar.
 
