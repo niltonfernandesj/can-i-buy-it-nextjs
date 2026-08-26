@@ -418,14 +418,28 @@ Ao expandir, uma **seção por conta** que tenha posição naquele grupo:
 - **Nesta fatia, saldo bruto = valor de aquisição.** No M30 a coluna passa a mostrar o valor corrigido.
 - Uma posição vencida aparece destacada, com marcação "Vencido" e o botão **Liquidar** na própria linha.
 
-#### 3.13.5 Navegação
+#### 3.13.5 Operação de investimento não aceita data futura
+
+**Investimento é registro do que aconteceu, não agendamento.** Aporte, resgate, registro de ativo, liquidação e movimento avulso passam a **recusar data futura**.
+
+A regra nasce de um bug encontrado no uso: um aporte lançado para o dia seguinte já somava no saldo parado de hoje. Havia dois caminhos — filtrar o futuro na leitura, ou impedir que ele exista. **O segundo é mais simples e mais honesto:** a tela de Investimentos mostra "agora", e um lançamento com data futura é uma simulação, que não pertence a este contexto.
+
+**As cinco operações, sem exceção.** Filtrar só uma parte seria pior que o bug: excluir um aporte futuro mas continuar debitando a compra de ativo feita com aquele dinheiro deixaria o saldo **negativo**.
+
+**A tela de transações também fecha.** Editar a data de um aporte já existente para o futuro contornaria a regra, então `validarTransacao` passa a recusar data futura **quando `ehInvestimento` é verdadeiro**. Um lançamento comum continua aceitando data futura — a Projeção depende disso, e uma despesa agendada é legítima.
+
+**Hoje conta.** O corte é o fim do dia corrente, não o instante atual: lançar algo com a data de hoje é o caso normal.
+
+**Registros anteriores à regra não são alterados** (decisão do usuário). A validação vale para o que entra a partir daqui.
+
+#### 3.13.6 Navegação
 
 A área entra no grupo **Dados**, e os rótulos passam a **divergir por breakpoint**:
 
 - **Desktop:** a barra lateral mantém a estrutura atual e ganha um sexto destino, **"Investimentos"**.
 - **Mobile:** as abas do grupo Dados passam a ter **ícone + rótulo curto**. A aba nova chama-se **"Investir"**, e **"Visão mensal" passa a "Mês"** — com quatro abas dividindo a largura por igual, é o único outro rótulo que não cabe. "Transações" e "Projeção" continuam inteiros.
 
-#### 3.13.6 Resgate volta a ter conta de origem
+#### 3.13.7 Resgate volta a ter conta de origem
 
 O resgate é uma entrada em conta corrente vinda de uma conta de investimento. A Task 86 removeu esse vínculo da tela de lançamento, e sem ele **nenhuma conta por conta fecha** — o saldo em conta ficaria sempre crescente. A tela de lançamento volta a pedir a conta de investimento de origem quando a entrada é um resgate.
 ### 3.14 Especificação — Movimentação de investimento concentrada em Investimentos (M34)

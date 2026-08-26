@@ -1685,9 +1685,40 @@ Todas revalidam `/investimentos`. **Nenhuma revalida `/visao-mensal` ou `/transa
 
 **A trava de saldo é da Server Action, não do banco.** O saldo é derivado, então não existe constraint que o expresse — mesma situação da regra "não exclui categoria em uso" (§18.3), checada na action com a FK como garantia final.
 
+### 20.7 Data futura recusada nas operações de investimento
+
+Requisitos §3.13.5. **Origem:** um aporte datado do dia seguinte já somava no saldo parado de hoje.
+
+**Onde a trava entra — seis pontos, não cinco.** As cinco Server Actions de investimento, mais `validarTransacao`:
+
+| Ação | Campo | Arquivo |
+|---|---|---|
+| `aportar` / `resgatar` | `data` | `lib/actions/investimentos.js` (via `validarMovimentacao`) |
+| `registrarAtivo` | `dataAquisicao` | idem (via `validar`) |
+| `liquidarAtivo` | `data` | idem |
+| `registrarMovimento` | `data` | idem |
+| edição de um aporte/resgate | `dataCompra` | `lib/actions/transacoes.js`, **só quando `ehInvestimento`** |
+
+O sexto é o que fecha o vazamento: sem ele, editar a data de um aporte existente em `/transacoes` recolocaria o valor no futuro, e a regra seria contornável por uma porta lateral. **Transação comum continua aceitando data futura** — a Projeção depende disso.
+
+**O corte é o fim do dia corrente**, não `new Date()`. Um lançamento com a data de hoje é o caso normal e não pode ser recusado por causa da hora.
+
+```js
+// lib/datas.js
+export function ehFutura(data) {
+  const fimDeHoje = new Date();
+  fimDeHoje.setHours(23, 59, 59, 999);
+  return data > fimDeHoje;
+}
+```
+
+Vive em `lib/datas.js`, junto de `paraDataLocal`, e é **pura** — testável sem banco, ao contrário das Server Actions que a usam. É o mesmo desenho de `lib/estorno.js` e `lib/disponivel.js`.
+
+**Nenhuma leitura muda.** Os cálculos de `page.jsx` e `saldoParadoDe` continuam somando tudo, sem filtro de data — porque, com a trava, não existe mais nada no futuro para filtrar. Filtrar na leitura *e* travar na escrita seria redundante, e a redundância aqui esconde qual das duas está de fato valendo.
+
 ### 20.6 Resgate volta a ter conta de origem
 
-Resolve Requisitos §3.13.6. A Task 86 tirou da tela de lançamento a capacidade de vincular uma entrada a uma conta de investimento; sem ela o saldo em conta da corretora **só cresce**, porque nada o debita do lado do resgate.
+Resolve Requisitos §3.13.7. A Task 86 tirou da tela de lançamento a capacidade de vincular uma entrada a uma conta de investimento; sem ela o saldo em conta da corretora **só cresce**, porque nada o debita do lado do resgate.
 
 **Volta como marcação, não como quarto Tipo.** O toggle de Tipo já estourava a largura a 390px com três opções (Task 89, §8.2.4) — uma quarta reabriria aquele problema. E resgate é raro, ao contrário do aporte, que ganhou Tipo próprio justamente por ser frequente e por a marcação secundária passar despercebida.
 

@@ -979,7 +979,11 @@ fixa" por ora), Estratégia, Produto (CDB, LCA, LCI, Tesouro Direto), Emissor, I
 
 ### M29 — Modelo de investimentos: ativos e os dois saldos 🔄
 
-**Status:** 🔄 **reaberto em 26/08/2026 para tasks de revisão.** As nove tasks originais (106–114) estão concluídas e commitadas — Requisitos §3.13 e Design §20. O uso da tela revelou ajustes que pertencem a este marco, e não a um novo: são refinamentos do que o M29 entregou, não escopo novo. As tasks de revisão começam na **Task 115**.
+**Status:** 🔄 **reaberto em 26/08/2026 para tasks de revisão** (Task 115 em diante).
+
+**Decisão que virou pivô (Task 125).** A primeira leitura do bug de data futura levou a filtrar o futuro na exibição, com ícone e popover de "agendados" no card. O usuário reverteu: *"aporte no futuro é simulação, não acho que caiba pra esse contexto"* — e travar na escrita ficou menor, sem UI nova e sem duas fontes de verdade sobre o mesmo número.
+
+**Status original:** As nove tasks originais (106–114) estão concluídas e commitadas — Requisitos §3.13 e Design §20. O uso da tela revelou ajustes que pertencem a este marco, e não a um novo: são refinamentos do que o M29 entregou, não escopo novo. As tasks de revisão começam na **Task 115**.
 
 Duas decisões vindas da revisão do schema, depois da primeira versão destas tasks: os **movimentos avulsos** entram no M29 (sem eles o saldo desencontra do extrato real em seis meses de Tesouro Direto), e **transferência entre corretoras não ganha operação própria** — quem precisar registra dois ajustes, um de cada lado.
 
@@ -1135,6 +1139,25 @@ A tela hoje vai do card "Disponível para investir" direto para o toggle Estrat�
 - O título aparece **junto com a seção**: quando não há nem posição nem parado, o estado vazio ("Nenhuma posição ainda…") já explica o bloco sozinho, então o título fica fora desse caso.
 
 *(Checkpoint: QA de interface. O título aparece acima do toggle nos dois viewports; trocar de Estratégia para Mercado não o altera; e o estado sem nenhuma posição continua mostrando só a mensagem de vazio.)*
+
+---
+
+**Task 125. Operação de investimento recusa data futura**
+⬜ **A implementar**
+
+`lib/datas.js`, `lib/actions/investimentos.js` e `lib/actions/transacoes.js`. Requisitos §3.13.5, Design §20.7.
+
+**Bug encontrado no uso:** um aporte lançado para o dia seguinte já somava no saldo parado de hoje. A causa é que `/investimentos` é a única tela sem dimensão de tempo — ela mostra "agora" —, e nenhuma das cinco fontes do saldo filtrava data.
+
+**Corrige na escrita, não na leitura.** Investimento é registro do que aconteceu; data futura é simulação e não pertence a este contexto. Com a trava, não sobra nada no futuro para filtrar, então nenhum cálculo muda.
+
+- `ehFutura(data)` em `lib/datas.js` — pura, testável sem banco, cortando no **fim do dia corrente** (um lançamento de hoje é o caso normal).
+- As cinco ações passam a recusar: `aportar`, `resgatar`, `registrarAtivo`, `liquidarAtivo`, `registrarMovimento`.
+- **O sexto ponto é o que fecha o vazamento:** `validarTransacao` recusa data futura **quando `ehInvestimento`**. Sem isso, editar a data de um aporte em `/transacoes` recoloca o valor no futuro e a regra vira decorativa.
+- **Transação comum continua aceitando data futura** — a Projeção depende disso. Uma despesa agendada é legítima.
+- Registros anteriores não são alterados (decisão do usuário): existe um aporte real de 27/08 que deixa de ser futuro sozinho.
+
+*(Checkpoint: teste unitário de `ehFutura` — ontem, hoje de manhã, hoje 23h59, amanhã. QA de interface + banco: cada uma das cinco operações recusa amanhã com mensagem e **não grava nada**; todas aceitam hoje; editar um aporte em `/transacoes` para amanhã é recusado, mas uma **saída comum** para amanhã continua sendo aceita — é a asserção que separa a regra nova do comportamento que não pode quebrar.)*
 
 ---
 
