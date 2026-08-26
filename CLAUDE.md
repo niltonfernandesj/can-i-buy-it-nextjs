@@ -81,7 +81,7 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 ### Flakes conhecidos (retente, não investigue)
 
 - **Primeira requisição contra um dev server recém-subido** dá timeout enquanto o Next compila a rota. Rode o script de novo.
-- **`.next` corrompido** quando `build` roda com `dev`/`start` vivo. Mate a porta 3000 e `rm -rf .next` antes.
+- **`.next` incompatível entre `build` e `dev`** — nos dois sentidos: com um `dev`/`start` vivo durante o `build`, **e também** rodando `npm run dev` logo depois de um `npm run build` que já terminou. O segundo caso é o traiçoeiro, porque nada avisa: o dev server sobe normal, responde 200 no HTML, e **todos os chunks `_next/static` dão 404**. Sem JS não há hidratação, então formulários React viram submit HTML puro (a URL ganha um `?` e a página recarrega sem erro nenhum na tela) e nenhum `onClick` funciona — parece bug de autenticação ou de seletor, e não é. **Sintoma diagnóstico:** ouça `page.on("requestfailed")` no script; uma enxurrada de 404 em `_next/static/chunks/*` fecha o caso na hora. Sempre `rm -rf .next` e mate a porta 3000 antes de subir o dev depois de um build.
 - **Reload de página aberta antes de reiniciar `next dev`** pode carregar sem estilo — a aba retém referências ao build anterior do webpack. Feche/recarregue a aba (ou dê um hard reload) depois de reiniciar o servidor; não precisa investigar.
 
 ### Armadilhas de scripts de QA
@@ -90,6 +90,8 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 - O campo de senha do modelo `Usuario` é **`senhaHash`**, não `senha`.
 - Datas em `new Date("2026-07-20")` são UTC e podem exibir o dia anterior no fuso local. Asserte pelo dado (`numeroParcela`, id) em vez do dia exato quando isso não for o alvo do teste.
 - **`formatarReais` usa espaço não-quebrável (U+00A0) entre "R$" e o número.** Comparar `textContent()` com uma string digitada com espaço comum falha exibindo dois valores idênticos na tela — foi o erro mais repetido no QA do M29, quatro vezes. Normalize sempre com `s.replace(/\u00a0/g, " ")`, e escreva o escape `\u00a0` explicitamente: um caractere literal no regex é invisível na revisão e some numa edição sem ninguém perceber.
+- **`boundingBox()` devolve a border-box, com padding incluído.** Comparar a largura de um filho com a de `<main>` (que tem `p-8`) falha por 64px mesmo quando o filho ocupa a largura toda — e a falha *parece* bug de layout. Meça a caixa de conteúdo: `el.getBoundingClientRect().width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight)`.
+- **O login não dispara evento de navegação.** `signIn(..., { redirect: false })` seguido de `router.push()` é navegação client-side: `waitForURL()` com o `waitUntil: "load"` padrão estoura o timeout mesmo com o login bem-sucedido. Espere pela URL via `waitForFunction(() => !location.pathname.includes("/login"))`, e no `catch` verifique se a mensagem "Email ou senha inválidos." apareceu — separa credencial recusada de espera mal escrita.
 - `npm install`/`uninstall playwright` e `npm audit` imprimem avisos de engine e vulnerabilidades que não mudam de task pra task — `| tail -n 3` ou `| tail -n 5` no comando corta o ruído sem perder o resultado.
 
 ## Stack (ver spec-02-design.md §1 para detalhes/justificativas)
