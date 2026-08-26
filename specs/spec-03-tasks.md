@@ -1123,7 +1123,7 @@ Reabre a superfície removida na Task 86: uma entrada marcada como resgate volta
 #### Tasks de revisão (M29 reaberto)
 
 **Task 115. Título "Carteira" acima do detalhamento**
-⬜ **A implementar**
+✅ **Concluída** — commit `f55b45d`
 
 `app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.13.4, Design §20.3.
 
