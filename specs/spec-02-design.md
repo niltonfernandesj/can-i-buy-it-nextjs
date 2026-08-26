@@ -1659,7 +1659,9 @@ Rota `/investimentos`, Server Component lendo os dados e passando a um Client Co
 
 **Registrar movimento** entra por um `DropdownMenu` na linha da conta, dentro do card "Disponível para investir" — o componente já está instalado e em uso no menu do usuário, então não entra dependência nova. As duas ações frequentes (registrar, resgatar) ficam visíveis e o menu guarda a rara: cupom e taxa acontecem duas vezes por ano por posição, então precisam ser **acháveis**, não rápidas de alcançar. O formulário nasce com a conta já escolhida, e o motivo é filtrado pela natureza — mesmo padrão de restrição que a estratégia faz sobre o indexador.
 
-**Detalhamento.** Alternância "Por estratégia" / "Por mercado" com o mesmo par de `<button role="tab">` construído à mão já usado em Saídas no crédito (§8.3.16) — sem puxar `@radix-ui/react-tabs` para uma escolha binária. Estratégia é o padrão.
+**Detalhamento.** Abre com um `<h2>` "Carteira" (Requisitos §3.13.4), reaproveitando o token de título de seção já usado em `visao-mensal-client.jsx` — `text-sm font-semibold uppercase tracking-wide`. Fica **acima** da alternância e dentro do mesmo `flex flex-col gap-4`, para a borda inferior das abas seguir atravessando a largura toda. No estado sem nenhuma posição o título não aparece: a mensagem de vazio já explica o bloco sozinha.
+
+Alternância "Por estratégia" / "Por mercado" com o mesmo par de `<button role="tab">` construído à mão já usado em Saídas no crédito (§8.3.16) — sem puxar `@radix-ui/react-tabs` para uma escolha binária. Estratégia é o padrão.
 
 Cada grupo é um card recolhível no mesmo padrão de `CabecalhoBloco` e de `GrupoCartao`: a linha inteira é o gatilho, com `aria-expanded` e um `ChevronDown` que gira. Recolhido por padrão.
 

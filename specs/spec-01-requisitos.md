@@ -403,7 +403,7 @@ Título: **Investimentos**.
 
 As duas ações frequentes de cada linha ficam visíveis; um **menu de mais ações** guarda o que é raro — é dele que sai **Registrar movimento**. A escolha do lugar tem motivo: esse card é o único que fala do caixa da corretora, e todo movimento avulso mexe nesse caixa. Como a conta já está escolhida na linha, o formulário nasce com um campo a menos.
 
-**Detalhamento**, agrupado por **Estratégia** ou **Mercado**, à escolha do usuário. **Estratégia é o padrão** (por mercado, hoje, existe um card só). A estrutura é idêntica nas duas visões — só o critério de agrupamento muda.
+**Detalhamento**, sob o título de seção **"Carteira"**, agrupado por **Estratégia** ou **Mercado**, à escolha do usuário. O título nomeia o bloco que começa ali — sem ele, o resumo, o card de disponível e o detalhamento ficam como três blocos visualmente equivalentes, sem hierarquia declarada. É **"Carteira"**, e não "Ativos", porque a seção termina no card "Disponível em conta", que não é ativo: "Carteira" cobre posição investida e dinheiro parado, que é exatamente o conjunto cujos percentuais fecham 100% do patrimônio. **Estratégia é o padrão** (por mercado, hoje, existe um card só). A estrutura é idêntica nas duas visões — só o critério de agrupamento muda.
 
 Cada grupo é um **card recolhido**:
 - À esquerda: **percentual de participação no patrimônio** e o nome do grupo.

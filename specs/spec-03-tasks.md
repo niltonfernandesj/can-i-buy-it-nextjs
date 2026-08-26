@@ -977,9 +977,9 @@ fixa" por ora), Estratégia, Produto (CDB, LCA, LCI, Tesouro Direto), Emissor, I
 
 ---
 
-### M29 — Modelo de investimentos: ativos e os dois saldos ✅
+### M29 — Modelo de investimentos: ativos e os dois saldos 🔄
 
-**Status:** ✅ **concluído.** Requisitos §3.13, Design §20 e as nove tasks abaixo, todas commitadas.
+**Status:** 🔄 **reaberto em 26/08/2026 para tasks de revisão.** As nove tasks originais (106–114) estão concluídas e commitadas — Requisitos §3.13 e Design §20. O uso da tela revelou ajustes que pertencem a este marco, e não a um novo: são refinamentos do que o M29 entregou, não escopo novo. As tasks de revisão começam na **Task 115**.
 
 Duas decisões vindas da revisão do schema, depois da primeira versão destas tasks: os **movimentos avulsos** entram no M29 (sem eles o saldo desencontra do extrato real em seis meses de Tesouro Direto), e **transferência entre corretoras não ganha operação própria** — quem precisar registra dois ajustes, um de cada lado.
 
@@ -1117,6 +1117,24 @@ As tabelas na mesma migration: nascem juntas, e separá-las deixaria a Task 108 
 Reabre a superfície removida na Task 86: uma entrada marcada como resgate volta a pedir a conta de investimento de origem. Sem isso o saldo em conta só cresce, e nenhuma conta fecha.
 
 *(Checkpoint: QA de interface + banco — a transação nasce com `contaInvestimentoId` preenchido, e o saldo em conta da corretora cai no valor resgatado. Conferir que uma entrada comum, sem marcação de resgate, continua sem pedir conta de investimento.)*
+
+---
+
+#### Tasks de revisão (M29 reaberto)
+
+**Task 115. Título "Carteira" acima do detalhamento**
+⬜ **A implementar**
+
+`app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.13.4, Design §20.3.
+
+A tela hoje vai do card "Disponível para investir" direto para o toggle Estratégia/Mercado, sem nomear a seção que começa ali. Quem chega na página não tem como saber que os cards abaixo do toggle são um bloco só — e, com o resumo e o card de disponível acima, são três blocos visualmente equivalentes sem hierarquia declarada.
+
+- Um `<h2>` com o texto **"Carteira"** dentro de `DetalhamentoInvestimentos`, **acima** do `ToggleVisao` e dentro do mesmo `flex flex-col gap-4` — o toggle continua logo abaixo, com a borda inferior atravessando a largura toda, preservando a metáfora de abas.
+- Tipografia: reaproveita o padrão de título de seção que já existe em `visao-mensal-client.jsx` — `text-sm font-semibold uppercase tracking-wide`. Não inventar token novo.
+- **"Carteira", não "Ativos"** (decisão do usuário, 26/08/2026): a seção termina no `CardParado` — "Disponível em conta" —, que não é ativo nenhum. "Ativos" contradiria o próprio conteúdo; "Carteira" cobre posição investida e dinheiro parado, que é exatamente o conjunto cujos percentuais fecham 100% do patrimônio.
+- O título aparece **junto com a seção**: quando não há nem posição nem parado, o estado vazio ("Nenhuma posição ainda…") já explica o bloco sozinho, então o título fica fora desse caso.
+
+*(Checkpoint: QA de interface. O título aparece acima do toggle nos dois viewports; trocar de Estratégia para Mercado não o altera; e o estado sem nenhuma posição continua mostrando só a mensagem de vazio.)*
 
 ---
 

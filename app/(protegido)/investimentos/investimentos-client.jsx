@@ -182,12 +182,18 @@ export function DetalhamentoInvestimentos({ ativos, patrimonio, parado }) {
   const grupos = agruparPor(ativos, visao);
   const rotulos = visao === "estrategia" ? ROTULO_ESTRATEGIA : ROTULO_MERCADO;
   const hoje = new Date();
+  const vazio = grupos.length === 0 && parado <= 0;
 
   return (
     <div className="flex flex-col gap-4">
+      {/* "Carteira", e não "Ativos": a seção termina no CardParado, que não é
+          ativo nenhum (Requisitos §3.13.4). Fica fora do estado vazio porque
+          lá a própria mensagem já explica o bloco. */}
+      {!vazio && <h2 className="text-sm font-semibold uppercase tracking-wide">Carteira</h2>}
+
       <ToggleVisao visao={visao} onMudar={setVisao} />
 
-      {grupos.length === 0 && parado <= 0 ? (
+      {vazio ? (
         <Card className="p-6 text-sm text-muted-foreground">
           Nenhuma posição ainda. Registre um ativo para começar a acompanhar.
         </Card>
