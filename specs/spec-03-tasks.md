@@ -1242,7 +1242,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 130. O dia da aquisição rende**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `89d35ea`
 
 `lib/rendimento.js`. Design §23.3.
 
