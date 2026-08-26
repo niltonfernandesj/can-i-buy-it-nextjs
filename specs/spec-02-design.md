@@ -1953,6 +1953,8 @@ faltaNoComeço = [início necessário, min(data guardada) − 1 dia]
 
 Cobrir as duas evita assumir que o que está guardado é contíguo — e é o que acontece de verdade quando uma posição antiga é cadastrada depois de a tabela já ter os dias recentes.
 
+**A ponta é re-perguntada a cada sincronização, e isso é correto.** A série atrasa, então `desejadoAte` (hoje) é quase sempre maior que o último dia guardado — e a única forma de descobrir que hoje foi publicado é perguntar. Medido: a segunda passada pede **um dia só**, não a janela, e leva um 404 imediato. Em produção o cache do `fetch` do Next (`revalidate: 3600`) segura essa chamada por uma hora. Não confundir com rebuscar a janela: o miolo nunca é pedido de novo.
+
 **404 é sucesso com zero linhas.** Um intervalo sem dia útil — um fim de semana, ou "do último dia guardado até hoje" quando não há nada novo — devolve `404` com corpo `{"erro": ...}`. Tratar como erro faria a tela quebrar todo sábado. Qualquer outro status, timeout ou corpo ilegível é falha de verdade: **registra e segue com o que a tabela tem**, nunca propaga exceção para a página.
 
 O parse tem duas armadilhas: a data vem `dd/MM/yyyy` (não ISO) e o valor vem **string** (`"0.051660"`), não número.
