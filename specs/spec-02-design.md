@@ -2038,6 +2038,10 @@ Uma carteira só de pré-fixados passa a sincronizar o CDI. É uma chamada, para
 
 O pré-fixado herda a defasagem de um dia do CDI. **Isso é desejável:** todas as posições ficam corrigidas até a mesma data, e o patrimônio não mistura números de dias diferentes.
 
-### 24.3 Validação disponível
+### 24.3 Validação — conferida
 
-Ao contrário do IPCA+, o pré-fixado tem posição real para conferir: a **LCA do BTG a 15% a.a.**, isenta de IR — bruto e líquido coincidem, e não há mercado secundário para pessoa física, então curva e mercado também coincidem. É o teste mais limpo possível do M31.
+**Conferido contra o extrato em 26/08/2026: a LCA do BTG a 15% a.a. bate.** R$ 5.391,72 em 136 dias úteis, sobre R$ 5.000,00 aplicados.
+
+É o teste mais limpo dos quatro já feitos: LCA é isenta de IR (bruto = líquido) e não tem mercado secundário para pessoa física (curva = mercado), então nenhum ajuste mental entra na comparação.
+
+Com isso, **os cinco indexadores que rendem estão validados contra dado real** — %CDI em duas posições, %Selic e spread num Tesouro Selic, e agora o pré-fixado. Só o IPCA+ (M36) nascerá sem validação externa, por não haver posição.
