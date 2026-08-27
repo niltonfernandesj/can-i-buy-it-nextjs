@@ -2098,3 +2098,45 @@ liquido    = corrigido − iof − ir
 Coluna **"Líquido"** ao lado de "Saldo bruto". No mobile, **Taxa** é escondida (`hidden sm:table-cell`) para abrir espaço — é a coluna menos consultada, já que a taxa é fixa e o valor muda todo dia.
 
 **Os totais não mudam.** Grupo, conta, investido e patrimônio seguem no bruto (Requisitos §3.18.4), e os percentuais de composição continuam sobre a mesma base — nenhum número do M30 muda de significado.
+
+---
+
+## 26. Posições em cartões no mobile (M37)
+
+Requisitos §3.20. **Mock normativo:** https://claude.ai/code/artifact/4733c21c-1997-4938-bdbc-1996dddbaa4c
+
+### 26.1 Duas árvores, não uma condicional em JS
+
+O mobile e o desktop renderizam **marcações diferentes**, escolhidas por classe:
+
+```jsx
+<div className="hidden sm:block">{/* tabela */}</div>
+<div className="sm:hidden">{/* cartões */}</div>
+```
+
+**Não** detectar breakpoint em JavaScript: o componente é renderizado no servidor, onde não existe largura de janela, e qualquer `useEffect` de medição causaria troca visível depois da hidratação. É o mesmo padrão da navegação (§17.2).
+
+**Custo assumido:** os dados aparecem **duas vezes no DOM**, uma versão oculta. É exatamente por isso que o QA desta tela precisa de `:visible` desde a primeira tentativa — armadilha já registrada no CLAUDE.md, e que aqui deixa de ser hipotética.
+
+O breakpoint é `sm`, o mesmo que a Task 134 já usou para esconder a coluna Taxa. Essa regra some junto: no mobile não há mais tabela.
+
+### 26.2 A seção externa
+
+`CardGrupo` e `CardParado` trocam o `<Card>` por um contêiner com `border-b` abaixo de `sm`, e mantêm o card a partir dali:
+
+```
+sm:rounded-lg sm:border sm:bg-card   ← card só no desktop
+border-b sm:border-b-0               ← divisor só no mobile
+```
+
+Uma classe de fonte menor no cabeçalho abaixo de `sm`. O `truncate` do nome do grupo **fica**: encolher a fonte adia o corte, não o elimina.
+
+### 26.3 O cartão de posição
+
+Título com emissor e produto à esquerda, `DropdownMenu` à direita. Quatro linhas de rótulo e valor, uniformes.
+
+**`LiquidarAtivo` precisa virar controlado.** Hoje ele é `Dialog` + `DialogTrigger` com um botão dentro; como item de menu, o `DropdownMenuItem` fecha o menu ao ser acionado e o `Dialog` precisa abrir por estado. É o mesmo arranjo que `MenuDaConta` já usa para o resgate (§21.4) — o componente ganha `aberto`/`onAbertoMudou` opcionais e mantém o comportamento atual quando não recebe nenhum.
+
+### 26.4 Vencido
+
+Selo no título; data em `text-saida-credito`; cartão com `border-saida-credito/45` e o mesmo fundo que a linha da tabela já tinha. Na versão desktop, nada muda.

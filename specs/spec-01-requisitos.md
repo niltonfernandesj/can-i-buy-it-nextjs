@@ -686,6 +686,40 @@ Separado do M31 (decisão do usuário) porque é de outra natureza: traz tabela 
 
 **Sem posição real para conferir.** Ao contrário de todos os outros indexadores, o usuário não tem nenhum IPCA+ hoje, então este marco nascerá validado só por teste.
 
+### 3.20 Especificação — Posições em cartões no mobile (M37)
+
+**Origem: defeito de uso.** Com a coluna Líquido do M32, a tabela de posições passou a pedir **391px** num container de **284px** — a coluna Líquido termina 160px além da borda visível, e só se chega nela arrastando a tabela para o lado. Esconder a coluna Taxa não bastou.
+
+**Mock aprovado:** https://claude.ai/code/artifact/4733c21c-1997-4938-bdbc-1996dddbaa4c
+
+#### 3.20.1 O desktop não muda
+
+A tabela continua exatamente como está a partir de `sm`. Tudo abaixo vale só para o mobile — é **divergência responsiva deliberada**, não um layout substituindo o outro.
+
+#### 3.20.2 A seção externa perde o card
+
+Estratégia, Mercado e **Disponível em conta** deixam de ser cards no mobile e viram **título com divisor** e o mesmo controle de expansão. A lista fica homogênea: o "Disponível em conta" acompanha, ainda que não tenha o que expandir.
+
+O cabeçalho também **reduz a fonte** — com valores de seis dígitos ele já encostava nas bordas.
+
+Sobram duas caixas aninhadas em vez de três: título do grupo → seção da conta → cartão da posição.
+
+#### 3.20.3 Cada posição vira um cartão
+
+- **Título:** emissor e produto, como já aparece hoje.
+- **Abaixo:** uma linha de rótulo e valor para cada coluna do desktop — Vencimento, Taxa, Bruto e Líquido. **Bruto e Líquido com o mesmo peso**, sem destaque entre eles.
+- **O controle de liquidação** sai da linha de valor e vai para um **menu de três pontos**, à direita do título.
+
+**A seção por conta continua**, com o nome da corretora e o total dela acima dos cartões.
+
+#### 3.20.4 A posição vencida
+
+O selo **"Vencido"** sai de junto da data e sobe para o **título**, ao lado do emissor — num cartão, o estado da posição é informação de cabeçalho. A data mantém a cor de alerta, e o cartão ganha borda além do fundo avermelhado: sem as linhas vizinhas de uma tabela, só o fundo ficaria fraco.
+
+#### 3.20.5 O menu terá um item só
+
+Liquidar é a única ação que existe numa posição hoje — não há editar nem apagar ativo (lacuna conhecida do M29). O menu nasce com uma opção, e é escolha consciente: a estrutura fica pronta para quando as outras existirem.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

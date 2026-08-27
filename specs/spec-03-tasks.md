@@ -1311,11 +1311,11 @@ Nenhuma posição real para conferir: nascerá validado só por teste.
 
 ### M32 — Rendimento bruto e líquido ✅
 
-> **Defeito aberto, achado pelo usuário em 27/08/2026.** No mobile a tabela transborda: precisa de **391px** num container de **284px**, e a coluna Líquido termina **160px além** da borda visível — só se chega nela arrastando a tabela. Esconder Taxa não bastou, porque a coluna Líquido carrega o botão Liquidar e ocupa 153px. **O usuário vai especificar uma refatoração das linhas de ativo no mobile**; a correção espera essa especificação.
+> **Defeito achado pelo usuário em 27/08/2026 — corrigido no M37.** No mobile a tabela transborda: precisa de **391px** num container de **284px**, e a coluna Líquido termina **160px além** da borda visível — só se chega nela arrastando a tabela. Esconder Taxa não bastou, porque a coluna Líquido carrega o botão Liquidar e ocupa 153px. A correção é o **M37**, que troca a tabela por cartões no mobile.
 >
 > O QA da Task 134 não pegou porque asseverava `document.documentElement.scrollWidth`, que só enxerga rolagem de página — o `overflow-x-auto` do container absorve o excesso. Armadilha registrada no CLAUDE.md.
 
-**Status:** ✅ **concluído**, com o defeito acima em aberto. Requisitos §3.18, Design §25. Depende do M31.
+**Status:** ✅ **concluído.** O defeito de layout acima foi para o M37. Requisitos §3.18, Design §25. Depende do M31.
 
 Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi preciso calcular o imposto à mão toda vez, só para saber **qual** número do extrato comparar — é essa fricção que o marco elimina.
 
@@ -1528,6 +1528,46 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
+### M37 — Posições em cartões no mobile
+
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.20, Design §26.
+
+**Corrige o defeito aberto no M32:** a tabela pedia 391px num container de 284px, com a coluna Líquido terminando 160px além da borda. Esconder Taxa não bastou.
+
+**Mock normativo:** https://claude.ai/code/artifact/4733c21c-1997-4938-bdbc-1996dddbaa4c — traz o cabeçalho antes e depois, o grupo expandido, a posição vencida e o menu aberto.
+
+**O desktop não muda.** É divergência responsiva deliberada: card e tabela a partir de `sm`, título com divisor e cartões abaixo.
+
+---
+
+**Task 135. A seção externa perde o card no mobile**
+⬜ **A implementar**
+
+`app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.20.2, Design §26.2.
+
+- `CardGrupo` e `CardParado` mantêm o card **a partir de `sm`** e viram título com `border-b` abaixo dele.
+- **`CardParado` acompanha** (decisão do usuário): sem isso, o "Disponível em conta" seria o único card sobrando na lista.
+- Fonte do cabeçalho reduzida no mobile. O `truncate` do nome **fica** — encolher a fonte adia o corte, não o elimina.
+
+*(Checkpoint: QA de interface nos dois viewports. A 390px não há borda de card nos grupos nem no parado, e há divisor entre eles; a partir de `sm` o card volta com o mesmo aspecto de hoje. Medir que a altura do cabeçalho diminuiu no mobile e que o nome longo ainda trunca em vez de vazar.)*
+
+---
+
+**Task 136. As posições viram cartões no mobile**
+⬜ **A implementar**
+
+`investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.20.3 a §3.20.5, Design §26.1, §26.3 e §26.4.
+
+- **Duas árvores por classe**, `hidden sm:block` e `sm:hidden` — nunca detecção de breakpoint em JS, que quebraria na renderização do servidor.
+- Cartão: título com emissor e produto, `DropdownMenu` à direita, e quatro linhas de rótulo e valor. **Bruto e Líquido com o mesmo peso.**
+- **`LiquidarAtivo` vira controlado** — ganha `aberto`/`onAbertoMudou` opcionais, mantendo o comportamento atual quando não os recebe. Mesmo arranjo de `MenuDaConta`.
+- Vencido: selo no título, data em vermelho, cartão com borda e fundo de alerta.
+- A regra que escondia a coluna Taxa no mobile **some**: abaixo de `sm` não há mais tabela.
+
+*(Checkpoint: QA de interface. **A asserção que faltou na Task 134:** medir o container com `overflow-x-auto` — `scrollWidth <= clientWidth` — e não só a página. Conferir que a 390px nenhum valor fica fora da borda; que os quatro rótulos aparecem em cada cartão; que o menu abre e liquida; que a posição vencida traz o selo no título; e que **a partir de `sm` a tabela volta intacta**, com as cinco colunas. Usar `:visible` em todos os locators — os dados existem duas vezes no DOM.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1568,3 +1608,4 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
 | M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.19) |
+| M37 | Correção — a tabela de posições transbordava no mobile depois da coluna Líquido; vira cartões empilhados abaixo de `sm` (spec-01 §3.20) |
