@@ -2045,3 +2045,52 @@ O pré-fixado herda a defasagem de um dia do CDI. **Isso é desejável:** todas 
 É o teste mais limpo dos quatro já feitos: LCA é isenta de IR (bruto = líquido) e não tem mercado secundário para pessoa física (curva = mercado), então nenhum ajuste mental entra na comparação.
 
 Com isso, **os cinco indexadores que rendem estão validados contra dado real** — %CDI em duas posições, %Selic e spread num Tesouro Selic, e agora o pré-fixado. Só o IPCA+ (M36) nascerá sem validação externa, por não haver posição.
+
+---
+
+## 25. Rendimento bruto e líquido (M32)
+
+Requisitos §3.18.
+
+### 25.1 `lib/tributos.js`, puro
+
+Sem `db` e sem `fetch`, como `lib/rendimento.js`. Recebe produto, base, valor corrigido e as duas datas; devolve `{ ir, iof, liquido }`.
+
+Fica **fora** de `lib/rendimento.js` de propósito: rendimento é indexador e dias úteis; tributo é produto e dias corridos. São dois domínios com fontes de verdade diferentes, e juntá-los faria o arquivo ramificar por dois eixos ao mesmo tempo.
+
+### 25.2 As duas contagens
+
+```js
+// Rendimento: dias ÚTEIS, da série do BC.
+// Tributo:    dias CORRIDOS, de calendário.
+const corridos = Math.floor((corte - aquisicao) / 86400000);
+```
+
+**É a armadilha central do marco.** Todo o resto do app conta dias úteis; aqui, não. Um CDB de sexta a segunda tem 1 dia útil e 3 corridos.
+
+Os dias corridos vão até a **data de corte do rendimento** — o último dia publicado, ou o vencimento —, não até hoje. Assim as duas contagens terminam no mesmo ponto e o líquido é o imposto sobre exatamente aquele rendimento.
+
+### 25.3 A ordem, e por que ela muda o número
+
+```
+rendimento = corrigido − base
+iof        = rendimento × aliquotaIOF(corridos)
+ir         = (rendimento − iof) × aliquotaIR(corridos)
+liquido    = corrigido − iof − ir
+```
+
+**IOF primeiro, IR sobre o que sobrou** — é a ordem legal. Inverter superestima o imposto, porque o IR incidiria sobre uma base que o IOF já consumiu.
+
+### 25.4 As duas tabelas
+
+**IR por dias corridos:** até 180 → 22,5%; 181–360 → 20%; 361–720 → 17,5%; acima → 15%.
+
+**IOF:** tabela tabelada de 30 posições, do dia 1 (96%) ao dia 30 (0%). Vai como array literal — é uma tabela legal, não uma fórmula, e aproximá-la por `(30−n)/30` erraria em quase todos os dias.
+
+**LCI e LCA saem antes de qualquer conta:** isentos dos dois, devolvem `{ ir: 0, iof: 0, liquido: corrigido }`.
+
+### 25.5 A tela
+
+Coluna **"Líquido"** ao lado de "Saldo bruto". No mobile, **Taxa** é escondida (`hidden sm:table-cell`) para abrir espaço — é a coluna menos consultada, já que a taxa é fixa e o valor muda todo dia.
+
+**Os totais não mudam.** Grupo, conta, investido e patrimônio seguem no bruto (Requisitos §3.18.4), e os percentuais de composição continuam sobre a mesma base — nenhum número do M30 muda de significado.

@@ -630,7 +630,46 @@ Aqui está a sutileza: o pré-fixado **não precisa da API para a taxa, mas prec
 
 Contagem a partir da aquisição **inclusive** e parada no vencimento, como no M30 (§3.16). Curva do papel, não marcação a mercado (§3.16.6) — e no pré-fixado essa distinção é **maior**, porque um prefixado longo oscila muito no mercado secundário. Para LCI e LCA, que não têm mercado secundário para pessoa física, curva e mercado coincidem.
 
-### 3.18 Especificação — Rendimento IPCA+ (M36, planejado)
+### 3.18 Especificação — Rendimento bruto e líquido (M32)
+
+O app mostra o valor bruto desde o M30. **Bruto não é o que se recebe:** um CDB paga IR sobre o rendimento, e nos primeiros trinta dias paga IOF também. A diferença é material — num CDB de 87 dias com R$ 250 de rendimento, são R$ 56 de IR.
+
+Isso não é hipótese: nas conferências contra a corretora foi preciso calcular o imposto à mão toda vez, só para saber **qual** número do extrato comparar.
+
+#### 3.18.1 Ramifica por produto, não por estratégia
+
+É o primeiro cálculo do app que depende do **produto**:
+
+| Produto | IR | IOF |
+|---|---|---|
+| CDB, Tesouro Direto | regressivo, 22,5% a 15% | primeiros 30 dias |
+| **LCI, LCA** | **isento** | **isento** |
+
+A isenção de LCI e LCA é o que tornou aquelas duas conferências tão limpas — bruto e líquido são o mesmo número.
+
+#### 3.18.2 As duas contagens de dias não são a mesma
+
+**O rendimento conta dias úteis; o imposto conta dias corridos.** Um CDB comprado numa sexta e resgatado na segunda rendeu um dia útil, mas já tem três dias corridos para efeito de IOF. Misturar as duas é o erro mais fácil deste marco.
+
+Faixas de IR por dias **corridos**: até 180 → 22,5%; 181 a 360 → 20%; 361 a 720 → 17,5%; acima de 720 → 15%.
+
+#### 3.18.3 A ordem importa
+
+**IOF primeiro, sobre o rendimento; IR depois, sobre o que sobrou.** É a ordem legal, e inverter muda o resultado.
+
+#### 3.18.4 Onde aparece
+
+**Uma coluna nova, "Líquido", ao lado de "Saldo bruto"** na tabela de posições — é onde a comparação com o extrato acontece.
+
+No mobile a tabela passa a esconder **Taxa**: é a coluna menos consultada no dia a dia, porque a taxa é fixa e conhecida, enquanto o valor muda todo dia.
+
+**Os totais seguem no bruto** — grupo, conta, investido e patrimônio. Patrimônio continua significando uma coisa só, e os percentuais de composição não mudam de base.
+
+#### 3.18.5 Líquido é depois de imposto, e nada mais
+
+A **taxa de custódia da B3** não entra. Ela já sai do caixa da corretora como movimento avulso quando é cobrada (§3.13.3); descontá-la aqui a contaria duas vezes no patrimônio.
+
+### 3.19 Especificação — Rendimento IPCA+ (M36, planejado)
 
 Separado do M31 (decisão do usuário) porque é de outra natureza: traz tabela nova, migration e uma defasagem que não se resolve esperando.
 

@@ -1301,7 +1301,7 @@ na tela de que o número é provisório.
 
 ### M36 — Rendimento IPCA+ (planejado)
 
-**Status:** escopo acordado; tasks **a escrever**. Requisitos §3.18. Depende do M30.
+**Status:** escopo acordado; tasks **a escrever**. Requisitos §3.19. Depende do M30.
 
 Separado do M31. Traz `IndiceMensal` (forma em Design §23.1), a série 433 e a defasagem de ~2 meses. **Só meses fechados** — os meses em aberto rendem apenas o spread, e nada é projetado.
 
@@ -1309,15 +1309,44 @@ Nenhuma posição real para conferir: nascerá validado só por teste.
 
 ---
 
-### M32 — Rendimento bruto e líquido lado a lado (planejado)
+### M32 — Rendimento bruto e líquido
 
-**Status:** escopo acordado; tasks **a escrever**. Depende do M31.
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.18, Design §25. Depende do M31.
 
-- Tabela regressiva de IR (22,5% até 15%, pelo prazo).
-- IOF nos primeiros 30 dias.
-- **LCI e LCA são isentos**, o que cria dois caminhos de cálculo por produto.
+Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi preciso calcular o imposto à mão toda vez, só para saber **qual** número do extrato comparar — é essa fricção que o marco elimina.
 
-É o único dos quatro marcos que ramifica a matemática por **produto**, não por estratégia.
+É o primeiro cálculo do app que ramifica por **produto**, não por estratégia: CDB e Tesouro pagam IR regressivo e IOF; **LCI e LCA são isentos dos dois**.
+
+**A armadilha do marco:** rendimento conta dias **úteis**, imposto conta dias **corridos**. Um CDB de sexta a segunda tem 1 dia útil e 3 corridos.
+
+---
+
+**Task 133. `lib/tributos.js`, puro**
+⬜ **A implementar**
+
+`lib/tributos.js` e seus testes. Design §25.1 a §25.4.
+
+Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias úteis, tributo é produto e dias corridos — dois eixos que não devem ramificar no mesmo arquivo.
+
+- Tabela de IR por dias corridos e tabela literal de IOF com as 30 alíquotas. O IOF vai como array, não como fórmula: é tabela legal, e `(30−n)/30` erra em quase todos os dias.
+- **Ordem legal:** IOF sobre o rendimento, IR sobre o que sobrou.
+- LCI e LCA saem antes de qualquer conta.
+- Os dias corridos vão até a **data de corte do rendimento**, não até hoje — assim as duas contagens terminam no mesmo ponto.
+
+*(Checkpoint: só teste unitário. As quatro faixas de IR nas bordas (180, 181, 360, 361, 720, 721); IOF no dia 1, no 15, no 29 e no 30, este zerado; a ordem provada — calcular IR antes do IOF dá número diferente e maior; LCI e LCA devolvendo líquido igual ao bruto; e **rendimento zero não gerando imposto negativo**, que é o caso de uma posição comprada hoje.)*
+
+---
+
+**Task 134. A coluna Líquido**
+⬜ **A implementar**
+
+`app/(protegido)/investimentos/`. Requisitos §3.18.4, Design §25.5.
+
+- Coluna **"Líquido"** ao lado de "Saldo bruto".
+- No mobile, **Taxa** é escondida com `hidden sm:table-cell` — é a coluna menos consultada, porque a taxa é fixa e conhecida, enquanto o valor muda todo dia.
+- **Nenhum total muda.** Grupo, conta, investido e patrimônio seguem no bruto, e os percentuais continuam sobre a mesma base.
+
+*(Checkpoint: QA de interface nos dois viewports, com conferência contra as posições reais. O CDB do Topázio mostra bruto e líquido com a diferença do IR de 22,5%; a **LCA do BTG mostra os dois números iguais**, que é a prova visível da isenção; a coluna Taxa some a 390px e aparece a partir de `sm`; e **nenhum total se moveu** — asserção explícita, porque é a decisão mais fácil de quebrar sem perceber.)*
 ### M33 — Liquidação parcial (planejado)
 
 **Status:** escopo acordado; tasks **a escrever**. Depende do M30.
@@ -1530,8 +1559,8 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M29 | *(planejado)* Detalhamento de investimentos — ativos, saldo em conta e saldo investido. Seção de Requisitos ainda a escrever |
 | M30 | Escopo item 14 revisado — rendimento pós-fixado das posições, via séries do Banco Central (spec-01 §3.16). Primeira integração externa do projeto |
 | M31 | Escopo item 14 revisado — rendimento pré-fixado, com a série do CDI reusada como calendário de dias úteis (spec-01 §3.17) |
-| M32 | *(planejado)* Rendimento bruto e líquido lado a lado. Seção de Requisitos ainda a escrever |
+| M32 | Escopo item 14 revisado — rendimento líquido de IR e IOF ao lado do bruto, ramificando por produto (spec-01 §3.18) |
 | M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |
 | M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
-| M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.18) |
+| M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.19) |
