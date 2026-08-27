@@ -20,9 +20,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-export function LiquidarAtivo({ ativo, vencido }) {
+/**
+ * `aberto`/`onAbertoMudou` opcionais: como item de menu, o `DropdownMenuItem`
+ * fecha o menu ao ser acionado, então o diálogo precisa abrir por estado
+ * (Design §26.3). Sem eles, o componente segue exatamente como era — botão e
+ * gatilho próprios. Mesmo arranjo de `MovimentarConta`.
+ */
+export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoMudou }) {
   const router = useRouter();
-  const [aberto, setAberto] = useState(false);
+  const [interno, setInterno] = useState(false);
+  const controlado = abertoExterno !== undefined;
+  const aberto = controlado ? abertoExterno : interno;
+  const setAberto = controlado ? onAbertoMudou : setInterno;
   const [data, setData] = useState(hojeISO());
   const [valorCentavos, setValorCentavos] = useState(0);
   const [erro, setErro] = useState("");
@@ -47,21 +56,23 @@ export function LiquidarAtivo({ ativo, vencido }) {
 
   return (
     <Dialog open={aberto} onOpenChange={setAberto}>
-      <DialogTrigger asChild>
-        {/* Em destaque quando vencido: é a posição que pede ação. As demais
-            continuam liquidáveis (venda antecipada), mas discretas. */}
-        <Button
-          size="sm"
-          variant={vencido ? "default" : "ghost"}
-          className={
-            vencido
-              ? "h-7 bg-saida-credito px-2 text-xs text-background hover:bg-saida-credito"
-              : "h-7 px-2 text-xs text-muted-foreground"
-          }
-        >
-          Liquidar
-        </Button>
-      </DialogTrigger>
+      {!controlado && (
+        <DialogTrigger asChild>
+          {/* Em destaque quando vencido: é a posição que pede ação. As demais
+              continuam liquidáveis (venda antecipada), mas discretas. */}
+          <Button
+            size="sm"
+            variant={vencido ? "default" : "ghost"}
+            className={
+              vencido
+                ? "h-7 bg-saida-credito px-2 text-xs text-background hover:bg-saida-credito"
+                : "h-7 px-2 text-xs text-muted-foreground"
+            }
+          >
+            Liquidar
+          </Button>
+        </DialogTrigger>
+      )}
 
       <DialogContent>
         <DialogHeader>

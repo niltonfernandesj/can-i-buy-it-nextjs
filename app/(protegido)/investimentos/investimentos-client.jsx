@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, PiggyBank } from "lucide-react";
+import { ChevronDown, MoreVertical, PiggyBank } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta } from "@/lib/datas";
 import { agruparPor, percentualNoPatrimonio } from "@/lib/investimentos";
@@ -12,6 +12,12 @@ import {
 } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { LiquidarAtivo } from "./liquidar-ativo";
 
 const VISOES = [
@@ -66,18 +72,123 @@ function estaVencido(ativo, hoje) {
   return soData(venc) < soData(hoje);
 }
 
+/** Uma linha rótulo → valor dentro do cartão. Bruto e Líquido têm o mesmo
+ *  peso: nenhum dos dois é mais importante que o outro (Requisitos §3.20.3). */
+function LinhaDado({ rotulo, children }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-xs">
+      <span className="text-muted-foreground">{rotulo}</span>
+      <span className="tabular-nums">{children}</span>
+    </div>
+  );
+}
+
+/**
+ * O menu da posição. Nasce com um item só — liquidar é a única ação que existe
+ * hoje (Requisitos §3.20.5). A estrutura fica pronta para editar e apagar.
+ */
+function MenuDaPosicao({ ativo, vencido }) {
+  const [liquidar, setLiquidar] = useState(false);
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`Ações em ${ativo.emissor}`}
+            className={cn(
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground",
+              vencido && "border-saida-credito/60 text-saida-credito",
+            )}
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onSelect={() => setLiquidar(true)}>Liquidar</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <LiquidarAtivo
+        ativo={ativo}
+        vencido={vencido}
+        aberto={liquidar}
+        onAbertoMudou={setLiquidar}
+      />
+    </>
+  );
+}
+
+/** A posição no mobile: um cartão, com as mesmas informações das colunas. */
+function CartaoPosicao({ ativo, hoje }) {
+  const vencido = estaVencido(ativo, hoje);
+
+  return (
+    <div
+      className={cn(
+        "rounded-md border bg-background/40 p-3",
+        vencido && "border-saida-credito/45 bg-destructive/10",
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <span className="text-[13.5px] font-semibold leading-tight">
+            {ativo.emissor}
+            {/* No cartão o estado é informação de cabeçalho, não detalhe de
+                uma linha como era na tabela (Requisitos §3.20.4). */}
+            {vencido && (
+              <span className="ml-1.5 whitespace-nowrap rounded-full bg-saida-credito/15 px-1.5 py-0.5 text-[10px] font-bold text-saida-credito">
+                Vencido
+              </span>
+            )}
+          </span>
+          <span className="block text-[11.5px] text-muted-foreground">
+            {ROTULO_PRODUTO[ativo.produto]}
+          </span>
+        </div>
+        <MenuDaPosicao ativo={ativo} vencido={vencido} />
+      </div>
+
+      <div className="mt-2.5 flex flex-col gap-1.5">
+        <LinhaDado rotulo="Vencimento">
+          <span className={cn(vencido && "font-semibold text-saida-credito")}>
+            {formatarDataCurta(ativo.vencimento)}
+          </span>
+        </LinhaDado>
+        <LinhaDado rotulo="Taxa">
+          <span className="font-mono text-investimento">
+            {rotuloIndexador(ativo.indexador, ativo.taxa)}
+          </span>
+        </LinhaDado>
+        <LinhaDado rotulo="Bruto">{formatarReais(ativo.valor ?? ativo.base)}</LinhaDado>
+        <LinhaDado rotulo="Líquido">
+          {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}
+        </LinhaDado>
+      </div>
+    </div>
+  );
+}
+
 function TabelaPosicoes({ ativos, hoje }) {
   return (
-    <div className="overflow-x-auto">
+    <>
+      {/* Cartões no mobile. A escolha é por classe, nunca por medição em JS: o
+          componente renderiza no servidor, onde não há largura de janela, e um
+          useEffect causaria troca visível após a hidratação (Design §26.1). */}
+      <div className="flex flex-col gap-2 sm:hidden">
+        {ativos.map((ativo) => (
+          <CartaoPosicao key={ativo.id} ativo={ativo} hoje={hoje} />
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
             <th className="pb-2 text-left font-medium">Produto</th>
             <th className="pb-2 text-left font-medium">Vencimento</th>
-            {/* Taxa some no mobile para abrir espaço à coluna Líquido: é a
-                menos consultada, porque a taxa é fixa e o valor muda todo dia
-                (Requisitos §3.18.4). */}
-            <th className="hidden pb-2 text-left font-medium sm:table-cell">Taxa</th>
+            <th className="pb-2 text-left font-medium">Taxa</th>
             <th className="pb-2 text-right font-medium">Bruto</th>
             <th className="pb-2 text-right font-medium">Líquido</th>
           </tr>
@@ -110,7 +221,7 @@ function TabelaPosicoes({ ativos, hoje }) {
                     </span>
                   )}
                 </td>
-                <td className="hidden py-2 pr-3 font-mono text-xs text-investimento sm:table-cell">
+                <td className="py-2 pr-3 font-mono text-xs text-investimento">
                   {rotuloIndexador(ativo.indexador, ativo.taxa)}
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
@@ -128,27 +239,40 @@ function TabelaPosicoes({ ativos, hoje }) {
           })}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   );
 }
+
+/**
+ * Card no desktop, título com divisor no mobile (Requisitos §3.20.2).
+ *
+ * Abaixo de `sm` a moldura some e sobra um divisor: com o cartão de cada
+ * posição dentro, três caixas aninhadas em 358px de largura útil cansavam.
+ */
+const SECAO = "border-b sm:rounded-lg sm:border sm:bg-card sm:text-card-foreground sm:shadow sm:border-b";
+
+/** Cabeçalho menor no mobile — com seis dígitos ele já encostava nas bordas. */
+const CABECALHO = "text-[13.5px] sm:text-base";
 
 function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
   const [expandido, setExpandido] = useState(false);
 
   return (
-    <Card>
+    <div className={SECAO}>
       <button
         type="button"
         onClick={() => setExpandido((v) => !v)}
         aria-expanded={expandido}
-        className="flex w-full items-center justify-between gap-4 p-4 px-5 text-left"
+        className="flex w-full items-center justify-between gap-4 px-1 py-3 text-left sm:p-4 sm:px-5"
       >
         <span className="flex min-w-0 items-baseline gap-2.5">
           <Percentual valor={percentualNoPatrimonio(grupo.total, patrimonio)} />
-          <span className="truncate font-semibold">{rotulo}</span>
+          {/* truncate fica: fonte menor adia o corte, não o elimina. */}
+          <span className={cn("truncate font-semibold", CABECALHO)}>{rotulo}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2.5">
-          <span className="font-semibold tabular-nums">
+          <span className={cn("font-semibold tabular-nums", CABECALHO)}>
             {formatarReais(grupo.total)}
           </span>
           <ChevronDown
@@ -161,7 +285,7 @@ function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
       </button>
 
       {expandido && (
-        <div className="flex flex-col gap-5 px-5 pb-5">
+        <div className="flex flex-col gap-5 px-1 pb-5 sm:px-5">
           {grupo.contas.map((conta, i) => (
             <div
               key={conta.contaId}
@@ -181,7 +305,7 @@ function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
           ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -191,17 +315,19 @@ function CardGrupo({ grupo, rotulo, patrimonio, hoje }) {
 // percentuais fecharem 100% do patrimônio.
 function CardParado({ total, patrimonio }) {
   return (
-    <Card className="flex items-center justify-between gap-4 p-4 px-5">
+    // Acompanha os grupos: sem isso seria o único card sobrando na lista do
+    // mobile (Requisitos §3.20.2).
+    <div className={cn(SECAO, "flex items-center justify-between gap-4 px-1 py-3 sm:p-4 sm:px-5")}>
       <span className="flex min-w-0 items-baseline gap-2.5">
         <Percentual valor={percentualNoPatrimonio(total, patrimonio)} />
-        <span className="truncate font-semibold text-muted-foreground">
+        <span className={cn("truncate font-semibold text-muted-foreground", CABECALHO)}>
           Disponível em conta
         </span>
       </span>
-      <span className="font-semibold tabular-nums text-entrada">
+      <span className={cn("font-semibold tabular-nums text-entrada", CABECALHO)}>
         {formatarReais(total)}
       </span>
-    </Card>
+    </div>
   );
 }
 

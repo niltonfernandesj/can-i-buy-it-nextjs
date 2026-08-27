@@ -1528,9 +1528,9 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
-### M37 — Posições em cartões no mobile
+### M37 — Posições em cartões no mobile ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.20, Design §26.
+**Status:** ✅ **concluído.** Requisitos §3.20, Design §26.
 
 **Corrige o defeito aberto no M32:** a tabela pedia 391px num container de 284px, com a coluna Líquido terminando 160px além da borda. Esconder Taxa não bastou.
 
@@ -1541,7 +1541,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 135. A seção externa perde o card no mobile**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.20.2, Design §26.2.
 
@@ -1554,7 +1554,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 136. As posições viram cartões no mobile**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.20.3 a §3.20.5, Design §26.1, §26.3 e §26.4.
 

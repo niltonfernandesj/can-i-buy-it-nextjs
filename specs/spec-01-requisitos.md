@@ -665,7 +665,7 @@ Como o app exibe os dois separadamente, a ordem importa para o que se lê — n�
 
 **Uma coluna nova, "Líquido", ao lado de "Saldo bruto"** na tabela de posições — é onde a comparação com o extrato acontece.
 
-No mobile a tabela passa a esconder **Taxa**: é a coluna menos consultada no dia a dia, porque a taxa é fixa e conhecida, enquanto o valor muda todo dia.
+~~No mobile a tabela passa a esconder **Taxa**.~~ **Superado pelo M37 (§3.20):** esconder uma coluna não resolveu — a tabela seguia transbordando. No mobile não há mais tabela, e a Taxa volta a aparecer sempre, como linha do cartão.
 
 **Os totais seguem no bruto** — grupo, conta, investido e patrimônio. Patrimônio continua significando uma coisa só, e os percentuais de composição não mudam de base.
 

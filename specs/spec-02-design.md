@@ -2095,7 +2095,7 @@ liquido    = corrigido − iof − ir
 
 ### 25.5 A tela
 
-Coluna **"Líquido"** ao lado de "Saldo bruto". No mobile, **Taxa** é escondida (`hidden sm:table-cell`) para abrir espaço — é a coluna menos consultada, já que a taxa é fixa e o valor muda todo dia.
+Coluna **"Líquido"** ao lado de "Saldo bruto". (A ocultação da coluna Taxa no mobile, tentada aqui, foi removida pelo M37 — §26: abaixo de `sm` não há mais tabela.)
 
 **Os totais não mudam.** Grupo, conta, investido e patrimônio seguem no bruto (Requisitos §3.18.4), e os percentuais de composição continuam sobre a mesma base — nenhum número do M30 muda de significado.
 
