@@ -74,8 +74,12 @@ function TabelaPosicoes({ ativos, hoje }) {
           <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
             <th className="pb-2 text-left font-medium">Produto</th>
             <th className="pb-2 text-left font-medium">Vencimento</th>
-            <th className="pb-2 text-left font-medium">Taxa</th>
-            <th className="pb-2 text-right font-medium">Saldo bruto</th>
+            {/* Taxa some no mobile para abrir espaço à coluna Líquido: é a
+                menos consultada, porque a taxa é fixa e o valor muda todo dia
+                (Requisitos §3.18.4). */}
+            <th className="hidden pb-2 text-left font-medium sm:table-cell">Taxa</th>
+            <th className="pb-2 text-right font-medium">Bruto</th>
+            <th className="pb-2 text-right font-medium">Líquido</th>
           </tr>
         </thead>
         <tbody>
@@ -106,13 +110,16 @@ function TabelaPosicoes({ ativos, hoje }) {
                     </span>
                   )}
                 </td>
-                <td className="py-2 pr-3 font-mono text-xs text-investimento">
+                <td className="hidden py-2 pr-3 font-mono text-xs text-investimento sm:table-cell">
                   {rotuloIndexador(ativo.indexador, ativo.taxa)}
+                </td>
+                <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
+                  {/* Corrigido quando o indexador rende; base nos demais. */}
+                  {formatarReais(ativo.valor ?? ativo.base)}
                 </td>
                 <td className="py-2 text-right tabular-nums">
                   <span className="inline-flex items-center gap-2">
-                    {/* Corrigido quando o indexador rende; base nos demais. */}
-                    {formatarReais(ativo.valor ?? ativo.base)}
+                    {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}
                     <LiquidarAtivo ativo={ativo} vencido={vencido} />
                   </span>
                 </td>

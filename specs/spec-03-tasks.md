@@ -1309,9 +1309,9 @@ Nenhuma posição real para conferir: nascerá validado só por teste.
 
 ---
 
-### M32 — Rendimento bruto e líquido
+### M32 — Rendimento bruto e líquido ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.18, Design §25. Depende do M31.
+**Status:** ✅ **concluído.** Requisitos §3.18, Design §25. Depende do M31.
 
 Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi preciso calcular o imposto à mão toda vez, só para saber **qual** número do extrato comparar — é essa fricção que o marco elimina.
 
@@ -1338,7 +1338,7 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 ---
 
 **Task 134. A coluna Líquido**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `app/(protegido)/investimentos/`. Requisitos §3.18.4, Design §25.5.
 

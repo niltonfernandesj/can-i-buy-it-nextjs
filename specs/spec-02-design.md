@@ -2070,6 +2070,8 @@ const corridos = Math.floor((corte - aquisicao) / 86400000);
 
 Os dias corridos vão até a **data de corte do rendimento** — o último dia publicado, ou o vencimento —, não até hoje. Assim as duas contagens terminam no mesmo ponto e o líquido é o imposto sobre exatamente aquele rendimento.
 
+**Com piso de um dia quando houve rendimento**, achado no QA da Task 134. A série atrasa, então o corte é sempre passado — mas numa posição comprada no próprio dia do último ponto publicado, `corte − aquisição` dá **zero** enquanto o rendimento já existe. Sem o piso, uma posição de um dia escapa do IOF de 96%, que é exatamente quando ele mais pesa: medido, o líquido dava R$ 10.004,40 em vez de R$ 10.000,18. O piso não desloca nenhuma faixa de IR — só o caso degenerado muda.
+
 ### 25.3 A ordem, e por que ela muda o número
 
 ```

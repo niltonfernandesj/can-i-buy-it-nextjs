@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
-import { SERIE_DO_INDEXADOR, valorCorrigido } from "@/lib/rendimento";
+import { SERIE_DO_INDEXADOR, taxasAplicaveis, valorCorrigido } from "@/lib/rendimento";
+import { tributos } from "@/lib/tributos";
 import { sincronizarSerie } from "@/lib/actions/investimentos";
 import { hojeISO, paraDiaISO } from "@/lib/datas";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
@@ -51,19 +52,32 @@ async function corrigirPosicoes(vivas) {
       .map((ativo) => {
         const serie = SERIE_DO_INDEXADOR[ativo.indexador];
         if (!serie) return null;
-        return [
-          ativo.id,
-          valorCorrigido(
-            {
-              base: baseAtual(ativo),
-              indexador: ativo.indexador,
-              taxa: Number(ativo.taxa),
-              dataAquisicao: paraDiaISO(ativo.dataAquisicao),
-              vencimento: paraDiaISO(ativo.vencimento),
-            },
-            taxasPorSerie.get(serie),
-          ),
-        ];
+
+        const base = baseAtual(ativo);
+        const dataAquisicao = paraDiaISO(ativo.dataAquisicao);
+        const vencimento = paraDiaISO(ativo.vencimento);
+        const taxas = taxasPorSerie.get(serie);
+
+        const valor = valorCorrigido(
+          { base, indexador: ativo.indexador, taxa: Number(ativo.taxa), dataAquisicao, vencimento },
+          taxas,
+        );
+
+        // O corte do imposto é o último dia que de fato rendeu — não hoje. Com
+        // a série atrasando um dia, contar até hoje tributaria rendimento que
+        // ainda não existe (Design §25.2).
+        const incidentes = taxasAplicaveis(taxas, { dataAquisicao, vencimento });
+        const corte = incidentes.at(-1)?.dia ?? dataAquisicao;
+
+        const { liquido } = tributos({
+          produto: ativo.produto,
+          base,
+          corrigido: valor,
+          dataAquisicao,
+          corte,
+        });
+
+        return [ativo.id, { valor, liquido }];
       })
       .filter(Boolean),
   );
@@ -121,14 +135,17 @@ async function carregar() {
     vencimento: ativo.vencimento,
     valorAquisicao: Number(ativo.valorAquisicao),
     base: baseAtual(ativo),
-    // Ausente em pré-fixado e IPCA+, que seguem valendo a base (M31).
-    valor: correcao.get(ativo.id),
+    // Ausentes no IPCA+, que ainda não rende (M36) — a tela cai na base.
+    valor: correcao.get(ativo.id)?.valor,
+    liquido: correcao.get(ativo.id)?.liquido,
   }));
 
   const porConta = contas.map((conta) => {
     const ativosDaConta = ativos
       .filter((a) => a.contaId === conta.id)
-      .map((a) => ({ ...a, valor: correcao.get(a.id) }));
+      // Só o bruto entra nos totais: patrimônio e percentuais seguem no bruto
+      // (Requisitos §3.18.4).
+      .map((a) => ({ ...a, valor: correcao.get(a.id)?.valor }));
     return {
       id: conta.id,
       nome: conta.nome,
