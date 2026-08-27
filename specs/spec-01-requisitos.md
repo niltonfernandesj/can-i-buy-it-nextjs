@@ -653,9 +653,13 @@ A isenção de LCI e LCA é o que tornou aquelas duas conferências tão limpas 
 
 Faixas de IR por dias **corridos**: até 180 → 22,5%; 181 a 360 → 20%; 361 a 720 → 17,5%; acima de 720 → 15%.
 
-#### 3.18.3 A ordem importa
+#### 3.18.3 A ordem, e o que ela de fato muda
 
-**IOF primeiro, sobre o rendimento; IR depois, sobre o que sobrou.** É a ordem legal, e inverter muda o resultado.
+**IOF primeiro, sobre o rendimento; IR depois, sobre o que sobrou.** É a ordem legal.
+
+**Ela não altera o valor líquido** — descoberto ao implementar, contrariando o que esta seção afirmava antes. As duas ordens dão `R(a + b − ab)`, e um teste comprova. O que muda é a **repartição** entre os dois tributos: na ordem legal, um rendimento de R$ 100 em 10 dias vira R$ 66,00 de IOF e R$ 7,65 de IR; invertida, R$ 51,15 e R$ 22,50.
+
+Como o app exibe os dois separadamente, a ordem importa para o que se lê — não para o número final.
 
 #### 3.18.4 Onde aparece
 

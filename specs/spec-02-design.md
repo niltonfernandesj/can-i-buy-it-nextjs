@@ -2079,7 +2079,9 @@ ir         = (rendimento − iof) × aliquotaIR(corridos)
 liquido    = corrigido − iof − ir
 ```
 
-**IOF primeiro, IR sobre o que sobrou** — é a ordem legal. Inverter superestima o imposto, porque o IR incidiria sobre uma base que o IOF já consumiu.
+**IOF primeiro, IR sobre o que sobrou** — é a ordem legal.
+
+**Correção do que esta seção afirmava:** inverter **não** superestima o imposto. Os dois sentidos dão `R(a + b − ab)` e o líquido é idêntico; medido com rendimento de R$ 100 em 10 dias, R$ 73,65 nas duas ordens. O que muda é a repartição — R$ 66,00 de IOF e R$ 7,65 de IR na ordem legal, contra R$ 51,15 e R$ 22,50 invertida. Como os dois são exibidos separadamente, a ordem define o que se lê, não o total.
 
 ### 25.4 As duas tabelas
 

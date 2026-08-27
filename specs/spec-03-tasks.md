@@ -1322,18 +1322,18 @@ Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi p
 ---
 
 **Task 133. `lib/tributos.js`, puro**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/tributos.js` e seus testes. Design §25.1 a §25.4.
 
 Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias úteis, tributo é produto e dias corridos — dois eixos que não devem ramificar no mesmo arquivo.
 
 - Tabela de IR por dias corridos e tabela literal de IOF com as 30 alíquotas. O IOF vai como array, não como fórmula: é tabela legal, e `(30−n)/30` erra em quase todos os dias.
-- **Ordem legal:** IOF sobre o rendimento, IR sobre o que sobrou.
+- **Ordem legal:** IOF sobre o rendimento, IR sobre o que sobrou. Ela define a **repartição** entre os dois, não o total — os dois sentidos dão `R(a + b − ab)`.
 - LCI e LCA saem antes de qualquer conta.
 - Os dias corridos vão até a **data de corte do rendimento**, não até hoje — assim as duas contagens terminam no mesmo ponto.
 
-*(Checkpoint: só teste unitário. As quatro faixas de IR nas bordas (180, 181, 360, 361, 720, 721); IOF no dia 1, no 15, no 29 e no 30, este zerado; a ordem provada — calcular IR antes do IOF dá número diferente e maior; LCI e LCA devolvendo líquido igual ao bruto; e **rendimento zero não gerando imposto negativo**, que é o caso de uma posição comprada hoje.)*
+*(Checkpoint: só teste unitário. As quatro faixas de IR nas bordas (180, 181, 360, 361, 720, 721); IOF no dia 1, no 15, no 29 e no 30, este zerado; a ordem provada — o total é o mesmo nos dois sentidos, mas a repartição entre IR e IOF muda; LCI e LCA devolvendo líquido igual ao bruto; e **rendimento zero não gerando imposto negativo**, que é o caso de uma posição comprada hoje.)*
 
 ---
 
