@@ -1311,7 +1311,11 @@ Nenhuma posição real para conferir: nascerá validado só por teste.
 
 ### M32 — Rendimento bruto e líquido ✅
 
-**Status:** ✅ **concluído.** Requisitos §3.18, Design §25. Depende do M31.
+> **Defeito aberto, achado pelo usuário em 27/08/2026.** No mobile a tabela transborda: precisa de **391px** num container de **284px**, e a coluna Líquido termina **160px além** da borda visível — só se chega nela arrastando a tabela. Esconder Taxa não bastou, porque a coluna Líquido carrega o botão Liquidar e ocupa 153px. **O usuário vai especificar uma refatoração das linhas de ativo no mobile**; a correção espera essa especificação.
+>
+> O QA da Task 134 não pegou porque asseverava `document.documentElement.scrollWidth`, que só enxerga rolagem de página — o `overflow-x-auto` do container absorve o excesso. Armadilha registrada no CLAUDE.md.
+
+**Status:** ✅ **concluído**, com o defeito acima em aberto. Requisitos §3.18, Design §25. Depende do M31.
 
 Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi preciso calcular o imposto à mão toda vez, só para saber **qual** número do extrato comparar — é essa fricção que o marco elimina.
 
