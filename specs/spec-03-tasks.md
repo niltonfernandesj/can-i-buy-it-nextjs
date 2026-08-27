@@ -1256,9 +1256,9 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 
 ---
 
-### M31 — Rendimento pré-fixado
+### M31 — Rendimento pré-fixado ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.17, Design §24. Depende do M30.
+**Status:** ✅ **concluído.** Requisitos §3.17, Design §24. Depende do M30.
 
 **Separado do IPCA+** (decisão do usuário, 26/08/2026): eram duas coisas de tamanhos muito diferentes num marco só. O pré-fixado é fórmula pura, sem tabela nem integração nova, e tem posição real para conferir. O IPCA+ virou o **M36** — traz tabela mensal, migration, defasagem de dois meses, e nenhuma posição real para validar.
 
@@ -1267,7 +1267,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 131. O fator pré-fixado**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/rendimento.js` e seus testes. Design §24.1.
 
@@ -1280,7 +1280,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 132. A tela corrige o pré-fixado**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/rendimento.js` (o mapa) e QA. Design §24.2.
 
