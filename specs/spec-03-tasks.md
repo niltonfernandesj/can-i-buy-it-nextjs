@@ -1267,7 +1267,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 131. O fator pré-fixado**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `5c99beb`
 
 `lib/rendimento.js` e seus testes. Design §24.1.
 
@@ -1280,7 +1280,7 @@ Revisão feita a pedido do usuário antes de implementar: o levantamento dos sei
 ---
 
 **Task 132. A tela corrige o pré-fixado**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `5c99beb`
 
 `lib/rendimento.js` (o mapa) e QA. Design §24.2.
 
