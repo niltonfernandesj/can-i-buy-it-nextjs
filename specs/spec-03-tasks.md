@@ -1322,7 +1322,7 @@ Bruto não é o que se recebe. Nas quatro conferências contra a corretora foi p
 ---
 
 **Task 133. `lib/tributos.js`, puro**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `63f0e5d`
 
 `lib/tributos.js` e seus testes. Design §25.1 a §25.4.
 
