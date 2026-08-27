@@ -1541,7 +1541,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 135. A seção externa perde o card no mobile**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `f86c32d`
 
 `app/(protegido)/investimentos/investimentos-client.jsx`. Requisitos §3.20.2, Design §26.2.
 
@@ -1554,7 +1554,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 136. As posições viram cartões no mobile**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `f86c32d`
 
 `investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.20.3 a §3.20.5, Design §26.1, §26.3 e §26.4.
 
