@@ -1338,7 +1338,7 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 ---
 
 **Task 134. A coluna Líquido**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `a37b7c1`
 
 `app/(protegido)/investimentos/`. Requisitos §3.18.4, Design §25.5.
 
