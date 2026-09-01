@@ -1708,7 +1708,7 @@ A convenção reproduzida bate com **R$ 1,77** de resíduo, que é a projeção 
 ---
 
 **Task 145. A defasagem vira campo do ativo**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `59a1cef`
 
 `prisma/schema.prisma`, migration e `registrar-ativo.jsx`. Requisitos §3.23.3, Design §30.1.
 
@@ -1721,7 +1721,7 @@ A convenção reproduzida bate com **R$ 1,77** de resíduo, que é a projeção 
 ---
 
 **Task 146. O fator por janelas defasadas**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `59a1cef`
 
 `lib/rendimento.js` e testes. Design §30.2.
 
@@ -1737,7 +1737,7 @@ Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o r
 ---
 
 **Task 147. A tela usa a defasagem do título**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `59a1cef`
 
 `page.jsx` e `lib/rendimento.js`. Design §30.2.
 
