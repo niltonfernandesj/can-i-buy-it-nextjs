@@ -1299,13 +1299,56 @@ na tela de que o número é provisório.
 
 ---
 
-### M36 — Rendimento IPCA+ (planejado)
+### M36 — Rendimento IPCA+
 
-**Status:** escopo acordado; tasks **a escrever**. Requisitos §3.19. Depende do M30.
+**Status:** ⬜ **tasks escritas.** Requisitos §3.19, Design §29. Depende do M30.
 
-Separado do M31. Traz `IndiceMensal` (forma em Design §23.1), a série 433 e a defasagem de ~2 meses. **Só meses fechados** — os meses em aberto rendem apenas o spread, e nada é projetado.
+Sexto e último indexador. **Único que consulta duas fontes:** o índice mensal para a inflação e a série do CDI como calendário de dias úteis para o spread.
 
-Nenhuma posição real para conferir: nascerá validado só por teste.
+**Duas particularidades que nenhum outro indexador tem:** o valor pode **cair** (IPCA negativo em 12 dos últimos 139 meses), e o mês da aquisição conta inteiro, o que **rompe o piso conservador** válido no resto do app.
+
+Nenhuma posição real para conferir: nasce validado só por teste.
+
+---
+
+**Task 142. O fator IPCA+, puro**
+⬜ **A implementar**
+
+`lib/rendimento.js` e testes. Design §29.3.
+
+- `valorCorrigido` ganha um terceiro argumento, `indices`. É o único indexador que precisa de duas listas.
+- `indicesAplicaveis` recorta do **primeiro dia do mês da aquisição** até o vencimento.
+- `fator = Π(1 + ipca) × (1 + spread) ** (taxas.length / 252)`.
+- **Sem piso.** Deflação derruba o valor, e um `Math.max` acidental aqui seria invisível.
+
+*(Checkpoint: só teste unitário. Um mês fechado a 0,5% rende 0,5%; **um mês negativo derruba o valor abaixo da base**; o mês da compra conta inteiro mesmo com aquisição no dia 28; sem índice nenhum rende só o spread; e o vencimento trunca os meses.)*
+
+---
+
+**Task 143. Tabela `IndiceMensal`**
+⬜ **A implementar**
+
+`prisma/schema.prisma` e migration. Design §29.1.
+
+- Enum `SerieMensal` com `IPCA`, e o modelo com `@@id([serie, mes])`.
+- Campo **`mes`**, não `data` — o nome carrega a granularidade.
+- Sem `usuarioId`, como `TaxaDiaria`.
+
+*(Checkpoint: sem UI. Conferir no banco a PK composta e a coluna `date`.)*
+
+---
+
+**Task 144. Sincronização e a tela**
+⬜ **A implementar**
+
+`lib/bc.js`, `lib/actions/investimentos.js`, `lib/rendimento.js` e `page.jsx`. Design §29.2 e §29.4.
+
+- `SGS.IPCA = 433` — **`buscarSerie` não muda**: o payload da 433 tem a mesma forma da 12.
+- `sincronizarIndice` reusa `lacunas` e grava em `IndiceMensal`.
+- `SERIE_DO_INDEXADOR.IPCA_MAIS` vira `"CDI"` (calendário) e entra `SERIE_MENSAL_DO_INDEXADOR`.
+- `corrigirPosicoes` sincroniza os índices só quando alguma posição é IPCA+.
+
+*(Checkpoint: integração contra a API real, sincronizando e conferindo que a segunda passada não rebusca o miolo. QA de interface com uma posição IPCA+ criada no banco: valor corrigido conferido contra cálculo à parte, e **o Disponível da Visão mensal intacto**. Conferir que uma carteira sem IPCA+ não dispara chamada nenhuma à série 433.)*
 
 ---
 
@@ -1693,6 +1736,6 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M33 | Escopo item 14 revisado — liquidação vira evento repetível, e o rendimento passa a ser calculado por trechos a partir do último evento (spec-01 §3.22) |
 | M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
-| M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.19) |
+| M36 | Escopo item 14 revisado — rendimento IPCA+, com índice mensal e a série do CDI como calendário do spread (spec-01 §3.19) |
 | M37 | Correção — a tabela de posições transbordava no mobile depois da coluna Líquido; vira cartões empilhados abaixo de `sm` (spec-01 §3.20) |
 | M38 | Escopo item 14 revisado — ação da posição revelada por hover, com pista permanente, e rótulo dependente do vencimento (spec-01 §3.21) |

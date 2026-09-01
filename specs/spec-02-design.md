@@ -2214,3 +2214,62 @@ Validações novas, ambas na Server Action:
 - `remanescente < baseAtual(ativo)` — se fosse igual ou maior, não houve resgate.
 
 A trava de "esta posição já foi liquidada" **fica**, agora significando o que sempre quis dizer: só recusa quando existe um evento com remanescente zero.
+
+---
+
+## 29. Rendimento IPCA+ (M36)
+
+Requisitos §3.19.
+
+### 29.1 A tabela mensal
+
+```prisma
+enum SerieMensal {
+  IPCA // SGS 433
+}
+
+model IndiceMensal {
+  serie SerieMensal
+  mes   DateTime @db.Date // sempre o dia 1º do mês de referência
+  valor Decimal // % ao MÊS
+
+  @@id([serie, mes])
+}
+```
+
+O campo se chama **`mes`, não `data`**: o nome carrega a granularidade, e é o que impede alguém de tratá-lo como dia.
+
+### 29.2 O cliente é o mesmo
+
+`buscarSerie` de `lib/bc.js` **não muda**: o payload da 433 tem exatamente a forma da 12 — `{ data: "01/07/2026", valor: "0.07" }`. Basta `SGS.IPCA = 433`.
+
+A lógica de lacunas (`lacunas`) também serve, porque opera sobre strings ISO e não sabe de granularidade. O que muda é **onde grava**: `sincronizarIndice` escreve em `IndiceMensal` em vez de `TaxaDiaria`.
+
+### 29.3 O cálculo precisa de duas listas
+
+Único indexador assim. `valorCorrigido` ganha um terceiro argumento:
+
+```js
+valorCorrigido(posicao, taxas, indices = [])
+```
+
+- `taxas` — série diária do CDI, usada **só como calendário** para o spread, igual ao pré-fixado.
+- `indices` — meses do IPCA já recortados.
+
+```js
+fator = Π(1 + ipca_do_mes) × (1 + spread) ** (taxas.length / 252)
+```
+
+**O recorte dos meses** abre no **primeiro dia do mês da aquisição** — o mês da compra conta inteiro (Requisitos §3.19.2) — e fecha no vencimento.
+
+**Sem `Math.max` em lugar nenhum.** Um mês de deflação tem fator abaixo de 1 e o resultado cai; é o comportamento correto (§3.19.3), e um piso acidental seria fácil de introduzir sem ninguém notar.
+
+### 29.4 O mapa de séries ganha um irmão
+
+`SERIE_DO_INDEXADOR.IPCA_MAIS` passa de `null` para `"CDI"` — calendário, não taxa, exatamente como `PREFIXADO`. E entra um segundo mapa:
+
+```js
+export const SERIE_MENSAL_DO_INDEXADOR = { IPCA_MAIS: "IPCA" };
+```
+
+`corrigirPosicoes` em `page.jsx` passa a sincronizar também os índices mensais que as posições exigirem, e a repassá-los. Quando nenhuma posição é IPCA+, nada disso roda.

@@ -673,18 +673,41 @@ Como o app exibe os dois separadamente, a ordem importa para o que se lê — n�
 
 A **taxa de custódia da B3** não entra. Ela já sai do caixa da corretora como movimento avulso quando é cobrada (§3.13.3); descontá-la aqui a contaria duas vezes no patrimônio.
 
-### 3.19 Especificação — Rendimento IPCA+ (M36, planejado)
+### 3.19 Especificação — Rendimento IPCA+ (M36)
 
-Separado do M31 (decisão do usuário) porque é de outra natureza: traz tabela nova, migration e uma defasagem que não se resolve esperando.
+Sexto e último indexador. Separado do M31 porque é de outra natureza: traz tabela nova, migration e uma defasagem que não se resolve esperando.
 
-**Decisões já tomadas**, para o marco não reabri-las:
+#### 3.19.1 A fonte, e por que ele precisa de duas
 
-- **Série 433**, mensal, sempre datada no dia 1º do mês de referência, valor em **% ao mês**.
-- **Tabela `IndiceMensal`**, separada de `TaxaDiaria` — a forma está em Design §23.1.
-- **Só meses fechados.** O IPCA de julho era o último publicado em 26/08: quase dois meses de defasagem. Os meses em aberto rendem **apenas o spread**, e nada é projetado. O valor é sempre um piso conservador.
-- **Consequência aceita:** um IPCA+ aparece permanentemente subvalorizado, e o extrato do Tesouro nunca vai bater — nem pela defasagem, nem pela marcação a mercado (§3.16.6).
+**Série 433**, mensal, sempre datada no dia 1º do mês de referência, valor em **% ao mês**. Vai para a tabela **`IndiceMensal`**, separada de `TaxaDiaria` — a forma está em Design §23.1.
 
-**Sem posição real para conferir.** Ao contrário de todos os outros indexadores, o usuário não tem nenhum IPCA+ hoje, então este marco nascerá validado só por teste.
+O IPCA+ é o único indexador que consulta **duas fontes**: o índice mensal para a inflação, e a **série do CDI como calendário de dias úteis** para o spread — o mesmo uso que o pré-fixado faz (§3.17.2).
+
+```
+valor = base × Π(1 + IPCA do mês) × (1 + spread)^(dias úteis / 252)
+```
+
+#### 3.19.2 Só meses fechados, e o mês da compra conta inteiro
+
+O IPCA de julho era o último publicado em 26/08: quase dois meses de defasagem. **Nada é projetado** — os meses em aberto rendem apenas o spread.
+
+**O mês da aquisição conta inteiro** (decisão do usuário). Uma compra no dia 28 recebe o índice dos 28 dias que não viveu.
+
+**Isso rompe o princípio de piso conservador** que vale para todo o resto do cálculo: é o único ponto do app em que o valor exibido pode ficar **acima** do real. A defasagem de dois meses puxa para o outro lado e tende a compensar, mas as duas distorções não se cancelam por construção — apenas se somam com sinais opostos.
+
+#### 3.19.3 Uma posição pode encolher
+
+**O IPCA fica negativo com frequência:** 12 dos últimos 139 meses. Nesses meses o fator fica abaixo de 1 e a posição **vale menos que no mês anterior**.
+
+É o primeiro indexador do app em que isso acontece — todos os outros só sobem. **Sem piso no valor aplicado** (decisão do usuário): o valor recua, porque é o que acontece de verdade com o título.
+
+Limitação conhecida: a tela não tem histórico nem indicação de variação, então uma queda aparece sem explicação nenhuma.
+
+#### 3.19.4 Nunca vai bater com o extrato
+
+Duas razões independentes, ambas já registradas: a **defasagem** de dois meses (§3.19.2) e a **marcação a mercado** (§3.16.6), que num IPCA+ longo é grande. Diferente de todos os outros indexadores, aqui a divergência é esperada.
+
+**Sem posição real para conferir.** O usuário não tem nenhum IPCA+ hoje, então este marco nasce validado só por teste.
 
 ### 3.20 Especificação — Posições em cartões no mobile (M37)
 
