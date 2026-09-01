@@ -1568,6 +1568,41 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
+### M38 — Ação da posição por hover e vocabulário
+
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.21, Design §27.
+
+**Mock normativo:** https://claude.ai/code/artifact/d250b26d-9046-4267-bf48-912f04472a03
+
+---
+
+**Task 137. Ação por hover, com pista e foco**
+⬜ **A implementar**
+
+`investimentos-client.jsx`. Requisitos §3.21.1 a §3.21.3, Design §27.1.
+
+- Sexta coluna sem cabeçalho, largura mínima, **sempre presente** — o botão nunca desloca dado.
+- Pista `⋯` em `opacity-40`, que some quando o botão aparece. Vermelha e mais forte na posição vencida.
+- **Revelação por `group-hover` E `group-focus-within`.** Sem o segundo, tabular leva o foco a um botão invisível.
+- Só no desktop: o mobile já tem o menu de três pontos do M37.
+
+*(Checkpoint: QA de interface. Em repouso a pista está visível e o botão não; com o cursor na linha, inverte. **Medir que a largura das colunas de valor não muda** entre os dois estados — é o ponto da coluna dedicada. E tabular até o botão revela ele, o que se verifica por `document.activeElement` e opacidade computada.)*
+
+---
+
+**Task 138. "Liquidar" só para vencido**
+⬜ **A implementar**
+
+`lib/ativos.js`, `investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.21.4, Design §27.2.
+
+- Uma constante em `lib/ativos.js`: vencido → "Liquidar", em aberto → "Resgatar". Quatro pontos de uso — botão do desktop, item de menu do mobile, título do modal e rótulo do campo de data.
+- **A Server Action não muda:** é `liquidarAtivo` nos dois casos.
+- Colisão com o "Resgatar" da conta aceita conscientemente (Requisitos §3.21.4).
+
+*(Checkpoint: QA de interface nos dois viewports. Uma posição em aberto diz "Resgatar" no controle e no título do modal; a vencida diz "Liquidar" nos dois. Conferir que **o menu de conta continua com o seu próprio "Resgatar"**, que é outra operação — é a colisão aceita, e o QA registra que ela existe.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1609,3 +1644,4 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
 | M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.19) |
 | M37 | Correção — a tabela de posições transbordava no mobile depois da coluna Líquido; vira cartões empilhados abaixo de `sm` (spec-01 §3.20) |
+| M38 | Escopo item 14 revisado — ação da posição revelada por hover, com pista permanente, e rótulo dependente do vencimento (spec-01 §3.21) |

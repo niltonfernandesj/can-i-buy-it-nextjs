@@ -2140,3 +2140,32 @@ Título com emissor e produto à esquerda, `DropdownMenu` à direita. Quatro lin
 ### 26.4 Vencido
 
 Selo no título; data em `text-saida-credito`; cartão com `border-saida-credito/45` e o mesmo fundo que a linha da tabela já tinha. Na versão desktop, nada muda.
+
+---
+
+## 27. Ação da posição por hover e vocabulário (M38)
+
+Requisitos §3.21.
+
+### 27.1 A coluna de ação
+
+Uma sexta coluna, sem cabeçalho, de largura mínima. O `<tr>` recebe `group`, e dentro dela convivem a pista e o botão:
+
+```
+pista:  opacity-40  group-hover:opacity-0  group-focus-within:opacity-0
+botão:  opacity-0   group-hover:opacity-100 group-focus-within:opacity-100
+```
+
+**`group-focus-within` não é opcional** (Requisitos §3.21.3). Sem ele, tabular pela tabela move o foco para um botão invisível.
+
+Os dois ocupam a mesma célula com o botão em `absolute` sobre a pista, para a troca não mudar a largura da coluna. A célula é `relative`.
+
+### 27.2 O rótulo
+
+```js
+const acao = vencido ? "Liquidar" : "Resgatar";
+```
+
+Uma constante só, usada no botão do desktop, no item de menu do mobile, no título do modal e no rótulo do campo de data. **A Server Action não muda** — é `liquidarAtivo` nos dois casos.
+
+Vive em `lib/ativos.js`, junto dos demais rótulos de domínio, e não em cada componente: são quatro pontos de uso, e divergirem seria questão de tempo.

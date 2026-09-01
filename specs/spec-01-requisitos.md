@@ -720,6 +720,39 @@ O selo **"Vencido"** sai de junto da data e sobe para o **título**, ao lado do 
 
 Liquidar é a única ação que existe numa posição hoje — não há editar nem apagar ativo (lacuna conhecida do M29). O menu nasce com uma opção, e é escolha consciente: a estrutura fica pronta para quando as outras existirem.
 
+### 3.21 Especificação — Ação da posição por hover e vocabulário (M38)
+
+**Mock aprovado:** https://claude.ai/code/artifact/d250b26d-9046-4267-bf48-912f04472a03
+
+#### 3.21.1 A ação sai da linha e volta no hover
+
+No desktop, o botão de liquidação fica hoje **sempre visível** dentro da coluna Líquido, empurrando o valor para a esquerda e repetindo em toda linha. Ele passa a aparecer **só quando o cursor está na linha**.
+
+**Numa coluna própria, não sobreposto ao valor.** A coluna tem largura mínima e existe sempre, então o botão nunca desloca dado nenhum — nem ao aparecer, nem ao sumir. Cobrir justamente a coluna que a pessoa está lendo seria troca ruim.
+
+#### 3.21.2 Uma pista permanente anuncia a ação
+
+Só mudar o fundo da linha no hover diz "esta linha está sob o cursor" — não diz que existe ação. Fica um **`⋯` em baixa opacidade sempre visível** na coluna de ação, que **some quando o botão ocupa o lugar dele**. Anuncia sem competir com os números, e reusa o vocabulário de "mais ações" que a tela já tem no card de contas.
+
+**Na posição vencida a pista é vermelha e mais forte:** ali a ação não é opcional.
+
+#### 3.21.3 Hover não existe no teclado
+
+Um controle revelado só por `:hover` **desaparece para quem navega por Tab** — o botão continua no DOM e continua focável, então a tecla chega nele, mas invisível. A revelação responde também ao **foco dentro da linha**, e sem isso a mudança melhoraria a tela para o mouse e a quebraria para o teclado.
+
+#### 3.21.4 "Liquidar" só para vencido
+
+O rótulo passa a depender do estado, no desktop e no mobile:
+
+| Estado | Rótulo |
+|---|---|
+| Vencido | **Liquidar** |
+| Em aberto | **Resgatar** |
+
+O título do modal e o rótulo do campo de data acompanham. **A operação é a mesma** — só o nome muda.
+
+**Colisão de vocabulário, aceita conscientemente** (decisão do usuário): "Resgatar" já nomeia outra operação na mesma tela — tirar dinheiro **parado** da corretora para a conta corrente (§3.14.3). São objetos diferentes, em menus diferentes, e o título do modal desfaz a dúvida. Fica registrado que quem clicar em "Resgatar" numa posição esperando o dinheiro cair na conta corrente vai se enganar: o valor sai do ativo e fica **parado na corretora**.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).
