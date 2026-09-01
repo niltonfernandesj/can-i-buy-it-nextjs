@@ -1577,7 +1577,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 137. Ação por hover, com pista e foco**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `1fd7fe0`
 
 `investimentos-client.jsx`. Requisitos §3.21.1 a §3.21.3, Design §27.1.
 
@@ -1591,7 +1591,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 138. "Liquidar" só para vencido**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `1fd7fe0`
 
 `lib/ativos.js`, `investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.21.4, Design §27.2.
 
