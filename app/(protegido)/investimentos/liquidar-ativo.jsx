@@ -6,7 +6,7 @@ import { liquidarAtivo } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
 import { hojeISO } from "@/lib/datas";
 import { formatarDataCurta } from "@/lib/datas";
-import { ROTULO_PRODUTO, rotuloIndexador } from "@/lib/ativos";
+import { ROTULO_PRODUTO, rotuloEncerramento, rotuloIndexador } from "@/lib/ativos";
 import { CampoValor } from "@/components/campo-valor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
   const router = useRouter();
   const [interno, setInterno] = useState(false);
   const controlado = abertoExterno !== undefined;
+  const { acao, gerundio, campoData } = rotuloEncerramento(vencido);
   const aberto = controlado ? abertoExterno : interno;
   const setAberto = controlado ? onAbertoMudou : setInterno;
   const [data, setData] = useState(hojeISO());
@@ -69,7 +70,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
                 : "h-7 px-2 text-xs text-muted-foreground"
             }
           >
-            Liquidar
+            {acao}
           </Button>
         </DialogTrigger>
       )}
@@ -77,7 +78,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Liquidar {ativo.emissor} · {ROTULO_PRODUTO[ativo.produto]}
+            {acao} {ativo.emissor} · {ROTULO_PRODUTO[ativo.produto]}
           </DialogTitle>
         </DialogHeader>
 
@@ -88,7 +89,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
           </p>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor={`liq-data-${ativo.id}`}>Data da liquidação</Label>
+            <Label htmlFor={`liq-data-${ativo.id}`}>{campoData}</Label>
             <Input
               id={`liq-data-${ativo.id}`}
               type="date"
@@ -122,7 +123,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
               Cancelar
             </Button>
             <Button type="submit" disabled={carregando}>
-              {carregando ? "Liquidando..." : "Liquidar"}
+              {carregando ? `${gerundio}...` : acao}
             </Button>
           </DialogFooter>
         </form>

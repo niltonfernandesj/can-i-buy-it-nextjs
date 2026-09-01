@@ -5,11 +5,7 @@ import { ChevronDown, MoreVertical, PiggyBank } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
 import { formatarDataCurta } from "@/lib/datas";
 import { agruparPor, percentualNoPatrimonio } from "@/lib/investimentos";
-import {
-  ROTULO_ESTRATEGIA,
-  ROTULO_PRODUTO,
-  rotuloIndexador,
-} from "@/lib/ativos";
+import { ROTULO_ESTRATEGIA, ROTULO_PRODUTO, rotuloEncerramento, rotuloIndexador } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import {
@@ -106,7 +102,9 @@ function MenuDaPosicao({ ativo, vencido }) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onSelect={() => setLiquidar(true)}>Liquidar</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setLiquidar(true)}>
+            {rotuloEncerramento(vencido).acao}
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -170,6 +168,42 @@ function CartaoPosicao({ ativo, hoje }) {
   );
 }
 
+/**
+ * A ação da posição no desktop: escondida até o cursor (ou o foco) chegar na
+ * linha (Requisitos §3.21).
+ *
+ * A pista `⋯` fica sempre visível e some quando o botão aparece no lugar dela —
+ * só mudar o fundo da linha diria "esta linha está sob o cursor", não que há
+ * algo a fazer ali.
+ *
+ * **`group-focus-within` não é enfeite:** hover não existe no teclado, e sem
+ * ele tabular pela tabela moveria o foco para um botão invisível.
+ */
+function AcaoDaLinha({ ativo, vencido }) {
+  return (
+    <td className="relative w-px py-2 pl-3">
+      <span
+        aria-hidden="true"
+        className={cn(
+          "select-none text-sm leading-none transition-opacity",
+          "opacity-40 group-hover:opacity-0 group-focus-within:opacity-0",
+          vencido ? "text-saida-credito opacity-90" : "text-muted-foreground",
+        )}
+      >
+        ⋯
+      </span>
+      <span
+        className={cn(
+          "absolute right-0 top-1/2 -translate-y-1/2 pl-3 opacity-0 transition-opacity",
+          "group-hover:opacity-100 group-focus-within:opacity-100",
+        )}
+      >
+        <LiquidarAtivo ativo={ativo} vencido={vencido} />
+      </span>
+    </td>
+  );
+}
+
 function TabelaPosicoes({ ativos, hoje }) {
   return (
     <>
@@ -191,6 +225,9 @@ function TabelaPosicoes({ ativos, hoje }) {
             <th className="pb-2 text-left font-medium">Taxa</th>
             <th className="pb-2 text-right font-medium">Bruto</th>
             <th className="pb-2 text-right font-medium">Líquido</th>
+            {/* Sem cabeçalho e de largura mínima: existe sempre, para o botão
+                revelado no hover nunca deslocar as colunas de valor. */}
+            <th className="w-px pb-2" />
           </tr>
         </thead>
         <tbody>
@@ -199,7 +236,7 @@ function TabelaPosicoes({ ativos, hoje }) {
             return (
               <tr
                 key={ativo.id}
-                className={cn("border-t", vencido && "bg-destructive/10")}
+                className={cn("group border-t", vencido && "bg-destructive/10")}
               >
                 <td className="py-2 pr-3">
                   <span className="font-medium">{ativo.emissor}</span>
@@ -229,11 +266,9 @@ function TabelaPosicoes({ ativos, hoje }) {
                   {formatarReais(ativo.valor ?? ativo.base)}
                 </td>
                 <td className="py-2 text-right tabular-nums">
-                  <span className="inline-flex items-center gap-2">
-                    {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}
-                    <LiquidarAtivo ativo={ativo} vencido={vencido} />
-                  </span>
+                  {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}
                 </td>
+                <AcaoDaLinha ativo={ativo} vencido={vencido} />
               </tr>
             );
           })}

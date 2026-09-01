@@ -1568,16 +1568,16 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
-### M38 — Ação da posição por hover e vocabulário
+### M38 — Ação da posição por hover e vocabulário ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.21, Design §27.
+**Status:** ✅ **concluído.** Requisitos §3.21, Design §27.
 
 **Mock normativo:** https://claude.ai/code/artifact/d250b26d-9046-4267-bf48-912f04472a03
 
 ---
 
 **Task 137. Ação por hover, com pista e foco**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `investimentos-client.jsx`. Requisitos §3.21.1 a §3.21.3, Design §27.1.
 
@@ -1591,7 +1591,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 138. "Liquidar" só para vencido**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/ativos.js`, `investimentos-client.jsx` e `liquidar-ativo.jsx`. Requisitos §3.21.4, Design §27.2.
 

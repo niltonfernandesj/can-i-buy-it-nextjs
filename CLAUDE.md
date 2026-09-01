@@ -86,6 +86,16 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 - **Dev server sobrevivente rouba a porta.** Se um `next dev` antigo continua vivo, o novo sobe calado em **3001** e o script segue batendo no velho — que pode estar servindo um `.next` já apagado, com o sintoma da armadilha acima. `pkill -f "next dev"` sozinho nem sempre pega: confirme com `lsof -ti:3000` e cheque a linha `- Local:` do log antes de rodar o script.
 - **Reload de página aberta antes de reiniciar `next dev`** pode carregar sem estilo — a aba retém referências ao build anterior do webpack. Feche/recarregue a aba (ou dê um hard reload) depois de reiniciar o servidor; não precisa investigar.
 
+### `npm run build` não prova que os imports existem
+
+O projeto é **JavaScript puro**. Um identificador sem import não é erro de compilação — é `ReferenceError` em tempo de execução. O build passa, a página quebra.
+
+Aconteceu na Task 137: um `import` que a edição não inseriu (a linha era multilinha e o `replace` de linha única não casou) deixou `rotuloEncerramento is not defined`. O `✓ Compiled successfully` saiu limpo, e a página inteira desmontava ao expandir um grupo — `<main>` desaparecia do DOM.
+
+**Sintoma:** um elemento que existia some depois de uma interação, e locators começam a estourar timeout em coisas óbvias. **Diagnóstico:** `page.on("pageerror")` no script de QA, sempre — é uma linha e apontou a causa em segundos depois de meia hora de suposição.
+
+Depois de editar imports por script, confira: `grep -n "nome" arquivo` deve achar **o import e o uso**, não só o uso.
+
 ### Armadilhas de scripts de QA
 
 - Rode os scripts **a partir da raiz do projeto** (`node qa-x.mjs`, com o arquivo lá dentro) — de fora, o Node não resolve `@prisma/client` nem `playwright`.
