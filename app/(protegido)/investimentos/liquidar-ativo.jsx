@@ -113,13 +113,19 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
             />
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <CampoValor
               id={`liq-valor-${ativo.id}`}
               label="Valor recebido"
               valorCentavos={valorCentavos}
               onChange={setValorCentavos}
             />
+            {/* O valor é fato, não estimativa: é o que caiu na conta, já
+                líquido de IR e IOF. */}
+            <span className="text-xs text-muted-foreground">
+              O que caiu no saldo em conta, já líquido de IR e IOF.
+            </span>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <CampoValor
@@ -131,12 +137,6 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
             {/* Zero encerra a posição — o único caso que existia antes do M33. */}
             <span className="text-xs text-muted-foreground">
               Quanto continua aplicado. Zero encerra a posição.
-            </span>
-          </div>
-            {/* O valor é fato, não estimativa: é o que caiu na conta, já
-                líquido de IR e IOF. No M30 vem pré-preenchido pelo cálculo. */}
-            <span className="text-xs text-muted-foreground">
-              O que caiu no saldo em conta, já líquido de IR e IOF.
             </span>
           </div>
 
