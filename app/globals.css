@@ -86,6 +86,17 @@ body {
     --controle-hover: #32323A;
     --vencido-hover: #FF8FA0;
 
+    /* Estados de cursor dos componentes base. Mesma razão dos de cima: o
+       shadcn usa `hover:bg-primary/90` e similares, que aqui não geram CSS —
+       todo botão primário do app ficava sem realce nenhum. */
+    --primary-hover: #DEDEE1;
+    --destructive-hover: #A81C1C;
+    --linha-hover: rgba(255, 255, 255, 0.045);
+    --periodo-hover: #313152;
+    --esqueleto: rgba(244, 244, 245, 0.14);
+    --alerta-fundo: rgba(200, 34, 34, 0.08);
+    --alerta-borda: rgba(200, 34, 34, 0.35);
+
     /* Régua do percentual do disponível na Projeção (Design §14.4). Quatro
        repetem hexadecimais já presentes na paleta, mas ganham nome próprio: a
        régua não é categoria nem meio de pagamento, e o alias deixa uma

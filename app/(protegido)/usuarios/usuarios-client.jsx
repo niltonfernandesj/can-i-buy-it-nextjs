@@ -58,7 +58,7 @@ function NovoUsuarioDialog({ aberto, onOpenChange, onCriado }) {
           <DialogTitle>Novo usuário</DialogTitle>
         </DialogHeader>
 
-        <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+        <div className="flex items-start gap-2 rounded-md border border-alerta-borda bg-alerta-fundo p-3 text-sm text-destructive">
           <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
           <p>
             Qualquer usuário criado aqui passa a enxergar e editar{" "}

@@ -75,6 +75,13 @@ module.exports = {
   			'superficie-sutil': 'var(--superficie-sutil)',
   			'controle-hover': 'var(--controle-hover)',
   			'vencido-hover': 'var(--vencido-hover)',
+  			'primary-hover': 'var(--primary-hover)',
+  			'destructive-hover': 'var(--destructive-hover)',
+  			'linha-hover': 'var(--linha-hover)',
+  			'periodo-hover': 'var(--periodo-hover)',
+  			esqueleto: 'var(--esqueleto)',
+  			'alerta-fundo': 'var(--alerta-fundo)',
+  			'alerta-borda': 'var(--alerta-borda)',
   			estimado: 'var(--estimado)',
   			// Régua do percentual do disponível (Design §14.4). O componente usa
   			// um mapa literal de classe, não `text-disponivel-${faixa}` — nome

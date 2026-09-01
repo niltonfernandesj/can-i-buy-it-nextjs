@@ -62,7 +62,7 @@ function BarraLateralDesktop({ pathname }) {
     <aside className="hidden flex-col gap-6 border-r bg-background p-4 md:fixed md:inset-y-0 md:left-0 md:flex md:w-56">
       <Link
         href="/lancamento"
-        className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        className="flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
       >
         <Plus className="h-4 w-4" />
         Nova transação

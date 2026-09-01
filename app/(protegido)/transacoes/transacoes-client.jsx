@@ -603,7 +603,7 @@ export function TransacoesClient({ transacoes, contas, categorias }) {
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-linha-hover"
                   onClick={() => setTransacaoSelecionada(row.original)}
                 >
                   {row.getVisibleCells().map((cell) => (

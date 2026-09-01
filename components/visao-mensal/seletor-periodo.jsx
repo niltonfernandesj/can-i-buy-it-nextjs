@@ -76,9 +76,9 @@ export function SeletorPeriodo({ mes, ano }) {
   const rotulo = `${MESES[mes - 1]} ${ano}`;
 
   const classeSeta =
-    "flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm hover:bg-muted";
+    "flex h-10 w-10 items-center justify-center rounded-full border bg-background text-foreground shadow-sm hover:bg-controle-hover";
   const classePill =
-    "items-center gap-2 rounded-full bg-periodo px-4 py-2 text-sm font-semibold text-periodo-foreground shadow-sm hover:bg-periodo/90";
+    "items-center gap-2 rounded-full bg-periodo px-4 py-2 text-sm font-semibold text-periodo-foreground shadow-sm hover:bg-periodo-hover";
 
   return (
     <div className="flex items-center gap-3">
