@@ -48,6 +48,15 @@ async function corrigirPosicoes(vivas) {
     ...new Set(vivas.map((a) => SERIE_MENSAL_DO_INDEXADOR[a.indexador]).filter(Boolean)),
   ];
 
+  // A janela do índice recua a maior defasagem da carteira: com M-2, o cálculo
+  // precisa de meses anteriores ao mês da compra, e sem esse recuo eles
+  // faltariam em silêncio (Design §30.2).
+  const maiorDefasagem = Math.max(0, ...vivas.map((a) => a.defasagemMeses ?? 2));
+  const [ano, mes] = desdeQuando.split("-").map(Number);
+  const desdeQuandoIndice = new Date(Date.UTC(ano, mes - 1 - maiorDefasagem, 1))
+    .toISOString()
+    .slice(0, 10);
+
   const [taxasPorSerie, indicesPorSerie] = await Promise.all([
     Promise.all(
       seriesNecessarias.map(async (serie) => [
@@ -58,7 +67,7 @@ async function corrigirPosicoes(vivas) {
     Promise.all(
       mensaisNecessarios.map(async (serie) => [
         serie,
-        await sincronizarIndice(serie, desdeQuando, hojeISO()),
+        await sincronizarIndice(serie, desdeQuandoIndice, hojeISO()),
       ]),
     ).then((pares) => new Map(pares)),
   ]);
@@ -81,7 +90,14 @@ async function corrigirPosicoes(vivas) {
         const indices = indicesPorSerie.get(SERIE_MENSAL_DO_INDEXADOR[ativo.indexador]) ?? [];
 
         const valor = valorCorrigido(
-          { base, indexador: ativo.indexador, taxa: Number(ativo.taxa), dataAquisicao: desdeQuando, vencimento },
+          {
+            base,
+            indexador: ativo.indexador,
+            taxa: Number(ativo.taxa),
+            dataAquisicao: desdeQuando,
+            vencimento,
+            defasagemMeses: ativo.defasagemMeses ?? 2,
+          },
           taxas,
           indices,
         );

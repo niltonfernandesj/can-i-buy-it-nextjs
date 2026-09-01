@@ -1697,9 +1697,9 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
-### M39 — Defasagem e pro rata no IPCA+
+### M39 — Defasagem e pro rata no IPCA+ ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.23, Design §30.
+**Status:** ✅ **concluído.** Requisitos §3.23, Design §30.
 
 **Corrige um erro de 0,8%** encontrado ao conferir um CDB do BMG contra a corretora: R$ 7.412,03 no extrato contra R$ 7.351,58 no app. O M36 aplica meses de calendário inteiros; um título indexado ao IPCA acumula em **janelas do dia 15**, com o índice **defasado** e distribuído **pro rata por dias úteis**.
 
@@ -1708,7 +1708,7 @@ A convenção reproduzida bate com **R$ 1,77** de resíduo, que é a projeção 
 ---
 
 **Task 145. A defasagem vira campo do ativo**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `prisma/schema.prisma`, migration e `registrar-ativo.jsx`. Requisitos §3.23.3, Design §30.1.
 
@@ -1721,7 +1721,7 @@ A convenção reproduzida bate com **R$ 1,77** de resíduo, que é a projeção 
 ---
 
 **Task 146. O fator por janelas defasadas**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/rendimento.js` e testes. Design §30.2.
 
@@ -1737,7 +1737,7 @@ Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o r
 ---
 
 **Task 147. A tela usa a defasagem do título**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `page.jsx` e `lib/rendimento.js`. Design §30.2.
 

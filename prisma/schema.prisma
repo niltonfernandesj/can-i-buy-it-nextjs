@@ -254,6 +254,15 @@ model Ativo {
   // em CDI_MAIS, 2 é "CDI + 2% a.a." (Requisitos §3.13.2).
   taxa       Decimal
 
+  /// Meses de defasagem do índice, só para indexador de inflação. A corretora
+  /// chama de "M-2", e 2 é o padrão de mercado — mas não é universal, por isso
+  /// é do título e não constante (Requisitos §3.23.3).
+  ///
+  /// `Int` com default em vez de `Int?`: todo ativo tem o campo, e quem não é
+  /// indexado à inflação simplesmente o ignora. Um nulo obrigaria toda leitura
+  /// a decidir o que fazer com a ausência.
+  defasagemMeses Int @default(2)
+
   dataAquisicao  DateTime
   valorAquisicao Decimal
   vencimento     DateTime

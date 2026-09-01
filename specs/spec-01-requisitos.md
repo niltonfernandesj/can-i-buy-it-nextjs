@@ -837,6 +837,8 @@ O índice acumula em **janelas do dia 15 ao dia 15**, e cada janela aplica o IPC
 
 Reproduzido: **R$ 7.413,80** contra os R$ 7.412,03 do extrato — **R$ 1,77**, ou 0,024%.
 
+**A janela em que a compra cai não conta.** O acúmulo começa no primeiro dia 15 posterior à aquisição — descoberto ao ajustar contra o extrato, e não deduzido da norma.
+
 #### 3.23.3 A defasagem é do título, não uma constante
 
 **Decisão do usuário:** M-2 é o padrão de mercado, mas **não é universal**. A defasagem passa a ser um **campo do ativo**, informado no registro, com **2 como valor sugerido**.

@@ -35,6 +35,7 @@ import {
 
 const FORM_INICIAL = {
   estrategia: "POS_FIXADO",
+  defasagemMeses: "2",
   produto: "CDB",
   emissor: "",
   indexador: "PERCENTUAL_CDI",
@@ -93,6 +94,7 @@ export function RegistrarAtivo({ conta, className }) {
     const resultado = await registrarAtivo({
       contaId: conta.id,
       estrategia: form.estrategia,
+      defasagemMeses: form.defasagemMeses,
       produto: form.produto,
       emissor: form.emissor,
       indexador: form.indexador,
@@ -201,6 +203,27 @@ export function RegistrarAtivo({ conta, className }) {
                   "% do CDI" e spread em "CDI +". */}
               <span className="text-xs text-muted-foreground">{DICA_TAXA[form.indexador]}</span>
             </div>
+
+            {/* Só na inflação: nos demais indexadores o campo existe no banco
+                com o padrão e é ignorado (Requisitos §3.23.3). */}
+            {form.estrategia === "INFLACAO" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="ativo-defasagem">Defasagem do índice (meses)</Label>
+                <Input
+                  id="ativo-defasagem"
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  value={form.defasagemMeses}
+                  onChange={(e) =>
+                    setForm({ ...form, defasagemMeses: e.target.value.replace(/\D/g, "").slice(0, 2) })
+                  }
+                />
+                <span className="text-xs text-muted-foreground">
+                  Quantos meses o índice atrasa. A corretora costuma chamar de “M-2”.
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="ativo-aquisicao">Data de aquisição</Label>

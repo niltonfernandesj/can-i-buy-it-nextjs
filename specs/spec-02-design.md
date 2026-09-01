@@ -2316,7 +2316,9 @@ fator      *= (1 + ipca[mesDoIndice]) ** fração
 
 **`calendario` é a série do CDI**, já carregada para o spread. Contar "dias úteis da janela" exige saber quais dias são úteis — o mesmo uso que o pré-fixado faz dela (§24.1). A janela corrente costuma ir além do último dia publicado; ali a contagem completa com dias de semana, e a imprecisão fica limitada ao mês aberto.
 
-**A primeira janela é parcial e conta a partir da aquisição** — foi o que fechou a conta: incluí-la inteira dava R$ 7.426, e a partir da compra dá R$ 7.413,80 contra R$ 7.412,03 do extrato.
+**A janela em que a compra cai é ignorada.** O acúmulo começa no primeiro dia 15 posterior à aquisição.
+
+Isso foi determinado **empiricamente**, não deduzido: incluir a janela parcial dá R$ 7.426,12 e ignorá-la dá R$ 7.413,80, contra os R$ 7.412,03 do extrato — oito vezes mais perto. A leitura é que o preço pago já embute o índice até aquele ponto. Fica registrado como observação ajustada a um caso, não como regra derivada da norma.
 
 ### 30.3 O que continua igual
 
