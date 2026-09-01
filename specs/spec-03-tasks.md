@@ -1362,7 +1362,7 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 ---
 
 **Task 140. A âncora do rendimento passa a ser o último evento**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `b253aff`
 
 `lib/investimentos.js`, `lib/rendimento.test.js` e `page.jsx`. Requisitos §3.22.3 e §3.22.4, Design §28.1 e §28.2.
 
@@ -1378,7 +1378,7 @@ Vem antes do formulário de propósito: é a correção de cálculo, e dá para 
 ---
 
 **Task 141. O formulário aceita remanescente**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `b253aff`
 
 `liquidar-ativo.jsx` e `lib/actions/investimentos.js`. Requisitos §3.22.1 e §3.22.2, Design §28.3.
 
