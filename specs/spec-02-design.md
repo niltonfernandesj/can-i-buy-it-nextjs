@@ -2245,6 +2245,8 @@ O campo se chama **`mes`, não `data`**: o nome carrega a granularidade, e é o 
 
 A lógica de lacunas (`lacunas`) também serve, porque opera sobre strings ISO e não sabe de granularidade. O que muda é **onde grava**: `sincronizarIndice` escreve em `IndiceMensal` em vez de `TaxaDiaria`.
 
+**E a janela precisa ser alinhada ao mês.** Ela chega com precisão de dia, vinda da aquisição mais antiga da carteira; um índice mensal é datado no dia 1º, então filtrar por `2026-01-12` **descarta janeiro inteiro** — justamente o mês da compra, que conta. O QA pegou isso: a tela mostrava R$ 10.690,81 com seis meses em vez de R$ 10.726,08 com sete. `sincronizarIndice` alinha `desejadoDe` ao primeiro dia do mês, tanto no que busca quanto no que devolve.
+
 ### 29.3 O cálculo precisa de duas listas
 
 Único indexador assim. `valorCorrigido` ganha um terceiro argumento:

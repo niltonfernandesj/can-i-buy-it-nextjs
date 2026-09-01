@@ -3,9 +3,14 @@ import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
 import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual, dataBase } from "@/lib/investimentos";
-import { SERIE_DO_INDEXADOR, taxasAplicaveis, valorCorrigido } from "@/lib/rendimento";
+import {
+  SERIE_DO_INDEXADOR,
+  SERIE_MENSAL_DO_INDEXADOR,
+  taxasAplicaveis,
+  valorCorrigido,
+} from "@/lib/rendimento";
 import { tributos } from "@/lib/tributos";
-import { sincronizarSerie } from "@/lib/actions/investimentos";
+import { sincronizarIndice, sincronizarSerie } from "@/lib/actions/investimentos";
 import { hojeISO, paraDiaISO } from "@/lib/datas";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
@@ -38,14 +43,25 @@ async function corrigirPosicoes(vivas) {
     .map((a) => paraDiaISO(a.dataAquisicao))
     .reduce((menor, dia) => (dia < menor ? dia : menor));
 
-  const taxasPorSerie = new Map(
-    await Promise.all(
+  // Só o IPCA+ precisa de índice mensal, e só quando existe posição dele.
+  const mensaisNecessarios = [
+    ...new Set(vivas.map((a) => SERIE_MENSAL_DO_INDEXADOR[a.indexador]).filter(Boolean)),
+  ];
+
+  const [taxasPorSerie, indicesPorSerie] = await Promise.all([
+    Promise.all(
       seriesNecessarias.map(async (serie) => [
         serie,
         await sincronizarSerie(serie, desdeQuando, hojeISO()),
       ]),
-    ),
-  );
+    ).then((pares) => new Map(pares)),
+    Promise.all(
+      mensaisNecessarios.map(async (serie) => [
+        serie,
+        await sincronizarIndice(serie, desdeQuando, hojeISO()),
+      ]),
+    ).then((pares) => new Map(pares)),
+  ]);
 
   return new Map(
     vivas
@@ -62,9 +78,12 @@ async function corrigirPosicoes(vivas) {
         // resgate parcial, a base nova só existe a partir dali (Design §28.1).
         const desdeQuando = paraDiaISO(dataBase(ativo));
 
+        const indices = indicesPorSerie.get(SERIE_MENSAL_DO_INDEXADOR[ativo.indexador]) ?? [];
+
         const valor = valorCorrigido(
           { base, indexador: ativo.indexador, taxa: Number(ativo.taxa), dataAquisicao: desdeQuando, vencimento },
           taxas,
+          indices,
         );
 
         // O corte do imposto é o último dia que de fato rendeu — não hoje. Com

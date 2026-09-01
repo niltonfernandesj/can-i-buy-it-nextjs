@@ -1299,9 +1299,9 @@ na tela de que o número é provisório.
 
 ---
 
-### M36 — Rendimento IPCA+
+### M36 — Rendimento IPCA+ ✅
 
-**Status:** ⬜ **tasks escritas.** Requisitos §3.19, Design §29. Depende do M30.
+**Status:** ✅ **concluído.** Requisitos §3.19, Design §29. Depende do M30.
 
 Sexto e último indexador. **Único que consulta duas fontes:** o índice mensal para a inflação e a série do CDI como calendário de dias úteis para o spread.
 
@@ -1312,7 +1312,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 142. O fator IPCA+, puro**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/rendimento.js` e testes. Design §29.3.
 
@@ -1326,7 +1326,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 143. Tabela `IndiceMensal`**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `prisma/schema.prisma` e migration. Design §29.1.
 
@@ -1339,7 +1339,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 144. Sincronização e a tela**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/bc.js`, `lib/actions/investimentos.js`, `lib/rendimento.js` e `page.jsx`. Design §29.2 e §29.4.
 

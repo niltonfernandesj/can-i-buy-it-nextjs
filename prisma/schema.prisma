@@ -356,3 +356,24 @@ model TaxaDiaria {
   // não duplicar um dia, que é o que torna a sincronização idempotente.
   @@id([serie, data])
 }
+
+enum SerieMensal {
+  IPCA // SGS 433
+}
+
+/// Um mês de um índice mensal do BC (M36 — Requisitos §3.19, Design §29.1).
+///
+/// Separada de `TaxaDiaria` porque o IPCA é incompatível com as séries diárias
+/// em três eixos: frequência mensal, valor em % ao MÊS (não ao dia) e quase
+/// dois meses de defasagem. Uma tabela só obrigaria todo leitor a ramificar
+/// pela série antes de interpretar `valor`, e um produtório distraído
+/// misturaria as unidades sem estourar erro nenhum.
+model IndiceMensal {
+  serie SerieMensal
+  /// Sempre o dia 1º do mês de referência. O campo se chama `mes`, e não
+  /// `data`, para o nome carregar a granularidade.
+  mes   DateTime    @db.Date
+  valor Decimal // % ao MÊS
+
+  @@id([serie, mes])
+}
