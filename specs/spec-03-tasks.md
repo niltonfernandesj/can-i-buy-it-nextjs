@@ -1604,7 +1604,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 ---
 
 **Task 139. Contraste do controle, e o `/NN` que não funcionava**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `6fcefff`
 
 `app/globals.css`, `tailwind.config.js`, `liquidar-ativo.jsx` e `investimentos-client.jsx`.
 
