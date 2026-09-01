@@ -813,6 +813,46 @@ Uma posição com resgates anteriores não indica isso na tela (decisão do usu�
 
 **Fora de escopo:** a mecânica de **quantidade × preço unitário** do Tesouro Direto. Modelar em reais serve para acompanhar patrimônio, mas não reproduz um extrato que fala em títulos e PU.
 
+### 3.23 Especificação — Defasagem e pro rata no IPCA+ (M39)
+
+**Origem: conferência com a corretora.** Um CDB do BMG a IPCA + 8,92% mostrava R$ 7.412,03 no extrato contra R$ 7.351,58 no app — **0,8% de diferença**, uma ordem de grandeza acima de qualquer divergência anterior.
+
+A corretora informa, para esse título, "defasagem **M-2**" e vínculo à "projeção ANBIMA".
+
+#### 3.23.1 O que o app faz de errado
+
+O M36 aplica **meses de calendário inteiros**, do mês da compra em diante: abril, maio, junho, julho. Isso não corresponde a como um título indexado ao IPCA acumula.
+
+#### 3.23.2 Como funciona de verdade
+
+O índice acumula em **janelas do dia 15 ao dia 15**, e cada janela aplica o IPCA de **N meses antes**, distribuído **pro rata por dias úteis**:
+
+```
+15/04→15/05   IPCA de março    0,88%   20/20 dias úteis
+15/05→15/06   IPCA de abril    0,67%   20/20
+15/06→15/07   IPCA de maio     0,58%   22/22
+15/07→15/08   IPCA de junho    0,16%   23/23
+15/08→hoje    IPCA de julho    0,07%   11/21   ← parcial
+```
+
+Reproduzido: **R$ 7.413,80** contra os R$ 7.412,03 do extrato — **R$ 1,77**, ou 0,024%.
+
+#### 3.23.3 A defasagem é do título, não uma constante
+
+**Decisão do usuário:** M-2 é o padrão de mercado, mas **não é universal**. A defasagem passa a ser um **campo do ativo**, informado no registro, com **2 como valor sugerido**.
+
+Registros anteriores recebem 2 na migração — é o que o único IPCA+ existente de fato usa.
+
+#### 3.23.4 O resíduo é a projeção ANBIMA
+
+Os R$ 1,77 que sobram são a janela aberta: a corretora não usa o IPCA de julho publicado (0,07%), e sim a **projeção que a ANBIMA divulga** para o período corrente. Esse número não está em série nenhuma do Banco Central.
+
+Fica **fora de escopo**, pela mesma razão da marcação a mercado (§3.16.6): exigiria outra fonte externa. A diferença cai de 0,8% para 0,02%, e o que resta é conhecido.
+
+#### 3.23.5 O que isso corrige na decisão do M36
+
+A escolha de "só meses fechados, mês da compra conta inteiro" (§3.19.2) foi tomada **sem esta informação**. Ela não era uma simplificação conservadora: erra 0,8% para menos neste caso, e o sinal do erro se inverte conforme o IPCA se move. Esta seção a substitui.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

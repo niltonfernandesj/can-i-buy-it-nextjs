@@ -1697,6 +1697,57 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ---
 
+### M39 — Defasagem e pro rata no IPCA+
+
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.23, Design §30.
+
+**Corrige um erro de 0,8%** encontrado ao conferir um CDB do BMG contra a corretora: R$ 7.412,03 no extrato contra R$ 7.351,58 no app. O M36 aplica meses de calendário inteiros; um título indexado ao IPCA acumula em **janelas do dia 15**, com o índice **defasado** e distribuído **pro rata por dias úteis**.
+
+A convenção reproduzida bate com **R$ 1,77** de resíduo, que é a projeção ANBIMA da janela aberta — fora de escopo, como a marcação a mercado.
+
+---
+
+**Task 145. A defasagem vira campo do ativo**
+⬜ **A implementar**
+
+`prisma/schema.prisma`, migration e `registrar-ativo.jsx`. Requisitos §3.23.3, Design §30.1.
+
+- `defasagemMeses Int @default(2)` no `Ativo`. `Int` com default, não `Int?`: um nulo obrigaria toda leitura a decidir o que fazer com a ausência.
+- O formulário mostra o campo **só quando a estratégia é Inflação**, com 2 sugerido e ajuda dizendo que a corretora costuma chamar de "M-2".
+- `registrarAtivo` valida `>= 0`.
+
+*(Checkpoint: QA de interface. O campo aparece ao escolher Inflação e some nas demais estratégias; um ativo IPCA+ nasce com o valor informado; e o **BMG existente ficou com 2** pela migration.)*
+
+---
+
+**Task 146. O fator por janelas defasadas**
+⬜ **A implementar**
+
+`lib/rendimento.js` e testes. Design §30.2.
+
+Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o recorte agora depende de janelas móveis.
+
+- Janelas `[15/M, 15/M+1)`; cada uma aplica o IPCA de `M − defasagemMeses`.
+- **Pro rata por dias úteis**, com a série do CDI como calendário — mesmo uso do pré-fixado.
+- **A primeira janela conta a partir da aquisição**, não do dia 15: foi isso que fechou a conta.
+- Sem piso, vencimento truncando, spread inalterado.
+
+*(Checkpoint: teste unitário reproduzindo **o caso real do BMG** — R$ 7.000 a IPCA+8,92% comprado em 08/04, com os IPCAs de fev a jul, resultando em R$ 7.413,80 ± 0,05. Mais: defasagem 0 usa o mês da própria janela; janela integralmente vivida dá o fator cheio; e um mês sem índice publicado não quebra.)*
+
+---
+
+**Task 147. A tela usa a defasagem do título**
+⬜ **A implementar**
+
+`page.jsx` e `lib/rendimento.js`. Design §30.2.
+
+- `valorCorrigido` repassa `defasagemMeses` e o calendário.
+- A janela de sincronização do índice recua `defasagemMeses` meses — senão faltam os meses antigos que a defasagem exige.
+
+*(Checkpoint: QA contra o ativo real do BMG, conferindo R$ 7.412,03 ± R$ 2. Conferir que os outros cinco indexadores não se moveram e que o Disponível segue intacto.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1739,3 +1790,4 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M36 | Escopo item 14 revisado — rendimento IPCA+, com índice mensal e a série do CDI como calendário do spread (spec-01 §3.19) |
 | M37 | Correção — a tabela de posições transbordava no mobile depois da coluna Líquido; vira cartões empilhados abaixo de `sm` (spec-01 §3.20) |
 | M38 | Escopo item 14 revisado — ação da posição revelada por hover, com pista permanente, e rótulo dependente do vencimento (spec-01 §3.21) |
+| M39 | Correção — o IPCA+ passa a acumular em janelas do dia 15, com o índice defasado por título e pro rata por dias úteis (spec-01 §3.23) |

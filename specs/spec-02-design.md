@@ -2275,3 +2275,49 @@ export const SERIE_MENSAL_DO_INDEXADOR = { IPCA_MAIS: "IPCA" };
 ```
 
 `corrigirPosicoes` em `page.jsx` passa a sincronizar também os índices mensais que as posições exigirem, e a repassá-los. Quando nenhuma posição é IPCA+, nada disso roda.
+
+---
+
+## 30. Defasagem e pro rata no IPCA+ (M39)
+
+Requisitos §3.23. Substitui a mecânica de meses inteiros do §29.3.
+
+### 30.1 A defasagem vira coluna
+
+```prisma
+model Ativo {
+  // ...
+  /// Meses de defasagem do índice, só para indexador de inflação. 2 é o
+  /// padrão de mercado (a corretora chama de "M-2"), mas não é universal —
+  /// por isso é do título, não constante (Requisitos §3.23.3).
+  defasagemMeses Int @default(2)
+}
+```
+
+`Int` com default em vez de `Int?`: todo ativo tem o campo, e quem não é indexado à inflação simplesmente o ignora. Um nulo obrigaria toda leitura a decidir o que fazer com a ausência.
+
+### 30.2 O cálculo por janelas
+
+`fatorInflacao` é substituído. A entrada deixa de ser "meses recortados" e passa a ser a **série mensal inteira** mais as **datas**, porque agora o recorte depende de janelas móveis:
+
+```js
+export function fatorInflacaoDefasado({
+  indices, diasUteis, dataAquisicao, corte, defasagemMeses, calendario,
+})
+```
+
+Para cada janela `[15/M, 15/M+1)` que intersecta `[aquisição, corte]`:
+
+```
+mesDoIndice = M − defasagemMeses
+fração      = dias úteis vividos na janela ÷ dias úteis totais da janela
+fator      *= (1 + ipca[mesDoIndice]) ** fração
+```
+
+**`calendario` é a série do CDI**, já carregada para o spread. Contar "dias úteis da janela" exige saber quais dias são úteis — o mesmo uso que o pré-fixado faz dela (§24.1). A janela corrente costuma ir além do último dia publicado; ali a contagem completa com dias de semana, e a imprecisão fica limitada ao mês aberto.
+
+**A primeira janela é parcial e conta a partir da aquisição** — foi o que fechou a conta: incluí-la inteira dava R$ 7.426, e a partir da compra dá R$ 7.413,80 contra R$ 7.412,03 do extrato.
+
+### 30.3 O que continua igual
+
+Spread proporcional a dias úteis, sem piso em deflação, e o vencimento truncando. **Nenhum outro indexador é tocado.**
