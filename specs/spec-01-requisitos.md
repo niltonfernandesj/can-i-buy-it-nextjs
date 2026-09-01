@@ -753,6 +753,43 @@ O título do modal e o rótulo do campo de data acompanham. **A operação é a 
 
 **Colisão de vocabulário, aceita conscientemente** (decisão do usuário): "Resgatar" já nomeia outra operação na mesma tela — tirar dinheiro **parado** da corretora para a conta corrente (§3.14.3). São objetos diferentes, em menus diferentes, e o título do modal desfaz a dúvida. Fica registrado que quem clicar em "Resgatar" numa posição esperando o dinheiro cair na conta corrente vai se enganar: o valor sai do ativo e fica **parado na corretora**.
 
+### 3.22 Especificação — Liquidação parcial (M33)
+
+O schema comporta desde a Task 107: `LiquidacaoAtivo` é um **evento** com `data`, `valorRecebido` e `valorRemanescente`, e liquidação total é o caso em que o remanescente é zero. Até aqui esse caso nunca acontecia — toda liquidação nascia com zero.
+
+#### 3.22.1 Dois números, e nenhum deriva do outro
+
+O **valor recebido** é **líquido**: IR e IOF já foram retidos na fonte. O **remanescente** é **bruto**: é a base que continua rendendo.
+
+Por isso os dois são informados, lidos do extrato. Não dá para calcular um a partir do outro sem estimar o imposto retido — e uma estimativa erraria a base de cálculo de todo o rendimento futuro, acumulando erro a cada evento.
+
+#### 3.22.2 Liquidar vira evento repetível
+
+O formulário ganha o campo **saldo remanescente**, **zero por padrão**. Deixar em branco encerra a posição, como hoje; preencher a mantém viva. Quem só faz resgate total não percebe diferença.
+
+A posição continua na listagem enquanto o remanescente for maior que zero, e a coluna passa a mostrar a **base atual** — que o cálculo já produz desde a Task 108, num caminho que até agora nunca era exercitado.
+
+#### 3.22.3 O rendimento passa a ser calculado por trechos
+
+**Esta é a mudança de fato.** Hoje o rendimento é sempre ancorado na data de aquisição. Com um resgate parcial isso passa a estar **errado**: a base remanescente rende a partir da **data do evento**, não da compra.
+
+Como o fator de correção é multiplicativo — `fator(t0→t2) = fator(t0→t1) × fator(t1→t2)` —, quebrar o intervalo no dia do resgate é exato. A posição vale `remanescente × correção desde aquele dia`.
+
+#### 3.22.4 Duas âncoras diferentes, e é fácil confundir
+
+| Cálculo | Ancora em | Por quê |
+|---|---|---|
+| **Rendimento** | data do último evento | a base mudou ali; antes disso ela nem existia |
+| **Imposto** | data de **aquisição** | o dinheiro está aplicado desde a compra, e é esse prazo que a tabela regressiva mede |
+
+Usar a mesma data nos dois seria o erro natural, e ele **reduziria a alíquota indevidamente** num resgate recente — um resgate parcial de ontem faria o IR do que sobrou cair para a faixa de 22,5%, quando o correto pode ser 15%.
+
+#### 3.22.5 Sem histórico visível por enquanto
+
+Uma posição com resgates anteriores não indica isso na tela (decisão do usuário). A base atual já aparece na coluna. Limitação aceita: meses depois, um rendimento aparentemente baixo não terá explicação visível.
+
+**Fora de escopo:** a mecânica de **quantidade × preço unitário** do Tesouro Direto. Modelar em reais serve para acompanhar patrimônio, mas não reproduz um extrato que fala em títulos e PU.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

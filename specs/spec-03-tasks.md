@@ -1351,9 +1351,42 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 - **Nenhum total muda.** Grupo, conta, investido e patrimônio seguem no bruto, e os percentuais continuam sobre a mesma base.
 
 *(Checkpoint: QA de interface nos dois viewports, com conferência contra as posições reais. O CDB do Topázio mostra bruto e líquido com a diferença do IR de 22,5%; a **LCA do BTG mostra os dois números iguais**, que é a prova visível da isenção; a coluna Taxa some a 390px e aparece a partir de `sm`; e **nenhum total se moveu** — asserção explícita, porque é a decisão mais fácil de quebrar sem perceber.)*
-### M33 — Liquidação parcial (planejado)
+### M33 — Liquidação parcial
 
-**Status:** escopo acordado; tasks **a escrever**. Depende do M30.
+**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.22, Design §28. Depende do M30 e do M32.
+
+**Sem migration.** O schema comporta desde a Task 107 — o que faltava era a funcionalidade.
+
+**A mudança de fato é o cálculo, não o formulário:** hoje o rendimento é sempre ancorado na aquisição, e com resgate parcial isso passa a estar errado.
+
+---
+
+**Task 140. A âncora do rendimento passa a ser o último evento**
+⬜ **A implementar**
+
+`lib/investimentos.js`, `lib/rendimento.test.js` e `page.jsx`. Requisitos §3.22.3 e §3.22.4, Design §28.1 e §28.2.
+
+Vem antes do formulário de propósito: é a correção de cálculo, e dá para provar sem UI nenhuma usando um evento inserido direto no banco.
+
+- `dataBase(ativo)` em `lib/investimentos.js`, par de `baseAtual` — mesma fonte para **quanto** rende e **desde quando**.
+- `page.jsx` passa `dataBase` a `valorCorrigido`.
+- **`tributos()` continua recebendo `dataAquisicao`.** É o erro mais provável do marco: as duas chamadas ficam a poucas linhas uma da outra, e usar a mesma data reduziria a alíquota indevidamente.
+
+*(Checkpoint: teste unitário. Uma posição com evento rende sobre o remanescente **e a partir da data dele** — alimentar a série inteira dá o mesmo que alimentar só o trecho posterior. E o teste que separa as âncoras: posição comprada há três anos com resgate ontem mantém IR de 15%, não cai para 22,5%.)*
+
+---
+
+**Task 141. O formulário aceita remanescente**
+⬜ **A implementar**
+
+`liquidar-ativo.jsx` e `lib/actions/investimentos.js`. Requisitos §3.22.1 e §3.22.2, Design §28.3.
+
+- Campo **"Saldo remanescente"**, zero por padrão. Em branco encerra a posição, como hoje.
+- **Os dois valores são informados**, não derivados: o recebido é líquido e o remanescente é bruto (Requisitos §3.22.1).
+- `liquidarAtivo` grava o remanescente em vez do zero fixo, e valida `>= 0` e `< baseAtual`.
+- A trava de "já foi liquidada" fica, agora significando o que sempre quis dizer.
+
+*(Checkpoint: QA de interface + banco. Um resgate parcial mantém a posição na listagem, com a coluna mostrando o remanescente; um segundo resgate sobre a mesma posição funciona — é o "evento repetível" que nunca foi exercitado; zerar encerra e a posição some; e remanescente igual ou maior que a base é recusado com mensagem. Conferir que um resgate parcial **não muda o saldo em conta pelo remanescente**, só pelo recebido.)*
 
 O schema já comporta desde a Task 107: `LiquidacaoAtivo` é um evento com `data`, `valorRecebido` e `valorRemanescente`, e liquidação total é o caso em que o remanescente é zero. O que falta é a funcionalidade — **hoje o modelo suporta e nenhum marco constrói**, lacuna identificada pelo usuário ao revisar as tasks.
 
@@ -1656,7 +1689,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 | M30 | Escopo item 14 revisado — rendimento pós-fixado das posições, via séries do Banco Central (spec-01 §3.16). Primeira integração externa do projeto |
 | M31 | Escopo item 14 revisado — rendimento pré-fixado, com a série do CDI reusada como calendário de dias úteis (spec-01 §3.17) |
 | M32 | Escopo item 14 revisado — rendimento líquido de IR e IOF ao lado do bruto, ramificando por produto (spec-01 §3.18) |
-| M33 | *(planejado)* Liquidação parcial de posição. Schema já pronto desde a Task 107; seção de Requisitos ainda a escrever |
+| M33 | Escopo item 14 revisado — liquidação vira evento repetível, e o rendimento passa a ser calculado por trechos a partir do último evento (spec-01 §3.22) |
 | M34 | Escopo item 2 revisado — Lançamento passa a cobrir só dinheiro que entra de fora e sai para fora; aporte e resgate migram para `/investimentos` (spec-01 §3.14). Reverte a Task 86 (Tipo Investimento) e a Task 114 (resgate no lançamento) |
 | M35 | Escopo item 8 revisado — parcelamento deixa de ser um stepper embutido e vira dropdown fundido ao campo Valor, com "À vista" como padrão (spec-01 §3.15). Substitui o controle criado na Task 85 |
 | M36 | *(planejado)* Rendimento IPCA+ — tabela mensal, série 433, só meses fechados (spec-01 §3.19) |

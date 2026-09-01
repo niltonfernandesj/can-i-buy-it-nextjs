@@ -2169,3 +2169,42 @@ const acao = vencido ? "Liquidar" : "Resgatar";
 Uma constante só, usada no botão do desktop, no item de menu do mobile, no título do modal e no rótulo do campo de data. **A Server Action não muda** — é `liquidarAtivo` nos dois casos.
 
 Vive em `lib/ativos.js`, junto dos demais rótulos de domínio, e não em cada componente: são quatro pontos de uso, e divergirem seria questão de tempo.
+
+---
+
+## 28. Liquidação parcial (M33)
+
+Requisitos §3.22. Sem migration: o schema comporta desde a Task 107.
+
+### 28.1 A âncora do rendimento
+
+`lib/investimentos.js` ganha o par de `baseAtual`:
+
+```js
+/** Desde quando a base atual rende: o último evento, ou a aquisição. */
+export function dataBase(ativo) {
+  const evento = ultimaLiquidacao(ativo);
+  return evento ? evento.data : ativo.dataAquisicao;
+}
+```
+
+Simetria deliberada com `baseAtual`: **quanto** rende e **desde quando** saem da mesma fonte, e o caso sem evento cai na mesma fórmula, com a aquisição no papel de "último evento". Se as duas divergirem, o rendimento passa a corrigir a base nova pelo intervalo antigo — e não estoura erro nenhum, só devolve número maior.
+
+Em `page.jsx`, `valorCorrigido` passa a receber `paraDiaISO(dataBase(ativo))` no lugar de `paraDiaISO(ativo.dataAquisicao)`.
+
+### 28.2 O imposto NÃO muda de âncora
+
+`tributos()` continua recebendo `dataAquisicao`. O prazo da tabela regressiva conta desde a aplicação original — o dinheiro que sobrou está investido desde a compra, não desde o resgate.
+
+**É o erro mais provável deste marco**, porque as duas chamadas ficam a poucas linhas uma da outra e a variável certa está à mão nas duas. Um teste fixa isso: uma posição antiga com resgate recente mantém a alíquota de 15%.
+
+### 28.3 O formulário
+
+Um `CampoValor` a mais, "Saldo remanescente", com ajuda dizendo que zero encerra a posição. `liquidarAtivo` passa a aceitar `remanescente` e a gravá-lo em vez do zero fixo.
+
+Validações novas, ambas na Server Action:
+
+- `remanescente >= 0`;
+- `remanescente < baseAtual(ativo)` — se fosse igual ou maior, não houve resgate.
+
+A trava de "esta posição já foi liquidada" **fica**, agora significando o que sempre quis dizer: só recusa quando existe um evento com remanescente zero.
