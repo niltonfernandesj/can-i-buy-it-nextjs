@@ -36,6 +36,7 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
   const setAberto = controlado ? onAbertoMudou : setInterno;
   const [data, setData] = useState(hojeISO());
   const [valorCentavos, setValorCentavos] = useState(0);
+  const [remanescenteCentavos, setRemanescenteCentavos] = useState(0);
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
@@ -44,7 +45,11 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
     setErro("");
     setCarregando(true);
 
-    const resultado = await liquidarAtivo(ativo.id, { data, valor: valorCentavos / 100 });
+    const resultado = await liquidarAtivo(ativo.id, {
+      data,
+      valor: valorCentavos / 100,
+      remanescente: remanescenteCentavos / 100,
+    });
 
     setCarregando(false);
     if (resultado?.error) {
@@ -115,6 +120,19 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
               valorCentavos={valorCentavos}
               onChange={setValorCentavos}
             />
+
+          <div className="flex flex-col gap-1.5">
+            <CampoValor
+              id={`liq-remanescente-${ativo.id}`}
+              label="Saldo remanescente"
+              valorCentavos={remanescenteCentavos}
+              onChange={setRemanescenteCentavos}
+            />
+            {/* Zero encerra a posição — o único caso que existia antes do M33. */}
+            <span className="text-xs text-muted-foreground">
+              Quanto continua aplicado. Zero encerra a posição.
+            </span>
+          </div>
             {/* O valor é fato, não estimativa: é o que caiu na conta, já
                 líquido de IR e IOF. No M30 vem pré-preenchido pelo cálculo. */}
             <span className="text-xs text-muted-foreground">

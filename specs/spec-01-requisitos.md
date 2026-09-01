@@ -782,7 +782,7 @@ Como o fator de correção é multiplicativo — `fator(t0→t2) = fator(t0→t1
 | **Rendimento** | data do último evento | a base mudou ali; antes disso ela nem existia |
 | **Imposto** | data de **aquisição** | o dinheiro está aplicado desde a compra, e é esse prazo que a tabela regressiva mede |
 
-Usar a mesma data nos dois seria o erro natural, e ele **reduziria a alíquota indevidamente** num resgate recente — um resgate parcial de ontem faria o IR do que sobrou cair para a faixa de 22,5%, quando o correto pode ser 15%.
+Usar a mesma data nos dois seria o erro natural, e o efeito é **maior do que parece**: ancorar o imposto no evento faz a posição parecer **recém-comprada**, o que dispara o **IOF dos primeiros 30 dias**. Medido: uma posição de três anos com resgate parcial há dois dias pagaria R$ 945 de imposto em vez de R$ 150 — o imposto quase sextuplica, e o líquido despenca.
 
 #### 3.22.5 Sem histórico visível por enquanto
 

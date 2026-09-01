@@ -1351,9 +1351,9 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 - **Nenhum total muda.** Grupo, conta, investido e patrimônio seguem no bruto, e os percentuais continuam sobre a mesma base.
 
 *(Checkpoint: QA de interface nos dois viewports, com conferência contra as posições reais. O CDB do Topázio mostra bruto e líquido com a diferença do IR de 22,5%; a **LCA do BTG mostra os dois números iguais**, que é a prova visível da isenção; a coluna Taxa some a 390px e aparece a partir de `sm`; e **nenhum total se moveu** — asserção explícita, porque é a decisão mais fácil de quebrar sem perceber.)*
-### M33 — Liquidação parcial
+### M33 — Liquidação parcial ✅
 
-**Status:** ⬜ **tasks escritas, a validar.** Requisitos §3.22, Design §28. Depende do M30 e do M32.
+**Status:** ✅ **concluído.** Requisitos §3.22, Design §28. Depende do M30 e do M32.
 
 **Sem migration.** O schema comporta desde a Task 107 — o que faltava era a funcionalidade.
 
@@ -1362,22 +1362,23 @@ Fica fora de `lib/rendimento.js` de propósito: rendimento é indexador e dias �
 ---
 
 **Task 140. A âncora do rendimento passa a ser o último evento**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `lib/investimentos.js`, `lib/rendimento.test.js` e `page.jsx`. Requisitos §3.22.3 e §3.22.4, Design §28.1 e §28.2.
 
 Vem antes do formulário de propósito: é a correção de cálculo, e dá para provar sem UI nenhuma usando um evento inserido direto no banco.
 
-- `dataBase(ativo)` em `lib/investimentos.js`, par de `baseAtual` — mesma fonte para **quanto** rende e **desde quando**.
+- `dataBase(ativo)` em `lib/investimentos.js`, par de `baseAtual` — mesma fonte para **quanto** rende e **desde quando**. Sem coluna nova: a data está na linha do evento, que a página já carrega.
+- **`ultimaLiquidacao` passa a desempatar por `criadoEm`.** Ordenar só por `data` bastava com um evento por posição; como evento repetível, dois resgates no mesmo dia deixariam a ordem indefinida e o remanescente escolhido seria arbitrário.
 - `page.jsx` passa `dataBase` a `valorCorrigido`.
 - **`tributos()` continua recebendo `dataAquisicao`.** É o erro mais provável do marco: as duas chamadas ficam a poucas linhas uma da outra, e usar a mesma data reduziria a alíquota indevidamente.
 
-*(Checkpoint: teste unitário. Uma posição com evento rende sobre o remanescente **e a partir da data dele** — alimentar a série inteira dá o mesmo que alimentar só o trecho posterior. E o teste que separa as âncoras: posição comprada há três anos com resgate ontem mantém IR de 15%, não cai para 22,5%.)*
+*(Checkpoint: teste unitário, incluindo **dois eventos no mesmo dia** — o mais recente por `criadoEm` é que vale. Uma posição com evento rende sobre o remanescente **e a partir da data dele** — alimentar a série inteira dá o mesmo que alimentar só o trecho posterior. E o teste que separa as âncoras: posição de três anos com resgate recente mantém IR de 15% **e IOF zero** — ancorar no evento dispararia o IOF de 93% e quase sextuplicaria o imposto.)*
 
 ---
 
 **Task 141. O formulário aceita remanescente**
-⬜ **A implementar**
+✅ **Concluída** — commit `(este)`
 
 `liquidar-ativo.jsx` e `lib/actions/investimentos.js`. Requisitos §3.22.1 e §3.22.2, Design §28.3.
 

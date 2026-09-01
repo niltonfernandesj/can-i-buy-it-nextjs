@@ -2192,11 +2192,17 @@ Simetria deliberada com `baseAtual`: **quanto** rende e **desde quando** saem da
 
 Em `page.jsx`, `valorCorrigido` passa a receber `paraDiaISO(dataBase(ativo))` no lugar de `paraDiaISO(ativo.dataAquisicao)`.
 
+**Nenhuma coluna nova, e nenhuma consulta nova.** A data vem da própria linha do evento, que `page.jsx` já traz com `include: { liquidacoes: true }`. Materializar `dataUltimoEvento` no `Ativo` criaria um segundo lugar para a mesma verdade — o oposto da decisão de saldos derivados do M29. O que se guarda é o `valorRemanescente`, e por outro motivo: ele é fato lido do extrato, não derivação.
+
+**Desempate por `criadoEm`.** `ultimaLiquidacao` ordenava só por `data`, o que bastava enquanto havia no máximo um evento por posição. Como evento repetível, **dois resgates no mesmo dia deixariam a ordem indefinida** e o app escolheria um remanescente arbitrário. A ordenação passa a ser `data` e, no empate, `criadoEm` — que o modelo já tem.
+
 ### 28.2 O imposto NÃO muda de âncora
 
 `tributos()` continua recebendo `dataAquisicao`. O prazo da tabela regressiva conta desde a aplicação original — o dinheiro que sobrou está investido desde a compra, não desde o resgate.
 
-**É o erro mais provável deste marco**, porque as duas chamadas ficam a poucas linhas uma da outra e a variável certa está à mão nas duas. Um teste fixa isso: uma posição antiga com resgate recente mantém a alíquota de 15%.
+**É o erro mais provável deste marco**, porque as duas chamadas ficam a poucas linhas uma da outra e a variável certa está à mão nas duas.
+
+O efeito é maior do que a intuição sugere. Ancorar o imposto no evento faz a posição parecer recém-comprada e **dispara o IOF dos primeiros 30 dias**: medido, uma posição de três anos com resgate há dois dias pagaria **R$ 945** em vez de **R$ 150**. Um teste fixa os dois lados — alíquota de 15%, IOF zero.
 
 ### 28.3 O formulário
 

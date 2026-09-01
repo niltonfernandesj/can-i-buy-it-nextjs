@@ -2,7 +2,7 @@ import { PiggyBank } from "lucide-react";
 import { db } from "@/lib/db";
 import { formatarReais } from "@/lib/moeda";
 import { cn } from "@/lib/utils";
-import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual } from "@/lib/investimentos";
+import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual, dataBase } from "@/lib/investimentos";
 import { SERIE_DO_INDEXADOR, taxasAplicaveis, valorCorrigido } from "@/lib/rendimento";
 import { tributos } from "@/lib/tributos";
 import { sincronizarSerie } from "@/lib/actions/investimentos";
@@ -58,17 +58,25 @@ async function corrigirPosicoes(vivas) {
         const vencimento = paraDiaISO(ativo.vencimento);
         const taxas = taxasPorSerie.get(serie);
 
+        // O rendimento ancora no ÚLTIMO EVENTO, não na compra: depois de um
+        // resgate parcial, a base nova só existe a partir dali (Design §28.1).
+        const desdeQuando = paraDiaISO(dataBase(ativo));
+
         const valor = valorCorrigido(
-          { base, indexador: ativo.indexador, taxa: Number(ativo.taxa), dataAquisicao, vencimento },
+          { base, indexador: ativo.indexador, taxa: Number(ativo.taxa), dataAquisicao: desdeQuando, vencimento },
           taxas,
         );
 
         // O corte do imposto é o último dia que de fato rendeu — não hoje. Com
         // a série atrasando um dia, contar até hoje tributaria rendimento que
         // ainda não existe (Design §25.2).
-        const incidentes = taxasAplicaveis(taxas, { dataAquisicao, vencimento });
-        const corte = incidentes.at(-1)?.dia ?? dataAquisicao;
+        const incidentes = taxasAplicaveis(taxas, { dataAquisicao: desdeQuando, vencimento });
+        const corte = incidentes.at(-1)?.dia ?? desdeQuando;
 
+        // O imposto ancora na AQUISIÇÃO, não no evento: o dinheiro que sobrou
+        // está aplicado desde a compra, e é esse prazo que a tabela regressiva
+        // mede. Usar `desdeQuando` aqui derrubaria a alíquota indevidamente
+        // depois de um resgate recente (Design §28.2).
         const { liquido } = tributos({
           produto: ativo.produto,
           base,
