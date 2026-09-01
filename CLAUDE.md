@@ -86,6 +86,22 @@ Use o **build de produção** (`npm run build && npm run start`) quando o bug de
 - **Dev server sobrevivente rouba a porta.** Se um `next dev` antigo continua vivo, o novo sobe calado em **3001** e o script segue batendo no velho — que pode estar servindo um `.next` já apagado, com o sintoma da armadilha acima. `pkill -f "next dev"` sozinho nem sempre pega: confirme com `lsof -ti:3000` e cheque a linha `- Local:` do log antes de rodar o script.
 - **Reload de página aberta antes de reiniciar `next dev`** pode carregar sem estilo — a aba retém referências ao build anterior do webpack. Feche/recarregue a aba (ou dê um hard reload) depois de reiniciar o servidor; não precisa investigar.
 
+### O modificador `/NN` de opacidade NÃO funciona neste projeto
+
+Os tokens de cor guardam **hexadecimal** (`--saida-credito: #FB7185`), e o Tailwind 3 só aplica opacidade sobre variáveis que guardam **canais** (`251 113 133`). Com hex, a regra é inválida e o Tailwind **descarta a classe em silêncio**: `.bg-destructive\/10` simplesmente não existe no CSS compilado.
+
+Não dá erro, não dá aviso — o elemento fica sem fundo nenhum e parece decisão de design. A Task 139 encontrou **7 usos inertes** só na tela de investimentos.
+
+**Funciona** com cores literais do Tailwind (`bg-black/80`), porque ali não há variável.
+
+**Como fazer transparência:** um token dedicado com `rgba()` literal em `globals.css`, mapeado no `tailwind.config.js`. Ver `--vencido-fundo` e vizinhos.
+
+**Como conferir:** `grep -o '\.classe{[^}]*}' $(find .next -name '*.css' -path '*static*' | head -1)`. Se não aparecer, a classe não existe.
+
+### `--muted`, `--accent` e `--secondary` são a mesma cor
+
+Os três valem `#232328`. Um `hover:bg-accent` sobre `bg-muted` não muda **nada** — é o padrão do shadcn e não funciona neste tema. Para realce de cursor existe `--controle-hover`.
+
 ### `npm run build` não prova que os imports existem
 
 O projeto é **JavaScript puro**. Um identificador sem import não é erro de compilação — é `ReferenceError` em tempo de execução. O build passa, a página quebra.

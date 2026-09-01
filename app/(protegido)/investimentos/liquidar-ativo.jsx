@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { liquidarAtivo } from "@/lib/actions/investimentos";
 import { formatarReais } from "@/lib/moeda";
+import { cn } from "@/lib/utils";
 import { hojeISO } from "@/lib/datas";
 import { formatarDataCurta } from "@/lib/datas";
 import { ROTULO_PRODUTO, rotuloEncerramento, rotuloIndexador } from "@/lib/ativos";
@@ -63,12 +64,17 @@ export function LiquidarAtivo({ ativo, vencido, aberto: abertoExterno, onAbertoM
               continuam liquidáveis (venda antecipada), mas discretas. */}
           <Button
             size="sm"
-            variant={vencido ? "default" : "ghost"}
-            className={
+            variant="outline"
+            className={cn(
+              "h-7 px-2 text-xs",
+              // Fundo e borda próprios em repouso: a variante ghost desenhava
+              // só texto, que se misturava com o valor Líquido ao lado. E o
+              // hover precisa ser DIFERENTE do repouso — o estado anterior
+              // repetia a mesma cor e anulava o realce (Task 139).
               vencido
-                ? "h-7 bg-saida-credito px-2 text-xs text-background hover:bg-saida-credito"
-                : "h-7 px-2 text-xs text-muted-foreground"
-            }
+                ? "border-saida-credito bg-saida-credito font-semibold text-background hover:bg-vencido-hover"
+                : "border-input bg-muted text-foreground hover:bg-controle-hover",
+            )}
           >
             {acao}
           </Button>

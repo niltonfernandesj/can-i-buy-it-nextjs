@@ -1570,7 +1570,7 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 
 ### M38 — Ação da posição por hover e vocabulário ✅
 
-**Status:** ✅ **concluído.** Requisitos §3.21, Design §27.
+**Status:** ✅ **concluído.** A Task 139 foi acrescentada depois, quando o usuário testou em dev. Requisitos §3.21, Design §27.
 
 **Mock normativo:** https://claude.ai/code/artifact/d250b26d-9046-4267-bf48-912f04472a03
 
@@ -1600,6 +1600,23 @@ Vai inteira, com o "Outro…" junto: sem ele o app perderia a capacidade de lan�
 - Colisão com o "Resgatar" da conta aceita conscientemente (Requisitos §3.21.4).
 
 *(Checkpoint: QA de interface nos dois viewports. Uma posição em aberto diz "Resgatar" no controle e no título do modal; a vencida diz "Liquidar" nos dois. Conferir que **o menu de conta continua com o seu próprio "Resgatar"**, que é outra operação — é a colisão aceita, e o QA registra que ela existe.)*
+
+---
+
+**Task 139. Contraste do controle, e o `/NN` que não funcionava**
+✅ **Concluída** — commit `(este)`
+
+`app/globals.css`, `tailwind.config.js`, `liquidar-ativo.jsx` e `investimentos-client.jsx`.
+
+**Dois defeitos relatados pelo usuário**, e um terceiro achado ao investigá-los.
+
+1. **"Resgatar" não tem contraste.** A variante `ghost` não desenha fundo, então o botão revelado no hover lê como texto solto e se mistura com o valor Líquido ao lado. Ganha fundo e borda próprios.
+2. **Nenhum dos dois muda ao ser apontado.** O "Liquidar" traz `hover:bg-saida-credito`, que é a **mesma cor do estado de repouso** — anula o realce em vez de criá-lo. Os dois passam a ter um estado visível de cursor sobre o botão.
+3. **O modificador `/NN` não gera CSS neste projeto.** Os tokens guardam hexadecimal (`--saida-credito:#FB7185`) e o Tailwind 3 só aplica opacidade sobre variáveis que guardam canais. A classe é descartada em silêncio: `.bg-destructive\/10` **não existe** no CSS compilado. São **7 usos inertes**, e é por isso que a posição vencida aparece sem fundo e o selo "Vencido" sem pílula.
+
+**A correção é cirúrgica, não estrutural** (decisão do usuário): tokens dedicados para os poucos tons translúcidos necessários, em vez de converter os ~40 tokens do `globals.css` para canais — o que seria refatoração do design system e arrastaria as specs que os documentam como hexadecimal.
+
+*(Checkpoint: QA de interface. Ler o **CSS compilado** e confirmar que as classes novas existem — foi a ausência delas que revelou o defeito, e é a única verificação que o pega. Na tela: o botão em repouso tem fundo distinto do da linha; apontado, muda de novo; a linha vencida tem fundo; o selo tem pílula. Medir por `getComputedStyle`, comparando as cores dos três estados entre si.)*
 
 ---
 

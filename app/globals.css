@@ -67,6 +67,25 @@ body {
     --periodo-fg: #A5B4FC;
     --estimado: #8C8C96;
 
+    /* Tons translúcidos, escritos como rgba literal (Task 139).
+       O modificador /NN do Tailwind NÃO funciona neste projeto: os tokens
+       guardam hexadecimal, e o Tailwind 3 só aplica opacidade sobre variáveis
+       que guardam canais. A classe é descartada em silêncio — `bg-destructive/10`
+       simplesmente não existe no CSS compilado. Estes tokens existem para os
+       poucos casos que precisam de transparência, sem converter os ~40 tokens
+       acima para o formato de canais. */
+    --vencido-fundo: rgba(251, 113, 133, 0.10);
+    --vencido-borda: rgba(251, 113, 133, 0.45);
+    --vencido-selo: rgba(251, 113, 133, 0.16);
+    --superficie-sutil: rgba(255, 255, 255, 0.025);
+
+    /* Estados de cursor sobre um controle. `--muted` e `--accent` têm o MESMO
+       valor neste tema (#232328), então `hover:bg-accent` sobre `bg-muted` não
+       muda nada — armadilha que a Task 139 encontrou. Estes existem para o
+       realce ser de fato visível. */
+    --controle-hover: #32323A;
+    --vencido-hover: #FF8FA0;
+
     /* Régua do percentual do disponível na Projeção (Design §14.4). Quatro
        repetem hexadecimais já presentes na paleta, mas ganham nome próprio: a
        régua não é categoria nem meio de pagamento, e o alias deixa uma

@@ -67,6 +67,14 @@ module.exports = {
   			investimento: 'var(--investimento)',
   			'saida-debito': 'var(--saida-debito)',
   			'saida-credito': 'var(--saida-credito)',
+  			// Tons translúcidos: o modificador /NN não funciona com tokens em
+  			// hexadecimal (Task 139), então cada transparência é um token.
+  			'vencido-fundo': 'var(--vencido-fundo)',
+  			'vencido-borda': 'var(--vencido-borda)',
+  			'vencido-selo': 'var(--vencido-selo)',
+  			'superficie-sutil': 'var(--superficie-sutil)',
+  			'controle-hover': 'var(--controle-hover)',
+  			'vencido-hover': 'var(--vencido-hover)',
   			estimado: 'var(--estimado)',
   			// Régua do percentual do disponível (Design §14.4). O componente usa
   			// um mapa literal de classe, não `text-disponivel-${faixa}` — nome

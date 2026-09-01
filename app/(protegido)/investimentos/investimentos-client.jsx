@@ -94,8 +94,8 @@ function MenuDaPosicao({ ativo, vencido }) {
             type="button"
             aria-label={`Ações em ${ativo.emissor}`}
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground",
-              vencido && "border-saida-credito/60 text-saida-credito",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md border bg-muted text-muted-foreground hover:bg-controle-hover",
+              vencido && "border-vencido-borda text-saida-credito",
             )}
           >
             <MoreVertical className="h-3.5 w-3.5" />
@@ -125,8 +125,8 @@ function CartaoPosicao({ ativo, hoje }) {
   return (
     <div
       className={cn(
-        "rounded-md border bg-background/40 p-3",
-        vencido && "border-saida-credito/45 bg-destructive/10",
+        "rounded-md border bg-superficie-sutil p-3",
+        vencido && "border-vencido-borda bg-vencido-fundo",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -136,7 +136,7 @@ function CartaoPosicao({ ativo, hoje }) {
             {/* No cartão o estado é informação de cabeçalho, não detalhe de
                 uma linha como era na tabela (Requisitos §3.20.4). */}
             {vencido && (
-              <span className="ml-1.5 whitespace-nowrap rounded-full bg-saida-credito/15 px-1.5 py-0.5 text-[10px] font-bold text-saida-credito">
+              <span className="ml-1.5 whitespace-nowrap rounded-full bg-vencido-selo px-1.5 py-0.5 text-[10px] font-bold text-saida-credito">
                 Vencido
               </span>
             )}
@@ -236,7 +236,7 @@ function TabelaPosicoes({ ativos, hoje }) {
             return (
               <tr
                 key={ativo.id}
-                className={cn("group border-t", vencido && "bg-destructive/10")}
+                className={cn("group border-t", vencido && "bg-vencido-fundo")}
               >
                 <td className="py-2 pr-3">
                   <span className="font-medium">{ativo.emissor}</span>
@@ -253,7 +253,7 @@ function TabelaPosicoes({ ativos, hoje }) {
                     {formatarDataCurta(ativo.vencimento)}
                   </span>
                   {vencido && (
-                    <span className="ml-1.5 whitespace-nowrap rounded-full bg-saida-credito/15 px-1.5 py-0.5 text-[11px] font-semibold text-saida-credito">
+                    <span className="ml-1.5 whitespace-nowrap rounded-full bg-vencido-selo px-1.5 py-0.5 text-[11px] font-semibold text-saida-credito">
                       Vencido
                     </span>
                   )}
