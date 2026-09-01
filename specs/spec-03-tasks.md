@@ -1312,7 +1312,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 142. O fator IPCA+, puro**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `d3a7605`
 
 `lib/rendimento.js` e testes. Design §29.3.
 
@@ -1326,7 +1326,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 143. Tabela `IndiceMensal`**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `d3a7605`
 
 `prisma/schema.prisma` e migration. Design §29.1.
 
@@ -1339,7 +1339,7 @@ Nenhuma posição real para conferir: nasce validado só por teste.
 ---
 
 **Task 144. Sincronização e a tela**
-✅ **Concluída** — commit `(este)`
+✅ **Concluída** — commit `d3a7605`
 
 `lib/bc.js`, `lib/actions/investimentos.js`, `lib/rendimento.js` e `page.jsx`. Design §29.2 e §29.4.
 
