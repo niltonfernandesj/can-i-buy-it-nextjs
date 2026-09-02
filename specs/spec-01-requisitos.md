@@ -921,7 +921,9 @@ O M39 registrou que "a janela em que a compra cai é ignorada" (§3.23.2), fitad
 
 E o BMG, que motivou a exceção, também melhora: o fit original foi feito **sem o mês corrente**, porque a projeção não existia no app. Reintroduzindo agosto, ignorar a janela dá −R$ 9,27 e contá-la dá +R$ 3,04 — a exceção era um artefato do índice que faltava.
 
-**Ressalva honesta, que a decisão não apaga:** o resíduo do BMG é da ordem de um dia de rendimento (~R$ 2,70), e a data em que aquele extrato foi lido não ficou registrada. Para ele, os dois modos ficam dentro do ruído. Quem decidiu foi o par do Fibra, onde a diferença é de duas ordens de grandeza — o BMG **acompanha, não confirma**. A confirmação pede **uma leitura nova do extrato do BMG em data conhecida**, e é isso que o checkpoint da task exige antes de fechá-la.
+**Ressalva honesta, e ela é mais forte do que parecia:** o resíduo do BMG é da ordem de um dia de rendimento (~R$ 2,70), e a data em que aquele extrato foi lido não ficou registrada. Dentro dessa incerteza o BMG não apenas deixa de decidir entre as duas regras — ele **troca de lado** conforme a data e o calendário assumidos: medido com feriados reais e corte em 28/08, a regra antiga erra −R$ 1,24 e a nova +R$ 10,52; com o calendário do CDI e corte em 26/08, a ordem se inverte (−R$ 9,27 contra +R$ 3,04).
+
+Ou seja: **o BMG acompanha, não confirma.** Quem decidiu foi o par do Fibra, onde a diferença é de duas ordens de grandeza e o sinal não depende de nada — −R$ 25,84 contra +R$ 0,92 no primeiro título. A confirmação do BMG pede **uma leitura nova do extrato em data conhecida**, e é isso que o checkpoint da task exige antes de fechá-la.
 
 O ganho não é só de precisão: some uma regra ad hoc, e o acúmulo passa a começar no dia em que o dinheiro entrou, que é o comportamento que qualquer papel tem.
 
