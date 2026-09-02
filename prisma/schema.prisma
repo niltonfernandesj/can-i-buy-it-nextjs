@@ -386,3 +386,32 @@ model IndiceMensal {
 
   @@id([serie, mes])
 }
+
+/// Projeção do índice para o mês corrente, lida da página pública de VNA da
+/// ANBIMA (M40 — Requisitos §3.24, Design §31.2).
+///
+/// Existe porque um título com defasagem 0 depende sempre de um mês que o
+/// Banco Central ainda não publicou: a janela que abre em 15/08 precisa do
+/// IPCA de agosto, que só sai por volta de 10/09.
+///
+/// **Vive separada de `IndiceMensal`, e não como um booleano dentro dela.** O
+/// motivo é operacional, não estético: `sincronizarIndice` decide o que buscar
+/// no BC pelo menor e maior mês GUARDADOS. Uma linha projetada de agosto faria
+/// o maior virar agosto, a lacuna fecharia, e o IPCA real de agosto nunca mais
+/// seria buscado — o provisório viraria permanente em silêncio.
+model ProjecaoIndice {
+  serie       SerieMensal
+  /// Dia 1º do mês de referência, como em `IndiceMensal`.
+  mes         DateTime    @db.Date
+  valor       Decimal // % ao MÊS
+  /// A marca que a própria ANBIMA publica ao lado do número: (P) projeção do
+  /// Comitê de Acompanhamento Macroeconômico, (F) índice fechado.
+  fechado     Boolean     @default(false)
+  /// Quando esta linha foi lida. É o que evita bater na ANBIMA a cada render.
+  capturadoEm DateTime    @default(now())
+
+  /// Mesma identidade de `IndiceMensal`, e é ela que dá o comportamento
+  /// desejado de graça: cada captura SOBRESCREVE a anterior do mesmo mês, sem
+  /// acumular histórico (Requisitos §3.24.8).
+  @@id([serie, mes])
+}
