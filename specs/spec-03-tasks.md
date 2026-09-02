@@ -1748,9 +1748,9 @@ Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o r
 
 ---
 
-### M40 — Projeção ANBIMA do IPCA e defasagem M0
+### M40 — Projeção ANBIMA do IPCA e defasagem M0 ✅
 
-**Status:** ⏳ **a implementar.** Requisitos §3.24, Design §31.
+**Status:** ✅ **concluído.** Requisitos §3.24, Design §31.
 
 **Corrige um título que não rende.** Um CDB com defasagem **M0** aponta hoje para um mês futuro, nunca acha o índice e rende **só o spread, em silêncio** — um IPCA+ que se comporta como pré-fixado. A correção é de uma linha, mas expõe o problema real: M0 depende sempre do índice do mês corrente, que o Banco Central só publica no mês seguinte.
 
@@ -1844,8 +1844,9 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 ---
 
 **Task 154. O ícone de atenção ao lado do Bruto**
+✅ **Concluída** — commit `e719b05`
 
-`app/globals.css`, `tailwind.config.js` e `investimentos-client.jsx`. Requisitos §3.24.7, Design §31.7.
+`app/globals.css`, `tailwind.config.js`, `investimentos-client.jsx`, `page.jsx` e `lib/rendimento.js`. Requisitos §3.24.7, Design §31.7.
 
 **Mock publicado e aprovado antes de codar.**
 
@@ -1853,7 +1854,15 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 - `TriangleAlert` `h-3.5 w-3.5 shrink-0` antes do número, nas **duas árvores**: `<td>` do Bruto no desktop e `LinhaDado` no cartão do mobile.
 - `title` e `aria-label` iguais, nomeando o mês que faltou.
 
-*(Checkpoint: QA de interface com `page.on("pageerror")` — o arquivo é JSX e import faltando não quebra o build. Com a projeção presente, **nenhum** ícone; forçando a ausência do mês corrente, ícone só nas posições M0, não nas M-2. No desktop, medir que a largura da coluna Bruto **não muda** entre os dois estados, e que o hover da linha segue revelando a ação. No mobile, medir `scrollWidth` do **container**, não do documento.)*
+- **`mesesSemIndice()` não estava previsto.** O aviso nomeia o mês, e `inflacaoIncompleta` só devolvia um booleano. A função nova devolve a lista de meses do índice que faltaram, e o predicado passa a ser derivado dela — os testes da Task 153 seguem válidos.
+
+*(Checkpoint: **cumprido**, doze verificações. Com a projeção lida, nenhum ícone e o M0 em R$ 5.154,31; com o mês corrente ausente, ícone só no M0. O aviso diz "Índice de agosto não obtido"; a cor computada é `rgb(251, 191, 36)`; mobile a 390px sem transbordo, medido no container; nenhum `pageerror`.)*
+
+**Duas coisas que o QA corrigiu:**
+
+1. **Apagar a linha da `ProjecaoIndice` não simula a ANBIMA fora do ar** — a action simplesmente busca de novo, e a primeira versão do roteiro mediu o estado errado sem perceber. O estado real é ter uma captura **recente de um mês que não serve**: o cache de 12h devolve ela sem tocar a rede, e o mês corrente segue ausente.
+
+2. **A coluna alarga**, de 142,0px para 164,5px. O Design §31.7, o mock e o comentário do código diziam que não. A propriedade que o `inline-flex` de fato garante — e que passou a ser medida — é o alinhamento **entre as linhas**: a coluna alarga inteira, e a borda direita dos números continua a mesma na linha com aviso e na sem.
 
 ---
 
