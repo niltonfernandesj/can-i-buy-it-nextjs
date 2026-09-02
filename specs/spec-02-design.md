@@ -2348,17 +2348,20 @@ const valor = porMes.get(deslocarMes(mesJanela, -Math.max(defasagemMeses - 1, 0)
 
 M0 aplica o próprio mês da janela; M-2 segue aplicando o anterior. O `Math.max` não é elegância — é o reconhecimento de que o mapa rótulo→deslocamento foi ajustado empiricamente em dois pontos (0 e 2) e não deriva de fórmula. Uma defasagem de 1, que ninguém cadastrou ainda, cai no mesmo caso do 0; é uma extrapolação, e está marcada como tal no comentário.
 
-**A janela da compra.** Hoje o acúmulo começa no primeiro dia 15 posterior à aquisição. Passa a começar na janela que **contém** a compra, contada a partir dela:
+**A janela da compra.** Passa a depender da defasagem — a unificação foi tentada e **reprovada pelo extrato do BMG** (Requisitos §3.24.5):
 
 ```js
-// A janela [15/M, 15/M+1) que contém a compra. Antes do dia 15, é a que
-// abriu no mês anterior.
-let mesJanela = dataAquisicao.slice(8, 10) < "15"
-  ? deslocarMes(dataAquisicao.slice(0, 7), -1)
-  : dataAquisicao.slice(0, 7);
+// Onde o acúmulo começa depende da convenção do papel, e `defasagemMeses` é
+// o proxy dela. No M0, a janela que CONTÉM a compra. Nos demais, a primeira
+// que abre DEPOIS dela.
+let mesJanela = defasagemMeses === 0
+  ? (dia < "15" ? deslocarMes(mesDaCompra, -1) : mesDaCompra)
+  : (dia <= "15" ? mesDaCompra : deslocarMes(mesDaCompra, 1));
 ```
 
-e, dentro do laço, o começo da contagem passa a ser o mais tarde entre a abertura da janela e a compra:
+O ramo de baixo é literalmente o do M39, preservado. O de cima é novo, e o `< "15"` contra `<= "15"` não é descuido: no M0 a compra do dia 15 cai na janela que **abre** naquele dia; no ramo com defasagem, ela é a primeira janela **posterior** à compra. São perguntas diferentes sobre o mesmo dia.
+
+e, dentro do laço, o começo da contagem passa a ser o mais tarde entre a abertura da janela e a compra — o que só morde na primeira janela do M0, a única que pode abrir antes da aquisição:
 
 ```js
 const de = inicio < dataAquisicao ? dataAquisicao : inicio;

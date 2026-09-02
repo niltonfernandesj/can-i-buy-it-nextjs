@@ -913,19 +913,30 @@ Código Selic 760199 | VNA 4.736,099925 | IPCA −0,28 | P | Válido a partir de
 
 Dois títulos, duas datas de emissão, duas taxas, um único número lido de fonte pública.
 
-#### 3.24.5 A janela da compra volta a contar
+#### 3.24.5 A janela da compra conta no M0 e não conta nas demais
 
-**Decisão do usuário, 01/09/2026: unificar a regra.** A exceção sai do cálculo agora; a confirmação vem do checkpoint, com uma leitura nova do BMG.
+**Decisão do usuário, 01/09/2026: unificar a regra.** A implementação seguiu, o checkpoint pediu uma leitura nova do extrato do BMG em data conhecida — e **essa leitura reprovou a unificação**. O registro abaixo é o que a medição mostrou, não o que a decisão previa.
 
-O M39 registrou que "a janela em que a compra cai é ignorada" (§3.23.2), fitado a um caso. **Com a projeção disponível, essa exceção deixa de se sustentar:** para os dois Fibra, ignorá-la erra R$ 26,52 e R$ 3,08; contá-la pro rata a partir do dia da compra erra R$ 0,23 e R$ 0,63.
+**A hipótese.** O M39 registrou que "a janela em que a compra cai é ignorada" (§3.23.2), fitado a um caso. O M40 supôs que isso fosse **artefato do mês que faltava**: o fit tinha sido feito sem o índice do mês corrente, e ignorar a primeira janela podia estar compensando, por acaso, a última que sumia.
 
-E o BMG, que motivou a exceção, também melhora: o fit original foi feito **sem o mês corrente**, porque a projeção não existia no app. Reintroduzindo agosto, ignorar a janela dá −R$ 9,27 e contá-la dá +R$ 3,04 — a exceção era um artefato do índice que faltava.
+**O teste.** Os três extratos, todos lidos em **01/09/2026** — a mesma data, o que elimina a incerteza que antes impedia o BMG de decidir. Calendário real do CDI, agosto pela projeção da ANBIMA:
 
-**Ressalva honesta, e ela é mais forte do que parecia:** o resíduo do BMG é da ordem de um dia de rendimento (~R$ 2,70), e a data em que aquele extrato foi lido não ficou registrada. Dentro dessa incerteza o BMG não apenas deixa de decidir entre as duas regras — ele **troca de lado** conforme a data e o calendário assumidos: medido com feriados reais e corte em 28/08, a regra antiga erra −R$ 1,24 e a nova +R$ 10,52; com o calendário do CDI e corte em 26/08, a ordem se inverte (−R$ 9,27 contra +R$ 3,04).
+| | Extrato | Ignorando a janela | Contando pro rata |
+|---|---|---|---|
+| BMG (M-2) | R$ 7.412,03 | **+R$ 1,52** | +R$ 13,28 |
+| Fibra 1 (M0) | R$ 5.152,39 | −R$ 24,84 | **+R$ 1,92** |
+| Fibra 2 (M0) | R$ 5.039,81 | −R$ 1,40 | **+R$ 1,05** |
 
-Ou seja: **o BMG acompanha, não confirma.** Quem decidiu foi o par do Fibra, onde a diferença é de duas ordens de grandeza e o sinal não depende de nada — −R$ 25,84 contra +R$ 0,92 no primeiro título. A confirmação do BMG pede **uma leitura nova do extrato em data conhecida**, e é isso que o checkpoint da task exige antes de fechá-la.
+**Os dois extremos decidem em sentidos opostos, e nenhum cabe em ruído.** A hipótese estava errada: a exceção do M39 é real. O que ela não é, é geral — ela vale para os papéis **com** defasagem.
 
-O ganho não é só de precisão: some uma regra ad hoc, e o acúmulo passa a começar no dia em que o dinheiro entrou, que é o comportamento que qualquer papel tem.
+Uma nota sobre a evidência que enganou: a projeção de agosto **não entra no cálculo do BMG**. Um M-2 na janela aberta de 15/08 aplica o IPCA de **julho**, já publicado. O número que fazia o BMG parecer favorecer a unificação vinha de comparações com datas de corte diferentes entre si, não do índice novo — erro meu, corrigido aqui.
+
+**A regra, então, é assimétrica**, e `defasagemMeses` é o único sinal observável de qual convenção o papel segue:
+
+- **Defasagem 0** — o acúmulo começa na janela que **contém** a compra, a partir do dia da compra.
+- **Defasagem ≥ 1** — o acúmulo começa na primeira janela que abre **depois** da compra.
+
+**A leitura é contratual, e é hipótese.** No M0, que segue a convenção da NTN-B, o preço pago já embute o VNA acumulado e o comprador acumula do dia da compra em diante. Num CDB com defasagem, o emissor aplica a correção só a partir do aniversário seguinte. Nada disso foi lido em norma — o que está medido é o **comportamento**, em dois pontos, e é assim que deve ser tratado.
 
 #### 3.24.6 Quando a ANBIMA não responde
 

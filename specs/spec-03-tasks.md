@@ -1777,13 +1777,13 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 
 `lib/rendimento.js` e testes. Requisitos §3.24.5, Design §31.1.
 
-**Revoga a exceção do §30.2** (decisão do usuário, 01/09/2026). O acúmulo passa a começar na janela que contém a compra, a partir do dia da compra — não no primeiro dia 15 posterior.
+**A unificação foi decidida, implementada e reprovada no checkpoint.** A leitura nova do BMG, em 01/09, mostrou que a exceção do §30.2 é real — só não é geral. A regra final é **assimétrica** (Requisitos §3.24.5):
 
-- Primeira janela: `dia < 15 ? mês anterior : mês da compra`.
-- Dentro do laço, `de = max(início da janela, aquisição)`. O denominador continua sendo a janela inteira.
-- O comentário do §30.2 que registra a exceção sai, substituído pela explicação de por que ela existia (fit feito sem o mês corrente).
+- **Defasagem 0**: primeira janela é a que contém a compra — `dia < 15 ? mês anterior : mês da compra` — e a contagem começa no dia da compra.
+- **Defasagem ≥ 1**: primeira janela é a primeira posterior à compra — o ramo do M39, preservado.
+- `de = max(início da janela, aquisição)` dentro do laço; o denominador segue sendo a janela inteira.
 
-*(Checkpoint: os dois Fibra reproduzidos dentro de R$ 1 — R$ 5.152,39 e R$ 5.039,81, com agosto a −0,28% e corte em 29/08. **E uma leitura nova do extrato do BMG, em data anotada**, para confirmar que ele também melhora: é o único ponto em que os dois modos ficavam dentro do ruído, e a task não fecha sem ela.)*
+*(Checkpoint: **cumprido**. Os três extratos, todos lidos em 01/09, com calendário real do CDI e agosto a −0,28%: BMG +R$ 1,52, Fibra 1 +R$ 1,92, Fibra 2 +R$ 1,05. O par de testes que fixa a assimetria usa a mesma compra e o mesmo corte, mudando só a defasagem.)*
 
 ---
 
