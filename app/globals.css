@@ -97,6 +97,14 @@ body {
     --alerta-fundo: rgba(200, 34, 34, 0.08);
     --alerta-borda: rgba(200, 34, 34, 0.35);
 
+    /* Aviso de dado incompleto (M40, Design §31.7). Repete o hexadecimal de
+       --saida-debito e --disponivel-atencao, e ganha nome próprio pela mesma
+       razão da régua do §14.4: não é meio de pagamento nem faixa de
+       disponível, e o alias deixa uma recalibragem tocar num lugar só.
+       Os --alerta-* acima são VERMELHOS e significam erro; dado incompleto
+       não é erro, e reusá-los diria a coisa errada com a cor. */
+    --atencao: #FBBF24;
+
     /* Régua do percentual do disponível na Projeção (Design §14.4). Quatro
        repetem hexadecimais já presentes na paleta, mas ganham nome próprio: a
        régua não é categoria nem meio de pagamento, e o alias deixa uma

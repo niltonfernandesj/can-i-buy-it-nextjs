@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, MoreVertical, PiggyBank } from "lucide-react";
+import { ChevronDown, MoreVertical, PiggyBank, TriangleAlert } from "lucide-react";
 import { formatarReais } from "@/lib/moeda";
-import { formatarDataCurta } from "@/lib/datas";
+import { MESES, formatarDataCurta } from "@/lib/datas";
 import { agruparPor, percentualNoPatrimonio } from "@/lib/investimentos";
 import { ROTULO_ESTRATEGIA, ROTULO_PRODUTO, rotuloEncerramento, rotuloIndexador } from "@/lib/ativos";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,57 @@ function estaVencido(ativo, hoje) {
   const soData = (d) =>
     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   return soData(venc) < soData(hoje);
+}
+
+/**
+ * O valor bruto, com aviso quando o índice de alguma janela não foi obtido
+ * (Requisitos §3.24.7, Design §31.7).
+ *
+ * **Marca ausência, não provisoriedade.** Um valor vindo da projeção da ANBIMA
+ * é o dado certo para o mês aberto e não recebe aviso; o que recebe é a
+ * posição que atravessou uma janela sem índice nenhum e, por isso, não rendeu
+ * o que devia. Também não sinaliza o atraso normal do Banco Central, que é de
+ * um dia e sempre existiu (§3.16.5).
+ *
+ * O ícone entra DENTRO do contêiner alinhado à direita. Isso NÃO impede a
+ * coluna de alargar — a tabela tem layout automático e o `td` cresce com o
+ * conteúdo (medido: 142,0px → 164,5px). O que garante é que a coluna alargue
+ * INTEIRA, mantendo os `tabular-nums` das linhas alinhados entre si, que é a
+ * propriedade que importa. Reservar espaço fixo custaria um vão permanente em
+ * toda posição, por um aviso raro.
+ */
+function nomeDoMes(mes) {
+  return MESES[Number(mes.slice(5, 7)) - 1].toLowerCase();
+}
+
+/** "Índice de agosto" / "Índices de julho e agosto". */
+function frasePendente(meses) {
+  const nomes = meses.map(nomeDoMes);
+  if (nomes.length === 1) return `Índice de ${nomes[0]} não obtido`;
+  const ultimo = nomes.at(-1);
+  return `Índices de ${nomes.slice(0, -1).join(", ")} e ${ultimo} não obtidos`;
+}
+
+function Bruto({ ativo, tamanho = 14 }) {
+  const valor = formatarReais(ativo.valor ?? ativo.base);
+  const meses = ativo.semIndice ?? [];
+  if (meses.length === 0) return valor;
+
+  const aviso = `${frasePendente(meses)} — o valor pode estar desatualizado.`;
+
+  return (
+    <span className="inline-flex items-center justify-end gap-1">
+      <TriangleAlert
+        size={tamanho}
+        className="shrink-0 text-atencao"
+        role="img"
+        aria-label={aviso}
+      >
+        <title>{aviso}</title>
+      </TriangleAlert>
+      <span>{valor}</span>
+    </span>
+  );
 }
 
 /** Uma linha rótulo → valor dentro do cartão. Bruto e Líquido têm o mesmo
@@ -159,7 +210,9 @@ function CartaoPosicao({ ativo, hoje }) {
             {rotuloIndexador(ativo.indexador, ativo.taxa)}
           </span>
         </LinhaDado>
-        <LinhaDado rotulo="Bruto">{formatarReais(ativo.valor ?? ativo.base)}</LinhaDado>
+        <LinhaDado rotulo="Bruto">
+          <Bruto ativo={ativo} tamanho={13} />
+        </LinhaDado>
         <LinhaDado rotulo="Líquido">
           {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}
         </LinhaDado>
@@ -263,7 +316,7 @@ function TabelaPosicoes({ ativos, hoje }) {
                 </td>
                 <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
                   {/* Corrigido quando o indexador rende; base nos demais. */}
-                  {formatarReais(ativo.valor ?? ativo.base)}
+                  <Bruto ativo={ativo} />
                 </td>
                 <td className="py-2 text-right tabular-nums">
                   {formatarReais(ativo.liquido ?? ativo.valor ?? ativo.base)}

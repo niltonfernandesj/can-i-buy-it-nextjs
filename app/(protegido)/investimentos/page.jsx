@@ -6,7 +6,7 @@ import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual, dataBase } from "
 import {
   SERIE_DO_INDEXADOR,
   SERIE_MENSAL_DO_INDEXADOR,
-  inflacaoIncompleta,
+  mesesSemIndice,
   taxasAplicaveis,
   valorCorrigido,
 } from "@/lib/rendimento";
@@ -144,16 +144,17 @@ async function corrigirPosicoes(vivas) {
           corte,
         });
 
-        // Alguma janela ficou sem índice nenhum — nem publicado, nem projetado?
-        // É o que a tela marca com o ícone de atenção (Requisitos §3.24.7).
-        const incompleto = inflacaoIncompleta(
+        // Quais janelas ficaram sem índice nenhum — nem publicado, nem
+        // projetado? A tela marca com o ícone de atenção e NOMEIA os meses,
+        // que é o que faz o aviso ter endereço (Requisitos §3.24.7).
+        const semIndice = mesesSemIndice(
           { indexador: ativo.indexador, dataAquisicao: desdeQuando, vencimento,
             defasagemMeses: ativo.defasagemMeses ?? 2 },
           taxas,
           indices,
         );
 
-        return [ativo.id, { valor, liquido, incompleto }];
+        return [ativo.id, { valor, liquido, semIndice }];
       })
       .filter(Boolean),
   );
@@ -214,7 +215,7 @@ async function carregar() {
     // Ausentes no IPCA+, que ainda não rende (M36) — a tela cai na base.
     valor: correcao.get(ativo.id)?.valor,
     liquido: correcao.get(ativo.id)?.liquido,
-    incompleto: correcao.get(ativo.id)?.incompleto ?? false,
+    semIndice: correcao.get(ativo.id)?.semIndice ?? [],
   }));
 
   const porConta = contas.map((conta) => {

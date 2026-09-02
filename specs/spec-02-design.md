@@ -2473,6 +2473,10 @@ O ganho não é só o ícone: a lista de janelas é **o que se quer olhar quando
 
 O hexadecimal repete `--saida-debito` e `--disponivel-atencao`, e ganha nome próprio pela mesma razão que a régua do §14.4: um aviso de dado incompleto não é meio de pagamento nem faixa de disponível, e o alias deixa uma recalibragem futura tocar num lugar só. A alternativa rebaixada (`#C79A3A`) foi descartada — o ícone é pequeno o bastante para não competir com o número, e o âmbar cheio é o que o app já usa para "atenção".
 
-No desktop o `<td>` do Bruto é `text-right`; o ícone entra num `inline-flex items-center justify-end gap-1` **dentro** da célula, para não empurrar a coluna nem desalinhar os `tabular-nums` das linhas vizinhas. A largura da coluna não muda quando o ícone aparece ou some.
+No desktop o `<td>` do Bruto é `text-right`; o ícone entra num `inline-flex items-center justify-end gap-1` **dentro** da célula.
+
+**Correção do que esta seção afirmava antes.** Estava escrito que a largura da coluna não muda entre os dois estados — e muda: medido, `142,0px` sem aviso e `164,5px` com. A tabela tem layout automático, e o `td` cresce com o conteúdo; pôr o ícone dentro da célula não impede isso.
+
+O que o `inline-flex` de fato garante é a propriedade que importa, e essa foi medida: **as linhas continuam alinhadas entre si**. A coluna inteira alarga junto, então a borda direita dos números é a mesma na linha com aviso e na sem. Reservar espaço fixo em toda linha para um aviso raro custaria um vão permanente em cada posição da carteira — pior negócio que um reflow entre carregamentos, que é quando o estado muda.
 
 `title` e `aria-label` com o mesmo texto — é a única explicação que o usuário recebe, então ela diz o que aconteceu e o que isso implica, não "erro": *"Índice de {mês} não obtido — o valor pode estar desatualizado."*

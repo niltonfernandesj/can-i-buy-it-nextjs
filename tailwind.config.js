@@ -82,6 +82,7 @@ module.exports = {
   			esqueleto: 'var(--esqueleto)',
   			'alerta-fundo': 'var(--alerta-fundo)',
   			'alerta-borda': 'var(--alerta-borda)',
+  			atencao: 'var(--atencao)',
   			estimado: 'var(--estimado)',
   			// Régua do percentual do disponível (Design §14.4). O componente usa
   			// um mapa literal de classe, não `text-disponivel-${faixa}` — nome
