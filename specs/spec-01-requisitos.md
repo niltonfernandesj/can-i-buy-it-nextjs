@@ -855,6 +855,101 @@ Fica **fora de escopo**, pela mesma razão da marcação a mercado (§3.16.6): e
 
 A escolha de "só meses fechados, mês da compra conta inteiro" (§3.19.2) foi tomada **sem esta informação**. Ela não era uma simplificação conservadora: erra 0,8% para menos neste caso, e o sinal do erro se inverte conforme o IPCA se move. Esta seção a substitui.
 
+### 3.24 Especificação — Projeção ANBIMA do IPCA e defasagem M0 (M40)
+
+**Origem: dois CDBs do Banco Fibra com defasagem M0.** A corretora mostra "M0" explicitamente no título — não é caso raro nem erro de cadastro. O app mostrava para eles apenas o spread, sem nenhuma marcação.
+
+#### 3.24.1 O defeito: M0 aponta para um mês que não existe
+
+O M39 escolhe o mês do índice com `mês da janela − (defasagem − 1)`. Com defasagem 2 isso dá o mês anterior, que é o certo. Com **defasagem 0 dá o mês seguinte**: cada janela aplica o IPCA do mês **posterior** a ela.
+
+O sintoma tem duas metades. Nas janelas antigas, o índice existe e está **errado** — um mês adiantado. Nas recentes, o mês apontado ainda não foi publicado, a janela é **descartada em silêncio**, e o título simplesmente para de corrigir.
+
+**Medido em 01/09/2026** no CDB do Fibra:
+
+| | |
+|---|---|
+| App hoje | R$ 5.126,20 |
+| Só o spread, sem índice nenhum | R$ 5.122,61 |
+| Extrato | R$ 5.152,39 |
+
+Os R$ 3,59 que ele rendeu acima do spread vieram do mês errado, e faltam R$ 26,19. Na prática é um pré-fixado com nome de IPCA+. A correção vale independentemente de tudo o mais nesta seção.
+
+#### 3.24.2 Como o M0 acumula
+
+A janela `[15/M, 15/M+1)` aplica o IPCA **do próprio mês M**. É a convenção da NTN-B: no dia 15 o VNA incorpora o índice fechado do mês anterior e passa a acumular, pro rata, a **projeção do mês corrente**.
+
+Daí sai a consequência que decide este marco: **um título M0 depende sempre de um índice ainda não publicado.** O IPCA de agosto sai por volta de 10 de setembro, e a janela 15/08→15/09 precisa dele desde 15/08. Sem projeção, um M0 passa um mês inteiro parado no spread — exatamente o sintoma que originou a investigação.
+
+#### 3.24.3 A conferência
+
+Dois títulos, saldos lidos no mesmo dia:
+
+| | Emissão | Taxa | Aplicado | Extrato |
+|---|---|---|---|---|
+| Fibra 1 | 19/05/2026 | IPCA + 8,60% | R$ 5.000,00 | R$ 5.152,39 |
+| Fibra 2 | 24/07/2026 | IPCA + 8,75% | R$ 5.000,00 | R$ 5.039,81 |
+
+O Fibra 2 estava **abaixo do spread puro** — só um índice negativo explicaria. Resolver cada título isoladamente para o IPCA de agosto deu **−0,325%** e **−0,294%**, e um único valor fecha os dois. A deflação em agosto foi deduzida dos extratos, antes de qualquer consulta.
+
+#### 3.24.4 A fonte: a página de VNA da ANBIMA
+
+**A API oficial não serve.** O portal de desenvolvedores da ANBIMA tem endpoint de projeção de IPCA e IGP-M, com cadastro gratuito e sandbox, mas o acesso de produção depende de contato comercial (`anbimafeed@anbima.com.br`). Não é uma chave que se pega e usa.
+
+**A página pública serve.** `https://www.anbima.com.br/informacoes/vna/vna.asp` responde 200 sem autenticação, em 14KB de HTML, e traz na tabela da NTN-B:
+
+```
+Código Selic 760199 | VNA 4.736,099925 | IPCA −0,28 | P | Válido a partir de 27/08/2026
+```
+
+`P` é "Projeção do Comitê de Acompanhamento Macroeconômico"; `F`, índice fechado. A marca é publicada junto com o número, então dá para saber o que se está lendo.
+
+**A validação.** Com os −0,28% reais no lugar dos −0,325% deduzidos, e corte em 29/08:
+
+| | Extrato | Modelo | Diferença |
+|---|---|---|---|
+| Fibra 1 | R$ 5.152,39 | R$ 5.152,62 | **+R$ 0,23** |
+| Fibra 2 | R$ 5.039,81 | R$ 5.039,18 | **−R$ 0,63** |
+
+Dois títulos, duas datas de emissão, duas taxas, um único número lido de fonte pública.
+
+#### 3.24.5 A janela da compra volta a contar
+
+**Decisão do usuário, 01/09/2026: unificar a regra.** A exceção sai do cálculo agora; a confirmação vem do checkpoint, com uma leitura nova do BMG.
+
+O M39 registrou que "a janela em que a compra cai é ignorada" (§3.23.2), fitado a um caso. **Com a projeção disponível, essa exceção deixa de se sustentar:** para os dois Fibra, ignorá-la erra R$ 26,52 e R$ 3,08; contá-la pro rata a partir do dia da compra erra R$ 0,23 e R$ 0,63.
+
+E o BMG, que motivou a exceção, também melhora: o fit original foi feito **sem o mês corrente**, porque a projeção não existia no app. Reintroduzindo agosto, ignorar a janela dá −R$ 9,27 e contá-la dá +R$ 3,04 — a exceção era um artefato do índice que faltava.
+
+**Ressalva honesta, que a decisão não apaga:** o resíduo do BMG é da ordem de um dia de rendimento (~R$ 2,70), e a data em que aquele extrato foi lido não ficou registrada. Para ele, os dois modos ficam dentro do ruído. Quem decidiu foi o par do Fibra, onde a diferença é de duas ordens de grandeza — o BMG **acompanha, não confirma**. A confirmação pede **uma leitura nova do extrato do BMG em data conhecida**, e é isso que o checkpoint da task exige antes de fechá-la.
+
+O ganho não é só de precisão: some uma regra ad hoc, e o acúmulo passa a começar no dia em que o dinheiro entrou, que é o comportamento que qualquer papel tem.
+
+#### 3.24.6 Quando a ANBIMA não responde
+
+**Requisito central deste marco, e a razão de ele ser pequeno.** Não há contrato de API: a página pode mudar de layout, sair do ar ou responder devagar, e nada disso é aviso prévio.
+
+- **O cálculo nunca depende da leitura ter dado certo.** Falha na ANBIMA equivale a "o índice daquele mês não existe", que é situação que o cálculo já trata desde o M36: a janela é ignorada e o valor simplesmente não avança nela.
+- **Nenhuma exceção sobe para a tela.** O leitor devolve resultado ou erro, como `buscarSerie` faz com o Banco Central (§3.16.5) — nunca lança.
+- **O que já foi capturado continua valendo.** A projeção fica guardada; uma falha hoje usa a leitura de ontem.
+- **O índice publicado sempre ganha da projeção.** Quando o BC publica o mês, ele substitui a projeção no cálculo, sem depender de limpeza.
+
+#### 3.24.7 O ícone de atenção
+
+**Decisão do usuário.** Quando o dado não pôde ser recuperado por completo, um **pequeno ícone de atenção ao lado do valor de rendimento bruto** da posição afetada — na tabela do desktop e no cartão do mobile.
+
+O ícone marca **ausência, não provisoriedade.** Aparece quando alguma janela do título ficou sem índice nenhum, publicado ou projetado, e por isso não rendeu o que deveria. **Não** aparece só por o valor vir da projeção: a projeção é o dado correto para o mês aberto, não um substituto pior.
+
+É por posição, não global: um M-2 costuma atravessar uma falha da ANBIMA sem perder nada, porque a janela aberta dele usa um mês já publicado. Marcar a tela inteira mentiria sobre os títulos que estão certos.
+
+Isso não reabre a decisão do §3.16.5 de não indicar até quando o valor vale. Atraso normal da série do Banco Central continua sem marcação — o que se sinaliza aqui é um dado que **deveria existir e não foi obtido**, não um dado que ainda não chegou.
+
+#### 3.24.8 Fora de escopo
+
+- **Histórico de projeções.** Guarda-se a leitura corrente de cada mês, sobrescrita a cada captura. A ANBIMA revisa a projeção ao longo do mês e o app acompanha o valor vigente, sem registrar o caminho.
+- **VNA como atalho.** A mesma página publica o VNA da NTN-B, que é o número-índice acumulado do IPCA. Com série histórica dele, o fator de correção entre duas datas seria uma divisão — dispensando janelas, pro rata e contagem de dias úteis. A página só publica o valor corrente, então isso exigiria acumular leituras ao longo de meses antes de servir para qualquer coisa. Fica anotado, não feito.
+- **IGP-M.** A mesma tabela traz a projeção do IGP-M para a NTN-C. O app não tem indexador de IGP-M.
+
 ### Fora do escopo (fases futuras)
 - Upload/importação de CSV de fatura de cartão de crédito (lançamento de saídas no crédito continua manual no MVP).
 - Sugestão automática de categoria (regras ou IA).

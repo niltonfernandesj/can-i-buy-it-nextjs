@@ -2323,3 +2323,151 @@ Isso foi determinado **empiricamente**, não deduzido: incluir a janela parcial 
 ### 30.3 O que continua igual
 
 Spread proporcional a dias úteis, sem piso em deflação, e o vencimento truncando. **Nenhum outro indexador é tocado.**
+
+---
+
+## 31. Projeção ANBIMA do IPCA (M40)
+
+Requisitos §3.24. Corrige o M0 do §30.2, revoga a exceção da janela da compra e acrescenta a **quarta fonte externa** do projeto — a primeira sem contrato de API.
+
+### 31.1 As duas correções no cálculo
+
+Ambas em `fatorInflacao`, ambas de uma linha.
+
+**O mês do índice.** Hoje:
+
+```js
+const valor = porMes.get(deslocarMes(mesJanela, -(defasagemMeses - 1)));
+```
+
+Com `defasagemMeses = 0` isso vira `+1`, e cada janela passa a aplicar o mês **seguinte** a ela: índice errado nas janelas antigas, mês inexistente nas recentes — e essas somem sem erro nenhum, porque `porMes.get` devolve `undefined` e o laço já trata isso como "mês não publicado". O resultado é um IPCA+ que fica quase no spread (R$ 5.126,20 contra R$ 5.122,61 de spread puro, medido em 01/09/2026). Passa a ser:
+
+```js
+const valor = porMes.get(deslocarMes(mesJanela, -Math.max(defasagemMeses - 1, 0)));
+```
+
+M0 aplica o próprio mês da janela; M-2 segue aplicando o anterior. O `Math.max` não é elegância — é o reconhecimento de que o mapa rótulo→deslocamento foi ajustado empiricamente em dois pontos (0 e 2) e não deriva de fórmula. Uma defasagem de 1, que ninguém cadastrou ainda, cai no mesmo caso do 0; é uma extrapolação, e está marcada como tal no comentário.
+
+**A janela da compra.** Hoje o acúmulo começa no primeiro dia 15 posterior à aquisição. Passa a começar na janela que **contém** a compra, contada a partir dela:
+
+```js
+// A janela [15/M, 15/M+1) que contém a compra. Antes do dia 15, é a que
+// abriu no mês anterior.
+let mesJanela = dataAquisicao.slice(8, 10) < "15"
+  ? deslocarMes(dataAquisicao.slice(0, 7), -1)
+  : dataAquisicao.slice(0, 7);
+```
+
+e, dentro do laço, o começo da contagem passa a ser o mais tarde entre a abertura da janela e a compra:
+
+```js
+const de = inicio < dataAquisicao ? dataAquisicao : inicio;
+const vividos = diasUteis(de, fim < corte ? fim : corte);
+```
+
+`total` continua sendo a janela inteira — é o denominador, e encolhê-lo junto aplicaria o mês cheio num pedaço de janela. Só o numerador anda.
+
+### 31.2 Tabela nova, não coluna nova
+
+```prisma
+/// Projeção do índice para o mês corrente, lida da página pública da ANBIMA.
+/// Vive separada de `IndiceMensal` porque é PROVISÓRIA: a ANBIMA revisa o
+/// número ao longo do mês, e o BC depois publica o definitivo.
+model ProjecaoIndice {
+  serie       SerieMensal
+  /// Dia 1º do mês de referência, como em IndiceMensal.
+  mes         DateTime    @db.Date
+  valor       Decimal // % ao MÊS
+  /// A marca que a própria ANBIMA publica: (P) projeção, (F) índice fechado.
+  fechado     Boolean     @default(false)
+  capturadoEm DateTime    @default(now())
+
+  @@id([serie, mes])
+}
+```
+
+**Por que não um booleano `projetado` em `IndiceMensal`.** Porque `sincronizarIndice` decide o que buscar pelo **menor e maior mês guardados** (`lacunas`). Uma linha projetada de agosto faria `maisNovo` virar agosto, e a lacuna até agosto fecharia — **o IPCA real de agosto nunca mais seria buscado**. O índice provisório se tornaria permanente, em silêncio, que é exatamente a classe de bug que este marco existe para não criar. Tabela separada mantém a detecção de lacuna operando só sobre fatos.
+
+O par `(serie, mes)` como PK dá de graça o comportamento desejado: cada captura **sobrescreve** a anterior do mesmo mês, sem acumular histórico (§3.24.8).
+
+### 31.3 O leitor: `lib/anbima.js`
+
+Mesmo contrato de `lib/bc.js` — **devolve `{ projecao }` ou `{ erro }`, nunca lança** (§3.16.5, agora §3.24.6). Três armadilhas da página, medidas em 01/09/2026:
+
+1. **A página é ISO-8859-1.** Decodificar como UTF-8 quebra "Válido" e "Projeção" e, com eles, qualquer regex ancorada em acento. Ler `arrayBuffer()` e passar por `new TextDecoder("iso-8859-1")`.
+2. **Três blocos na mesma tabela** — NTN-B (IPCA), NTN-C (IGP-M) e LFT. Ancorar no **código Selic `760199`** da NTN-B, não na ordem das colunas: ordem muda sem aviso, código de título não.
+3. **A marca vem junto do número** — `-0,28` seguido de `P` ou `F`. Vale guardar: é a própria ANBIMA dizendo se aquilo ainda é estimativa.
+
+Duas funções, porque a rede é a parte que não se testa:
+
+```js
+/** Puro: HTML → { valor, fechado, valido } | { erro }. Testável com fixture. */
+export function extrairProjecao(html)
+
+/** Faz a rede e delega o parse. Nunca lança. */
+export async function buscarProjecaoIPCA()
+```
+
+**A validação faz parte do parse.** Número que não converte, `|valor| > 5`, marca fora de `{F, P}` ou data que não casa `dd/mm/aaaa` viram `{ erro }`, não um valor esquisito entrando no cálculo. Sem contrato de API, o parser é a única fronteira — e é melhor devolver nada do que devolver lixo com cara de índice.
+
+**O mês de referência sai da data de validade**, não da data de hoje: é o mês da janela aberta naquela data.
+
+```js
+// "Válido a partir de 27/08/2026" → agosto. A janela [15/08, 15/09) é a que
+// está aberta, e é o IPCA dela que a projeção estima. Antes do dia 15, a
+// janela aberta ainda é a do mês anterior.
+const mes = dia >= 15 ? mesDaValidade : mesAnterior(mesDaValidade);
+```
+
+### 31.4 A sincronização
+
+`sincronizarProjecao(serie)`, ao lado de `sincronizarSerie` e `sincronizarIndice`.
+
+**Não bate na ANBIMA a cada render.** A projeção muda no máximo algumas vezes por mês; a tela é aberta muito mais. Se a linha guardada tem `capturadoEm` de menos de 12 horas, devolve ela e não toca a rede. É consideração com um site público que não pediu para ser cliente do app, e também o que impede uma indisponibilidade de virar espera de 15s em todo carregamento.
+
+Fora da janela de cache: busca, e **em caso de erro registra no `console.error` e devolve o que estiver guardado** — inclusive `null`. Não há caminho em que essa função interrompa o carregamento da tela.
+
+O `fetch` leva `next: { revalidate: 3600 }`, como o do BC: segunda linha de defesa, não a primeira. Quem garante é a tabela.
+
+### 31.5 Onde a projeção entra
+
+Em `corrigirPosicoes`, depois de `sincronizarIndice`:
+
+```js
+// Publicado ganha SEMPRE. A projeção só preenche mês ausente — assim, no dia
+// em que o BC publica agosto, a projeção deixa de ser usada sem que nada
+// precise apagá-la.
+const meses = new Set(indices.map((i) => i.mes.slice(0, 7)));
+if (projecao && !meses.has(projecao.mes.slice(0, 7))) indices = [...indices, projecao];
+```
+
+A leitura só acontece quando `mensaisNecessarios` não está vazio — ou seja, quando a carteira tem posição de inflação. Carteira sem IPCA+ não fala com a ANBIMA.
+
+### 31.6 As janelas viram um valor de retorno
+
+Para a tela saber que faltou índice, o cálculo precisa contar o que fez. Em vez de mudar o retorno de `valorCorrigido` — que é chamado em nove lugares nos testes e no carregamento da página —, o laço de janelas é **extraído**:
+
+```js
+/** As janelas do índice, com o valor de cada uma (ou `undefined`). */
+export function janelasDeInflacao({ indices, dataAquisicao, corte, defasagemMeses, calendario })
+  // → [{ mes, mesDoIndice, fracao, valor }]
+
+export function fatorInflacao(...)      // vira um reduce sobre as janelas
+export function inflacaoIncompleta(...) // → janelas.some((j) => j.valor === undefined)
+```
+
+`valorCorrigido` continua devolvendo um número, e nenhum teste existente muda de forma.
+
+O ganho não é só o ícone: a lista de janelas é **o que se quer olhar quando o número não bate**. Toda a investigação do M39 e do M40 foi feita reconstruindo essa lista à mão, fora do app, porque ela não existia como valor.
+
+### 31.7 O ícone
+
+`TriangleAlert` do lucide, `h-3.5 w-3.5 shrink-0`, imediatamente antes do número do Bruto — nas duas árvores (§26.1), tabela e cartão.
+
+**Token novo, `--atencao: #FBBF24`** (decisão do usuário, 01/09/2026, sobre mock publicado). Os `--alerta-*` que já existem são vermelhos e significam erro; dado incompleto não é erro, é aviso, e reusá-los diria a coisa errada com a cor.
+
+O hexadecimal repete `--saida-debito` e `--disponivel-atencao`, e ganha nome próprio pela mesma razão que a régua do §14.4: um aviso de dado incompleto não é meio de pagamento nem faixa de disponível, e o alias deixa uma recalibragem futura tocar num lugar só. A alternativa rebaixada (`#C79A3A`) foi descartada — o ícone é pequeno o bastante para não competir com o número, e o âmbar cheio é o que o app já usa para "atenção".
+
+No desktop o `<td>` do Bruto é `text-right`; o ícone entra num `inline-flex items-center justify-end gap-1` **dentro** da célula, para não empurrar a coluna nem desalinhar os `tabular-nums` das linhas vizinhas. A largura da coluna não muda quando o ícone aparece ou some.
+
+`title` e `aria-label` com o mesmo texto — é a única explicação que o usuário recebe, então ela diz o que aconteceu e o que isso implica, não "erro": *"Índice de {mês} não obtido — o valor pode estar desatualizado."*

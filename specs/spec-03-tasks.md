@@ -1748,6 +1748,108 @@ Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o r
 
 ---
 
+### M40 — Projeção ANBIMA do IPCA e defasagem M0
+
+**Status:** ⏳ **a implementar.** Requisitos §3.24, Design §31.
+
+**Corrige um título que não rende.** Um CDB com defasagem **M0** aponta hoje para um mês futuro, nunca acha o índice e rende **só o spread, em silêncio** — um IPCA+ que se comporta como pré-fixado. A correção é de uma linha, mas expõe o problema real: M0 depende sempre do índice do mês corrente, que o Banco Central só publica no mês seguinte.
+
+Daí a **quarta fonte externa** do projeto, e a primeira **sem contrato de API**: a página pública de VNA da ANBIMA, que traz a projeção do IPCA do mês aberto. Toda a arquitetura do marco é organizada em torno de uma restrição do usuário — **falhar em ler a ANBIMA não pode comprometer o cálculo**; no máximo um pequeno ícone de atenção ao lado do valor bruto.
+
+Conferido contra dois títulos do Banco Fibra: **+R$ 0,23** e **−R$ 0,63** em R$ 5.000.
+
+---
+
+**Task 148. M0 aplica o mês da própria janela**
+
+`lib/rendimento.js` e testes. Requisitos §3.24.1, Design §31.1.
+
+Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errado sem nenhum sinal.
+
+- `-(defasagemMeses - 1)` vira `-Math.max(defasagemMeses - 1, 0)`.
+- Comentário registrando que o mapa rótulo→deslocamento foi ajustado em dois pontos (0 e 2) e que defasagem 1 é extrapolação.
+
+*(Checkpoint: teste unitário com defasagem 0 aplicando o IPCA do próprio mês da janela, e defasagem 2 continuando no mês anterior. Um teste de regressão fixando que o caso do BMG não se move.)*
+
+---
+
+**Task 149. A janela da compra volta a contar pro rata**
+
+`lib/rendimento.js` e testes. Requisitos §3.24.5, Design §31.1.
+
+**Revoga a exceção do §30.2** (decisão do usuário, 01/09/2026). O acúmulo passa a começar na janela que contém a compra, a partir do dia da compra — não no primeiro dia 15 posterior.
+
+- Primeira janela: `dia < 15 ? mês anterior : mês da compra`.
+- Dentro do laço, `de = max(início da janela, aquisição)`. O denominador continua sendo a janela inteira.
+- O comentário do §30.2 que registra a exceção sai, substituído pela explicação de por que ela existia (fit feito sem o mês corrente).
+
+*(Checkpoint: os dois Fibra reproduzidos dentro de R$ 1 — R$ 5.152,39 e R$ 5.039,81, com agosto a −0,28% e corte em 29/08. **E uma leitura nova do extrato do BMG, em data anotada**, para confirmar que ele também melhora: é o único ponto em que os dois modos ficavam dentro do ruído, e a task não fecha sem ela.)*
+
+---
+
+**Task 150. A tabela da projeção**
+
+`prisma/schema.prisma` e migration. Design §31.2.
+
+- `ProjecaoIndice` com `@@id([serie, mes])`, `valor`, `fechado`, `capturadoEm`.
+- **Separada de `IndiceMensal`**, e o comentário do schema diz por quê: uma linha projetada ali dentro fecharia a lacuna e o índice real do mês nunca mais seria buscado.
+
+*(Checkpoint: `npx prisma migrate dev` sem reset e sem tocar em `IndiceMensal`. Conferir no banco que as linhas de IPCA existentes seguem intactas — a migration é aditiva.)*
+
+---
+
+**Task 151. O leitor da página da ANBIMA**
+
+`lib/anbima.js` e testes. Requisitos §3.24.4, Design §31.3.
+
+- `extrairProjecao(html)` **pura**, e `buscarProjecaoIPCA()` fazendo a rede. Mesmo contrato do `lib/bc.js`: `{ projecao }` ou `{ erro }`, **nunca lança**, timeout de 15s.
+- Decodificação **ISO-8859-1** — a página não é UTF-8.
+- Âncora no **código Selic `760199`** (NTN-B), não em posição de coluna: a mesma tabela tem NTN-C e LFT.
+- Validação no parse: número converte, `|valor| <= 5`, marca em `{F, P}`, data `dd/mm/aaaa`. Qualquer desvio vira `{ erro }`.
+- Mês de referência derivado da data de validade: `dia >= 15 ? mês dela : mês anterior`.
+
+*(Checkpoint: testes contra **fixture salva** do HTML real, sem rede — extrai −0,28%, marca P, mês agosto/2026. Mais os caminhos de falha, que são o ponto da task: HTML vazio, HTML sem o bloco da NTN-B, valor absurdo, data quebrada — **nenhum deles lança**, todos devolvem `{ erro }`.)*
+
+---
+
+**Task 152. A sincronização da projeção**
+
+`lib/actions/investimentos.js`. Requisitos §3.24.6, Design §31.4.
+
+- `sincronizarProjecao(serie)`: linha guardada com menos de 12h devolve sem tocar a rede.
+- Sucesso faz upsert sobrescrevendo o mês; erro faz `console.error` e devolve o guardado, que pode ser `null`.
+- `next: { revalidate: 3600 }` no fetch.
+
+*(Checkpoint: com o banco vazio da tabela, uma chamada grava a projeção; a segunda seguida não emite requisição. **Com a URL trocada para um host inválido, a chamada devolve o valor guardado e a página carrega normalmente** — é o requisito do marco, e é aqui que ele se verifica.)*
+
+---
+
+**Task 153. As janelas viram um valor de retorno**
+
+`lib/rendimento.js` e testes. Design §31.6.
+
+- `janelasDeInflacao(...)` extraída do laço; `fatorInflacao` vira um reduce sobre ela; `inflacaoIncompleta(...)` responde se alguma janela ficou sem índice.
+- `valorCorrigido` **não muda de assinatura** — nenhum teste existente é reescrito.
+- `corrigirPosicoes` funde a projeção nos índices, com **o publicado ganhando sempre**, e passa `incompleto` para o cliente ao lado de `valor` e `liquido`.
+
+*(Checkpoint: teste unitário — janela sem índice nenhum marca incompleto; janela servida pela projeção **não** marca; posição não indexada à inflação nunca marca. E que `fatorInflacao` devolve exatamente o mesmo número de antes da extração, para os casos do BMG e dos Fibra.)*
+
+---
+
+**Task 154. O ícone de atenção ao lado do Bruto**
+
+`app/globals.css`, `tailwind.config.js` e `investimentos-client.jsx`. Requisitos §3.24.7, Design §31.7.
+
+**Mock publicado e aprovado antes de codar.**
+
+- Token `--atencao: #FBBF24`, novo — os `--alerta-*` existentes são vermelhos e significam erro. Alias de um hexadecimal já presente na paleta, pela mesma razão da régua do Design §14.4.
+- `TriangleAlert` `h-3.5 w-3.5 shrink-0` antes do número, nas **duas árvores**: `<td>` do Bruto no desktop e `LinhaDado` no cartão do mobile.
+- `title` e `aria-label` iguais, nomeando o mês que faltou.
+
+*(Checkpoint: QA de interface com `page.on("pageerror")` — o arquivo é JSX e import faltando não quebra o build. Com a projeção presente, **nenhum** ícone; forçando a ausência do mês corrente, ícone só nas posições M0, não nas M-2. No desktop, medir que a largura da coluna Bruto **não muda** entre os dois estados, e que o hover da linha segue revelando a ação. No mobile, medir `scrollWidth` do **container**, não do documento.)*
+
+---
+
 ## Resumo de rastreabilidade
 
 | Marco | Resolve |
@@ -1791,3 +1893,4 @@ Substitui `fatorInflacao`. Recebe a série mensal inteira e as datas, porque o r
 | M37 | Correção — a tabela de posições transbordava no mobile depois da coluna Líquido; vira cartões empilhados abaixo de `sm` (spec-01 §3.20) |
 | M38 | Escopo item 14 revisado — ação da posição revelada por hover, com pista permanente, e rótulo dependente do vencimento (spec-01 §3.21) |
 | M39 | Correção — o IPCA+ passa a acumular em janelas do dia 15, com o índice defasado por título e pro rata por dias úteis (spec-01 §3.23) |
+| M40 | Escopo item 14 revisado — defasagem M0 corrigida e projeção ANBIMA do IPCA como quarta fonte externa, com degradação silenciosa e ícone de atenção na ausência do índice (spec-01 §3.24). Revoga a exceção da janela da compra criada na Task 146 |
