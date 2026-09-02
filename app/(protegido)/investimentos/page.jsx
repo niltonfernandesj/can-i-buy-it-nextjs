@@ -6,11 +6,12 @@ import { saldoEmConta, saldoInvestido, apenasVivas, baseAtual, dataBase } from "
 import {
   SERIE_DO_INDEXADOR,
   SERIE_MENSAL_DO_INDEXADOR,
+  inflacaoIncompleta,
   taxasAplicaveis,
   valorCorrigido,
 } from "@/lib/rendimento";
 import { tributos } from "@/lib/tributos";
-import { sincronizarIndice, sincronizarSerie } from "@/lib/actions/investimentos";
+import { sincronizarIndice, sincronizarProjecao, sincronizarSerie } from "@/lib/actions/investimentos";
 import { hojeISO, paraDiaISO } from "@/lib/datas";
 import { DetalhamentoInvestimentos } from "./investimentos-client";
 import { RegistrarAtivo } from "./registrar-ativo";
@@ -24,6 +25,19 @@ import { Button } from "@/components/ui/button";
 // no Postgres — uma linha por conta, não o histórico trazido pro JS (Design
 // §20.2). Os ativos vêm inteiros porque a listagem precisa deles de qualquer
 // forma, e o saldo em conta depende de cada evento de liquidação.
+/**
+ * Índices publicados mais a projeção, com **o publicado ganhando sempre**.
+ *
+ * A projeção só preenche mês ausente. Assim, no dia em que o Banco Central
+ * publica agosto, a projeção deixa de ser usada sem que nada precise apagá-la
+ * — e uma linha velha na tabela nunca sobrepõe um fato (Design §31.5).
+ */
+function comProjecao(indices, projecao) {
+  if (!projecao) return indices;
+  const meses = new Set(indices.map((i) => i.mes.slice(0, 7)));
+  return meses.has(projecao.mes.slice(0, 7)) ? indices : [...indices, projecao];
+}
+
 /**
  * Valor corrigido de cada posição viva, por id (Requisitos §3.16).
  *
@@ -57,7 +71,7 @@ async function corrigirPosicoes(vivas) {
     .toISOString()
     .slice(0, 10);
 
-  const [taxasPorSerie, indicesPorSerie] = await Promise.all([
+  const [taxasPorSerie, indicesPorSerie, projecaoPorSerie] = await Promise.all([
     Promise.all(
       seriesNecessarias.map(async (serie) => [
         serie,
@@ -69,6 +83,12 @@ async function corrigirPosicoes(vivas) {
         serie,
         await sincronizarIndice(serie, desdeQuandoIndice, hojeISO()),
       ]),
+    ).then((pares) => new Map(pares)),
+    // Só se houver posição de inflação: carteira sem IPCA+ não fala com a
+    // ANBIMA. Nunca lança e nunca bloqueia — no pior caso devolve null e o
+    // mês corrente segue ausente (Requisitos §3.24.6).
+    Promise.all(
+      mensaisNecessarios.map(async (serie) => [serie, await sincronizarProjecao(serie)]),
     ).then((pares) => new Map(pares)),
   ]);
 
@@ -87,7 +107,11 @@ async function corrigirPosicoes(vivas) {
         // resgate parcial, a base nova só existe a partir dali (Design §28.1).
         const desdeQuando = paraDiaISO(dataBase(ativo));
 
-        const indices = indicesPorSerie.get(SERIE_MENSAL_DO_INDEXADOR[ativo.indexador]) ?? [];
+        const serieMensal = SERIE_MENSAL_DO_INDEXADOR[ativo.indexador];
+        const indices = comProjecao(
+          indicesPorSerie.get(serieMensal) ?? [],
+          projecaoPorSerie.get(serieMensal),
+        );
 
         const valor = valorCorrigido(
           {
@@ -120,7 +144,16 @@ async function corrigirPosicoes(vivas) {
           corte,
         });
 
-        return [ativo.id, { valor, liquido }];
+        // Alguma janela ficou sem índice nenhum — nem publicado, nem projetado?
+        // É o que a tela marca com o ícone de atenção (Requisitos §3.24.7).
+        const incompleto = inflacaoIncompleta(
+          { indexador: ativo.indexador, dataAquisicao: desdeQuando, vencimento,
+            defasagemMeses: ativo.defasagemMeses ?? 2 },
+          taxas,
+          indices,
+        );
+
+        return [ativo.id, { valor, liquido, incompleto }];
       })
       .filter(Boolean),
   );
@@ -181,6 +214,7 @@ async function carregar() {
     // Ausentes no IPCA+, que ainda não rende (M36) — a tela cai na base.
     valor: correcao.get(ativo.id)?.valor,
     liquido: correcao.get(ativo.id)?.liquido,
+    incompleto: correcao.get(ativo.id)?.incompleto ?? false,
   }));
 
   const porConta = contas.map((conta) => {
