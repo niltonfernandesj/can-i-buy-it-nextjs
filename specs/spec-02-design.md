@@ -2430,6 +2430,8 @@ const mes = dia >= 15 ? mesDaValidade : mesAnterior(mesDaValidade);
 
 Fora da janela de cache: busca, e **em caso de erro registra no `console.error` e devolve o que estiver guardado** — inclusive `null`. Não há caminho em que essa função interrompa o carregamento da tela.
 
+**Um segundo relógio, descoberto na implementação:** o cache de 12h se apoia em `capturadoEm`, e uma falha não atualiza esse campo. Com a ANBIMA fora do ar, a janela nunca fecharia e **cada render pagaria o timeout inteiro** — o cálculo seguiria correto, e a tela ficaria inutilizável. Daí um recuo de 30 minutos após falha, guardado em memória de processo. Carimbar `capturadoEm` na falha seria mais simples e está errado: faria a linha mentir sobre quando o valor foi lido, e é esse campo que decide se o dado está fresco.
+
 O `fetch` leva `next: { revalidate: 3600 }`, como o do BC: segunda linha de defesa, não a primeira. Quem garante é a tabela.
 
 ### 31.5 Onde a projeção entra

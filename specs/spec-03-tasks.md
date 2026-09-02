@@ -1761,6 +1761,7 @@ Conferido contra dois títulos do Banco Fibra: **+R$ 0,23** e **−R$ 0,63** em 
 ---
 
 **Task 148. M0 aplica o mês da própria janela**
+✅ **Concluída** — commit `1ab41ab`
 
 `lib/rendimento.js` e testes. Requisitos §3.24.1, Design §31.1.
 
@@ -1774,6 +1775,7 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 ---
 
 **Task 149. A janela da compra volta a contar pro rata**
+✅ **Concluída** — commits `7984ae2` (a unificação decidida) e `e542ae2` (a correção, depois do checkpoint reprovar)
 
 `lib/rendimento.js` e testes. Requisitos §3.24.5, Design §31.1.
 
@@ -1788,6 +1790,7 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 ---
 
 **Task 150. A tabela da projeção**
+✅ **Concluída** — commit `ced23eb`
 
 `prisma/schema.prisma` e migration. Design §31.2.
 
@@ -1799,6 +1802,7 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 ---
 
 **Task 151. O leitor da página da ANBIMA**
+✅ **Concluída** — commit `39e9df9`
 
 `lib/anbima.js` e testes. Requisitos §3.24.4, Design §31.3.
 
@@ -1813,18 +1817,21 @@ Uma linha, e a mais urgente do marco — hoje qualquer M0 cadastrado rende errad
 ---
 
 **Task 152. A sincronização da projeção**
+✅ **Concluída** — commit `90e4135`
 
 `lib/actions/investimentos.js`. Requisitos §3.24.6, Design §31.4.
 
 - `sincronizarProjecao(serie)`: linha guardada com menos de 12h devolve sem tocar a rede.
 - Sucesso faz upsert sobrescrevendo o mês; erro faz `console.error` e devolve o guardado, que pode ser `null`.
 - `next: { revalidate: 3600 }` no fetch.
+- **Recuo de 30min após falha, não previsto no Design §31.4.** O cache de 12h se apoia em `capturadoEm`, e uma falha não atualiza esse campo — com a ANBIMA fora do ar, o cache nunca fecharia e **cada render pagaria o timeout inteiro**. Carimbar `capturadoEm` na falha resolveria, mas faria a linha mentir sobre quando o valor foi lido, e é esse campo que decide se o dado está fresco. O recuo é estado de processo: reinício zera, cada instância tem o seu, e está documentado como proteção contra o caso comum, não garantia distribuída.
 
 *(Checkpoint: com o banco vazio da tabela, uma chamada grava a projeção; a segunda seguida não emite requisição. **Com a URL trocada para um host inválido, a chamada devolve o valor guardado e a página carrega normalmente** — é o requisito do marco, e é aqui que ele se verifica.)*
 
 ---
 
 **Task 153. As janelas viram um valor de retorno**
+✅ **Concluída** — commit `ef45278`
 
 `lib/rendimento.js` e testes. Design §31.6.
 
